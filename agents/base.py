@@ -82,7 +82,22 @@ class BaseAgent:
         if ok:
             logger.info(f"[{self.username}] merged MR !{mr_iid}")
             self._emit("mr_merge", project_id=project_id, mr_iid=mr_iid)
-        return ok
+            return True
+        # Неустранимо (конфликт/cannot_be_merged после параллельных правок) —
+        # закрываем MR и удаляем ветку, чтобы открытые MR не копились и не
+        # вызывали каскад конфликтов. Покрывает ВСЕ пути мёржа.
+        try:
+            mr = self.gl.get_mr(project_id, mr_iid) or {}
+            src = mr.get("source_branch")
+            if self.gl.close_mr(project_id, mr_iid, self.token):
+                logger.info(f"[{self.username}] закрыл неустранимый MR !{mr_iid} (конфликт)")
+                self._emit("mr_close", project_id=project_id, mr_iid=mr_iid,
+                           message="closed: unmergeable (conflict)")
+            if src and src not in ("main", "master"):
+                self.gl.delete_branch(project_id, src, self.token)
+        except Exception:
+            pass
+        return False
 
     # ------------------------------------------------------------------
     # Расширенные операции (approvals, emoji, issues, MR-апдейты)

@@ -23589,3 +23589,134 @@ SyntaxError: '(' was never closed
 2026-06-14 21:26:41 INFO    127.0.0.1 - - [14/Jun/2026 21:26:41] "GET /api/status HTTP/1.1" 200 -
 2026-06-14 21:26:41 INFO    127.0.0.1 - - [14/Jun/2026 21:26:41] "GET /api/logs?since=1594 HTTP/1.1" 200 -
 2026-06-14 21:26:41 INFO    127.0.0.1 - - [14/Jun/2026 21:26:41] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:26:42 WARNING merge_mr !427 failed: {"message":"405 Method Not Allowed"} [state=opened, merge_status=checking, draft=False, conflicts=False, src=chore/deps-54392]
+2026-06-14 21:26:42 INFO    127.0.0.1 - - [14/Jun/2026 21:26:42] "GET /api/logs?since=1600 HTTP/1.1" 200 -
+2026-06-14 21:26:42 INFO    127.0.0.1 - - [14/Jun/2026 21:26:42] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:26:42 INFO    127.0.0.1 - - [14/Jun/2026 21:26:42] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:26:43 INFO    127.0.0.1 - - [14/Jun/2026 21:26:43] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:43 INFO    127.0.0.1 - - [14/Jun/2026 21:26:43] "GET /api/logs?since=1603 HTTP/1.1" 200 -
+2026-06-14 21:26:44 INFO    127.0.0.1 - - [14/Jun/2026 21:26:44] "GET /api/logs?since=1607 HTTP/1.1" 200 -
+2026-06-14 21:26:44 INFO    127.0.0.1 - - [14/Jun/2026 21:26:44] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:44 INFO    127.0.0.1 - - [14/Jun/2026 21:26:44] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:26:44 INFO    127.0.0.1 - - [14/Jun/2026 21:26:44] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:26:44 INFO    127.0.0.1 - - [14/Jun/2026 21:26:44] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:26:45 INFO    127.0.0.1 - - [14/Jun/2026 21:26:45] "GET /api/logs?since=1608 HTTP/1.1" 200 -
+2026-06-14 21:26:46 INFO    127.0.0.1 - - [14/Jun/2026 21:26:46] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:46 INFO    127.0.0.1 - - [14/Jun/2026 21:26:46] "GET /api/logs?since=1613 HTTP/1.1" 200 -
+2026-06-14 21:26:46 INFO    127.0.0.1 - - [14/Jun/2026 21:26:46] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:26:46 INFO    127.0.0.1 - - [14/Jun/2026 21:26:46] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:26:47 WARNING merge_mr !426 failed: {"message":"405 Method Not Allowed"} [state=opened, merge_status=checking, draft=False, conflicts=False, src=triage/pass_the_hash-54388]
+2026-06-14 21:26:47 INFO    127.0.0.1 - - [14/Jun/2026 21:26:47] "GET /api/logs?since=1615 HTTP/1.1" 200 -
+2026-06-14 21:26:47 INFO    127.0.0.1 - - [14/Jun/2026 21:26:47] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:47 INFO    127.0.0.1 - - [14/Jun/2026 21:26:47] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:26:48 WARNING merge_mr !426 failed: {"message":"405 Method Not Allowed"} [state=closed, merge_status=checking, draft=False, conflicts=False, src=triage/pass_the_hash-54388]
+2026-06-14 21:26:48 INFO    127.0.0.1 - - [14/Jun/2026 21:26:48] "GET /api/logs?since=1619 HTTP/1.1" 200 -
+2026-06-14 21:26:48 INFO    127.0.0.1 - - [14/Jun/2026 21:26:48] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:26:48 INFO    127.0.0.1 - - [14/Jun/2026 21:26:48] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:26:49 INFO    127.0.0.1 - - [14/Jun/2026 21:26:49] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:49 INFO    127.0.0.1 - - [14/Jun/2026 21:26:49] "GET /api/logs?since=1623 HTTP/1.1" 200 -
+2026-06-14 21:26:50 INFO    127.0.0.1 - - [14/Jun/2026 21:26:50] "GET /api/logs?since=1627 HTTP/1.1" 200 -
+2026-06-14 21:26:50 INFO    127.0.0.1 - - [14/Jun/2026 21:26:50] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:50 INFO    127.0.0.1 - - [14/Jun/2026 21:26:50] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:26:50 INFO    127.0.0.1 - - [14/Jun/2026 21:26:50] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:26:50 INFO    127.0.0.1 - - [14/Jun/2026 21:26:50] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:26:51 INFO    127.0.0.1 - - [14/Jun/2026 21:26:51] "GET /api/logs?since=1628 HTTP/1.1" 200 -
+2026-06-14 21:26:52 WARNING merge_mr !425 failed: {"message":"405 Method Not Allowed"} [state=opened, merge_status=checking, draft=False, conflicts=False, src=tune/sam_database_credent-54376]
+2026-06-14 21:26:52 INFO    127.0.0.1 - - [14/Jun/2026 21:26:52] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:52 INFO    127.0.0.1 - - [14/Jun/2026 21:26:52] "GET /api/logs?since=1633 HTTP/1.1" 200 -
+2026-06-14 21:26:52 INFO    127.0.0.1 - - [14/Jun/2026 21:26:52] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:26:52 INFO    127.0.0.1 - - [14/Jun/2026 21:26:52] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:26:53 WARNING merge_mr !425 failed: {"message":"405 Method Not Allowed"} [state=closed, merge_status=checking, draft=False, conflicts=False, src=tune/sam_database_credent-54376]
+2026-06-14 21:26:53 INFO    127.0.0.1 - - [14/Jun/2026 21:26:53] "GET /api/logs?since=1636 HTTP/1.1" 200 -
+2026-06-14 21:26:53 INFO    127.0.0.1 - - [14/Jun/2026 21:26:53] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:53 INFO    127.0.0.1 - - [14/Jun/2026 21:26:53] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:26:54 INFO    127.0.0.1 - - [14/Jun/2026 21:26:54] "GET /api/logs?since=1640 HTTP/1.1" 200 -
+2026-06-14 21:26:54 INFO    127.0.0.1 - - [14/Jun/2026 21:26:54] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:26:54 INFO    127.0.0.1 - - [14/Jun/2026 21:26:54] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:26:55 INFO    127.0.0.1 - - [14/Jun/2026 21:26:55] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:55 INFO    127.0.0.1 - - [14/Jun/2026 21:26:55] "GET /api/logs?since=1643 HTTP/1.1" 200 -
+2026-06-14 21:26:56 INFO    127.0.0.1 - - [14/Jun/2026 21:26:56] "GET /api/logs?since=1647 HTTP/1.1" 200 -
+2026-06-14 21:26:56 INFO    127.0.0.1 - - [14/Jun/2026 21:26:56] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:56 INFO    127.0.0.1 - - [14/Jun/2026 21:26:56] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:26:56 INFO    127.0.0.1 - - [14/Jun/2026 21:26:56] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:26:56 INFO    127.0.0.1 - - [14/Jun/2026 21:26:56] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:26:57 WARNING merge_mr !424 failed: {"message":"405 Method Not Allowed"} [state=opened, merge_status=checking, draft=False, conflicts=False, src=hotfix/suspicious_powershel-54356]
+2026-06-14 21:26:57 INFO    127.0.0.1 - - [14/Jun/2026 21:26:57] "GET /api/logs?since=1648 HTTP/1.1" 200 -
+2026-06-14 21:26:58 WARNING merge_mr !424 failed: {"message":"405 Method Not Allowed"} [state=closed, merge_status=checking, draft=False, conflicts=False, src=hotfix/suspicious_powershel-54356]
+2026-06-14 21:26:58 INFO    127.0.0.1 - - [14/Jun/2026 21:26:58] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:58 INFO    127.0.0.1 - - [14/Jun/2026 21:26:58] "GET /api/logs?since=1654 HTTP/1.1" 200 -
+2026-06-14 21:26:58 INFO    127.0.0.1 - - [14/Jun/2026 21:26:58] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:26:58 INFO    127.0.0.1 - - [14/Jun/2026 21:26:58] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:26:59 INFO    [alex.petrov] merged MR !423
+2026-06-14 21:26:59 INFO    127.0.0.1 - - [14/Jun/2026 21:26:59] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:26:59 INFO    127.0.0.1 - - [14/Jun/2026 21:26:59] "GET /api/logs?since=1657 HTTP/1.1" 200 -
+2026-06-14 21:26:59 INFO    127.0.0.1 - - [14/Jun/2026 21:26:59] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:27:00 INFO    [alex.petrov] merged MR !422
+2026-06-14 21:27:00 INFO    127.0.0.1 - - [14/Jun/2026 21:27:00] "GET /api/logs?since=1662 HTTP/1.1" 200 -
+2026-06-14 21:27:00 INFO    127.0.0.1 - - [14/Jun/2026 21:27:00] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:00 INFO    127.0.0.1 - - [14/Jun/2026 21:27:00] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:01 INFO    127.0.0.1 - - [14/Jun/2026 21:27:01] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:01 INFO    127.0.0.1 - - [14/Jun/2026 21:27:01] "GET /api/logs?since=1665 HTTP/1.1" 200 -
+2026-06-14 21:27:02 WARNING merge_mr !423 failed: {"message":"405 Method Not Allowed"} [state=merged, merge_status=can_be_merged, draft=False, conflicts=False, src=fix/dns_query_with_unusu-54324]
+2026-06-14 21:27:02 INFO    127.0.0.1 - - [14/Jun/2026 21:27:02] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:02 INFO    127.0.0.1 - - [14/Jun/2026 21:27:02] "GET /api/logs?since=1669 HTTP/1.1" 200 -
+2026-06-14 21:27:02 INFO    127.0.0.1 - - [14/Jun/2026 21:27:02] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:02 INFO    127.0.0.1 - - [14/Jun/2026 21:27:02] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:02 INFO    127.0.0.1 - - [14/Jun/2026 21:27:02] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:27:03 INFO    127.0.0.1 - - [14/Jun/2026 21:27:03] "GET /api/logs?since=1672 HTTP/1.1" 200 -
+2026-06-14 21:27:04 INFO    127.0.0.1 - - [14/Jun/2026 21:27:04] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:04 INFO    127.0.0.1 - - [14/Jun/2026 21:27:04] "GET /api/logs?since=1676 HTTP/1.1" 200 -
+2026-06-14 21:27:04 INFO    127.0.0.1 - - [14/Jun/2026 21:27:04] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:04 INFO    127.0.0.1 - - [14/Jun/2026 21:27:04] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:05 WARNING merge_mr !144 failed: {"message":"405 Method Not Allowed"} [state=opened, merge_status=cannot_be_merged, draft=False, conflicts=True, src=fix/registry_run_key_mod-41224]
+2026-06-14 21:27:05 INFO    127.0.0.1 - - [14/Jun/2026 21:27:05] "GET /api/logs?since=1678 HTTP/1.1" 200 -
+2026-06-14 21:27:05 INFO    127.0.0.1 - - [14/Jun/2026 21:27:05] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:05 INFO    127.0.0.1 - - [14/Jun/2026 21:27:05] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:27:06 INFO    127.0.0.1 - - [14/Jun/2026 21:27:06] "GET /api/logs?since=1682 HTTP/1.1" 200 -
+2026-06-14 21:27:06 INFO    127.0.0.1 - - [14/Jun/2026 21:27:06] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:06 INFO    127.0.0.1 - - [14/Jun/2026 21:27:06] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:07 WARNING merge_mr !422 failed: {"message":"405 Method Not Allowed"} [state=merged, merge_status=can_be_merged, draft=False, conflicts=False, src=chore/deprecate-aws_iam_key_used_f-54314]
+2026-06-14 21:27:07 INFO    127.0.0.1 - - [14/Jun/2026 21:27:07] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:07 INFO    127.0.0.1 - - [14/Jun/2026 21:27:07] "GET /api/logs?since=1685 HTTP/1.1" 200 -
+2026-06-14 21:27:08 INFO    127.0.0.1 - - [14/Jun/2026 21:27:08] "GET /api/logs?since=1690 HTTP/1.1" 200 -
+2026-06-14 21:27:08 INFO    127.0.0.1 - - [14/Jun/2026 21:27:08] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:08 INFO    127.0.0.1 - - [14/Jun/2026 21:27:08] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:08 INFO    127.0.0.1 - - [14/Jun/2026 21:27:08] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:08 INFO    127.0.0.1 - - [14/Jun/2026 21:27:08] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:27:10 INFO    127.0.0.1 - - [14/Jun/2026 21:27:10] "GET /api/logs?since=1691 HTTP/1.1" 200 -
+2026-06-14 21:27:10 WARNING merge_mr !143 failed: {"message":"405 Method Not Allowed"} [state=opened, merge_status=cannot_be_merged, draft=False, conflicts=True, src=fix/registry_run_key_mod-41216]
+2026-06-14 21:27:10 INFO    127.0.0.1 - - [14/Jun/2026 21:27:10] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:11 INFO    127.0.0.1 - - [14/Jun/2026 21:27:11] "GET /api/logs?since=1696 HTTP/1.1" 200 -
+2026-06-14 21:27:11 INFO    127.0.0.1 - - [14/Jun/2026 21:27:11] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:11 INFO    127.0.0.1 - - [14/Jun/2026 21:27:11] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:12 WARNING merge_mr !144 failed: {"message":"405 Method Not Allowed"} [state=closed, merge_status=cannot_be_merged, draft=False, conflicts=True, src=fix/registry_run_key_mod-41224]
+2026-06-14 21:27:12 INFO    127.0.0.1 - - [14/Jun/2026 21:27:12] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:12 INFO    127.0.0.1 - - [14/Jun/2026 21:27:12] "GET /api/logs?since=1699 HTTP/1.1" 200 -
+2026-06-14 21:27:12 INFO    127.0.0.1 - - [14/Jun/2026 21:27:12] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:27:13 INFO    127.0.0.1 - - [14/Jun/2026 21:27:13] "GET /api/logs?since=1704 HTTP/1.1" 200 -
+2026-06-14 21:27:13 INFO    127.0.0.1 - - [14/Jun/2026 21:27:13] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:13 INFO    127.0.0.1 - - [14/Jun/2026 21:27:13] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:13 INFO    127.0.0.1 - - [14/Jun/2026 21:27:13] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:14 INFO    127.0.0.1 - - [14/Jun/2026 21:27:14] "GET /api/logs?since=1706 HTTP/1.1" 200 -
+2026-06-14 21:27:15 WARNING merge_mr !142 failed: {"message":"405 Method Not Allowed"} [state=opened, merge_status=cannot_be_merged, draft=False, conflicts=True, src=fix/rdp_bruteforce-41208]
+2026-06-14 21:27:15 INFO    127.0.0.1 - - [14/Jun/2026 21:27:15] "GET /api/logs?since=1710 HTTP/1.1" 200 -
+2026-06-14 21:27:15 INFO    127.0.0.1 - - [14/Jun/2026 21:27:15] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:15 INFO    127.0.0.1 - - [14/Jun/2026 21:27:15] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:15 INFO    127.0.0.1 - - [14/Jun/2026 21:27:15] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:15 INFO    127.0.0.1 - - [14/Jun/2026 21:27:15] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:27:16 INFO    127.0.0.1 - - [14/Jun/2026 21:27:16] "GET /api/logs?since=1712 HTTP/1.1" 200 -
+2026-06-14 21:27:16 INFO    127.0.0.1 - - [14/Jun/2026 21:27:16] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:16 INFO    127.0.0.1 - - [14/Jun/2026 21:27:16] "GET /api/logs?since=1717 HTTP/1.1" 200 -
+2026-06-14 21:27:16 INFO    127.0.0.1 - - [14/Jun/2026 21:27:16] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:16 INFO    127.0.0.1 - - [14/Jun/2026 21:27:16] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:17 WARNING merge_mr !143 failed: {"message":"405 Method Not Allowed"} [state=closed, merge_status=cannot_be_merged, draft=False, conflicts=True, src=fix/registry_run_key_mod-41216]
+2026-06-14 21:27:17 INFO    [alex.petrov] merged MR !43
+2026-06-14 21:27:17 INFO    127.0.0.1 - - [14/Jun/2026 21:27:17] "GET /api/logs?since=1719 HTTP/1.1" 200 -
+2026-06-14 21:27:17 INFO    127.0.0.1 - - [14/Jun/2026 21:27:17] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:17 INFO    127.0.0.1 - - [14/Jun/2026 21:27:17] "GET /api/insights HTTP/1.1" 200 -
+2026-06-14 21:27:18 INFO    [alex.petrov] merged MR !52
+2026-06-14 21:27:18 INFO    127.0.0.1 - - [14/Jun/2026 21:27:18] "GET /api/logs?since=1724 HTTP/1.1" 200 -
+2026-06-14 21:27:18 INFO    127.0.0.1 - - [14/Jun/2026 21:27:18] "GET /api/series HTTP/1.1" 200 -
+2026-06-14 21:27:18 INFO    127.0.0.1 - - [14/Jun/2026 21:27:18] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-06-14 21:27:19 INFO    127.0.0.1 - - [14/Jun/2026 21:27:19] "GET /api/status HTTP/1.1" 200 -
+2026-06-14 21:27:19 INFO    127.0.0.1 - - [14/Jun/2026 21:27:19] "GET /api/logs?since=1728 HTTP/1.1" 200 -
