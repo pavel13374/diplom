@@ -222,9 +222,41 @@ class GitLabClient:
                 if r2.status_code in (200, 201):
                     return True
                 last = r2.text[:150]
+                # ветка могла отстать от main — пробуем rebase и ещё раз merge
+                try:
+                    if self.rebase_mr(project_id, mr_iid):
+                        r3 = self.session.put(url, json={"should_remove_source_branch": True},
+                                              headers={"PRIVATE-TOKEN": self.token}, timeout=15)
+                        if r3.status_code in (200, 201):
+                            return True
+                        last = r3.text[:150]
+                except Exception:
+                    pass
             elif r.status_code not in (401, 403, 406, 409, 422):
                 break  # иные ошибки повтором не лечатся
-        logger.warning(f"merge_mr !{mr_iid} failed: {last}")
+        why = ""
+        try:
+            d = self.get_mr(project_id, mr_iid) or {}
+            why = (f" [state={d.get('state')}, merge_status={d.get('merge_status')}"
+                   f", draft={d.get('draft') or d.get('work_in_progress')}"
+                   f", conflicts={d.get('has_conflicts')}, src={d.get('source_branch')}]")
+        except Exception:
+            pass
+        logger.warning(f"merge_mr !{mr_iid} failed: {last}{why}")
+        return False
+
+    def rebase_mr(self, project_id: int, mr_iid: int) -> bool:
+        """Асинхронный rebase MR на target. Возвращает True, если прошёл без
+        конфликта (помогает «отставшим» от main веткам стать mergeable)."""
+        url = f"{self.url}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/rebase"
+        r = self.session.put(url, headers={"PRIVATE-TOKEN": self.token}, timeout=15)
+        if r.status_code not in (200, 202):
+            return False
+        for _ in range(6):                       # ждём завершения rebase
+            time.sleep(1.2)
+            d = self.get_mr(project_id, mr_iid) or {}
+            if not d.get("rebase_in_progress"):
+                return not d.get("merge_error")
         return False
 
     def ensure_project_settings(self, project_id: int) -> bool:
@@ -378,6 +410,25 @@ class GitLabClient:
             json={"state_event": "close"},
             headers=headers, timeout=15,
         )
+        return r.status_code in (200, 201)
+
+    def mark_mr_ready(self, project_id: int, mr_iid: int,
+                      user_token: Optional[str] = None) -> bool:
+        """Снимает статус Draft/WIP с MR (через очистку префикса заголовка),
+        чтобы его можно было смержить."""
+        mr = self.get_mr(project_id, mr_iid) or {}
+        title = str(mr.get("title", "") or "")
+        new = title
+        for pref in ("Draft: ", "Draft:", "WIP: ", "WIP:"):
+            if new.lower().startswith(pref.lower()):
+                new = new[len(pref):].lstrip()
+                break
+        if new == title and not (mr.get("draft") or mr.get("work_in_progress")):
+            return True  # уже ready
+        headers = {"PRIVATE-TOKEN": user_token or self.token}
+        r = self.session.put(
+            f"{self.url}/api/v4/projects/{project_id}/merge_requests/{mr_iid}",
+            json={"title": new or "ready"}, headers=headers, timeout=15)
         return r.status_code in (200, 201)
 
     def get_open_mrs(self, project_id: int) -> list:

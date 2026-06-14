@@ -40,7 +40,16 @@ _STATE = {
     "by_actor": defaultdict(lambda: deque(maxlen=150)),
     "actor_counts": defaultdict(Counter),
     "actor_last": {},
+    "heat": Counter(),              # "wd:hour" -> всего действий (ритм)
+    "heat_anom": Counter(),         # "wd:hour" -> аномалий
+    "anom_feed": deque(maxlen=300), # таймлайн инцидентов (по severity)
+    "actor_repo": Counter(),        # "actor\x01repo" -> кол-во (граф UEBA)
+    "session_id": None,             # id запуска процесса симулятора
+    "actor_sessions": {},           # actor -> {"last": datetime, "n": int}
 }
+
+SESSION_GAP_MIN = 30                 # разрыв (sim-минут) → новая рабочая сессия актора
+
 
 
 # ----------------------------------------------------------------------
@@ -60,6 +69,9 @@ def init(path=None, enabled=True):
         _STATE["file"] = path
         _STATE["enabled"] = bool(enabled and cfg.get("enabled", True))
         _STATE["run_id"] = datetime.now().strftime("run-%Y%m%d-%H%M%S")
+        import uuid
+        _STATE["session_id"] = "sess-" + uuid.uuid4().hex[:12]
+        _STATE["actor_sessions"] = {}
     return _STATE["run_id"]
 
 
@@ -129,6 +141,8 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
     now_sim = simclock.now()
     rec = {
         "run_id":    _STATE["run_id"],
+        "session_id":  _STATE["session_id"],
+        "actor_session": None,
         "ts_sim":    now_sim.strftime("%Y-%m-%dT%H:%M:%S"),
         "ts_real":   datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         "hour":      now_sim.hour,
@@ -159,6 +173,20 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
     with _LOCK:
         _STATE["seq"] += 1
         rec["seq"] = _STATE["seq"]
+        rec["actor_session"] = _actor_session_id(actor, now_sim)
+        is_meta = bool(rec.get("meta"))
+        if not is_meta:
+            _hk = f"{rec['weekday']}:{rec['hour']}"
+            _STATE["heat"][_hk] += 1
+            if anom:
+                _STATE["heat_anom"][_hk] += 1
+            if actor and rec["project"]:
+                _STATE["actor_repo"][actor + "\x01" + rec["project"]] += 1
+        if is_meta and action == "anomaly":
+            _STATE["anom_feed"].append({
+                "ts_sim": rec["ts_sim"], "anomaly_type": a_type, "severity": sev,
+                "actor": actor, "project": rec.get("repo") or rec.get("project"),
+                "subtype": rec.get("anomaly_subtype")})
         _STATE["total"] += 1
         _STATE["counts"][action] += 1
         if anom:
@@ -171,20 +199,41 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
                 _STATE["fh"].flush()
             except Exception:
                 pass
-        light = {"seq": rec["seq"], "ts_sim": rec["ts_sim"], "actor": actor,
-                 "action": action, "project": rec["project"], "path": path,
-                 "branch": branch, "mr_iid": mr_iid, "message": rec.get("message"),
-                 "is_anomaly": anom, "anomaly_type": a_type, "severity": sev,
-                 "lookalike": rec.get("lookalike")}
-        _STATE["ring"].append(light)
-        if actor:
-            _STATE["by_actor"][actor].append(light)
-            ac = _STATE["actor_counts"][actor]
-            ac["total"] += 1
-            ac["act:" + action] += 1
-            if anom:
-                ac["anomalies"] += 1
-            _STATE["actor_last"][actor] = light
+        # Служебные (meta) события — только в файл/телеметрию, в живую ленту не кладём,
+        # чтобы схема ленты была единой: actor/role/action/project/ts у каждого события.
+        if not is_meta:
+            light = {"seq": rec["seq"], "ts_sim": rec["ts_sim"],
+                     "session_id": rec["session_id"], "actor_session": rec["actor_session"],
+                     "actor": actor, "role": role, "action": action,
+                     "project": rec["project"], "path": path,
+                     "branch": branch, "mr_iid": mr_iid, "message": rec.get("message"),
+                     "is_anomaly": anom, "anomaly_type": a_type, "severity": sev,
+                     "lookalike": rec.get("lookalike")}
+            _STATE["ring"].append(light)
+            if actor:
+                _STATE["by_actor"][actor].append(light)
+                ac = _STATE["actor_counts"][actor]
+                ac["total"] += 1
+                ac["act:" + action] += 1
+                if anom:
+                    ac["anomalies"] += 1
+                _STATE["actor_last"][actor] = light
+
+
+def _actor_session_id(actor, now_sim):
+    """Per-actor рабочая сессия: новый id после разрыва > SESSION_GAP_MIN или смены дня."""
+    if not actor:
+        return "system"
+    sess = _STATE["actor_sessions"]
+    prev = sess.get(actor)
+    new_seg = True
+    if prev:
+        gap_min = (now_sim - prev["last"]).total_seconds() / 60.0
+        if gap_min <= SESSION_GAP_MIN and now_sim.date() == prev["last"].date():
+            new_seg = False
+    n = (prev["n"] + 1) if (prev and new_seg) else (prev["n"] if prev else 1)
+    sess[actor] = {"last": now_sim, "n": n}
+    return f"{actor}-s{n}"
 
 
 def _work_start():
@@ -230,7 +279,7 @@ def actors_summary():
             out[u] = {
                 "total": c.get("total", 0),
                 "pushes": c.get("act:push", 0),
-                "mrs": c.get("act:mr_open", 0),
+                        "mrs": c.get("act:mr_open", 0),
                 "merges": c.get("act:mr_merge", 0),
                 "issues": c.get("act:issue_open", 0),
                 "anomalies": c.get("anomalies", 0),
@@ -241,3 +290,24 @@ def actors_summary():
                 "last_anomaly": last.get("anomaly_type"),
             }
     return out
+
+
+# ----------------------------------------------------------------------
+def insights():
+    """Агрегаты для раздела «Аналитика»: heatmap, таймлайн аномалий, граф actor↔repo."""
+    with _LOCK:
+        heat = dict(_STATE["heat"]); heat_anom = dict(_STATE["heat_anom"])
+        anom = list(_STATE["anom_feed"]); ar = dict(_STATE["actor_repo"])
+    grid  = [[0]*24 for _ in range(7)]
+    agrid = [[0]*24 for _ in range(7)]
+    for k, v in heat.items():
+        wd, h = k.split(":"); grid[int(wd)][int(h)] = v
+    for k, v in heat_anom.items():
+        wd, h = k.split(":"); agrid[int(wd)][int(h)] = v
+    edges = []
+    for k, v in ar.items():
+        a, r = k.split("\x01", 1)
+        edges.append({"actor": a, "repo": r, "n": v})
+    edges.sort(key=lambda e: -e["n"])
+    return {"heat": grid, "heat_anom": agrid,
+            "anom_timeline": anom[-160:], "edges": edges}

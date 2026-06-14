@@ -387,6 +387,12 @@ def api_events():
     return jsonify({"stats": events.stats(), "items": events.tail(n)})
 
 
+@app.route("/api/insights")
+@login_required
+def api_insights():
+    return jsonify(events.insights())
+
+
 @app.route("/api/dataset")
 @login_required
 def api_dataset():
@@ -549,6 +555,11 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .content{padding:24px 28px 60px;max-width:1180px}
 .view{display:none}.view.active{display:block}
 .section-title{font-size:13px;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.06em;margin:26px 2px 12px}
+.sevdot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+.hmcell{width:17px;height:17px;border-radius:3px;display:inline-block}
+.hmrow{display:flex;gap:2px;align-items:center;margin-bottom:2px}
+.hmlab{width:34px;font-size:11px;color:#6b7180;text-align:right;padding-right:6px}
+.arnode{font-size:12px;fill:#42485a}
 /* cards */
 .clocks{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .clock{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
@@ -667,6 +678,7 @@ input[type=range]{accent-color:var(--accent);width:100%;height:6px;cursor:pointe
       <a data-view=config><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><line x1=4 y1=21 x2=4 y2=14/><line x1=4 y1=10 x2=4 y2=3/><line x1=12 y1=21 x2=12 y2=12/><line x1=12 y1=8 x2=12 y2=3/><line x1=20 y1=21 x2=20 y2=16/><line x1=20 y1=12 x2=20 y2=3/><line x1=1 y1=14 x2=7 y2=14/><line x1=9 y1=8 x2=15 y2=8/><line x1=17 y1=16 x2=23 y2=16/></svg> Конфигурация</a>
       <a data-view=logs><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><polyline points="4 17 10 11 4 5"/><line x1=12 y1=19 x2=20 y2=19/></svg> Журнал событий</a>
       <a data-view=data><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><ellipse cx=12 cy=5 rx=9 ry=3/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg> Данные · датасет</a>
+      <a data-view=insights><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><line x1=18 y1=20 x2=18 y2=10/><line x1=12 y1=20 x2=12 y2=4/><line x1=6 y1=20 x2=6 y2=14/></svg> Аналитика</a>
       <a data-view=people><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx=9 cy=7 r=4/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Сотрудники</a>
     </nav>
     <div class=side-foot>
@@ -817,6 +829,60 @@ input[type=range]{accent-color:var(--accent);width:100%;height:6px;cursor:pointe
           <div class=evtable id=evList></div></div>
       </section>
 
+      <!-- АНАЛИТИКА -->
+      <section class=view id=v-insights>
+        <div class=panel style=margin-bottom:16px>
+          <h2>Карта активности · часы × дни недели</h2>
+          <div class=sub>Ритм работы команды по времени симуляции. Темнее — больше действий;
+            красная рамка — в этот час были аномалии. Видны рабочее окно и ночные всплески.</div>
+          <div id=heatmap style=margin-top:14px;overflow-x:auto></div>
+          <div style="display:flex;gap:14px;align-items:center;margin-top:10px;font-size:12px;color:#6b7180">
+            <span>меньше</span>
+            <span style="display:inline-flex;gap:3px">
+              <i style="width:14px;height:14px;border-radius:3px;background:#eef0f7"></i>
+              <i style="width:14px;height:14px;border-radius:3px;background:#c7d2fe"></i>
+              <i style="width:14px;height:14px;border-radius:3px;background:#818cf8"></i>
+              <i style="width:14px;height:14px;border-radius:3px;background:#4f46e5"></i>
+              <i style="width:14px;height:14px;border-radius:3px;background:#312e81"></i>
+            </span>
+            <span>больше</span>
+            <span style="margin-left:14px"><i style="width:14px;height:14px;border-radius:3px;border:2px solid #ef4444;display:inline-block;vertical-align:middle"></i> были аномалии</span>
+          </div>
+        </div>
+
+        <div class=grid2>
+          <div class=panel><h2>Таймлайн аномалий</h2>
+            <div class=sub>Размеченные инциденты во времени симуляции, цвет — по severity.</div>
+            <div id=anomTimeline style=margin-top:12px></div>
+            <div style="display:flex;gap:14px;margin-top:10px;font-size:12px;color:#6b7180;flex-wrap:wrap">
+              <span><i class=sevdot style=background:#dc2626></i> critical</span>
+              <span><i class=sevdot style=background:#f59e0b></i> high</span>
+              <span><i class=sevdot style=background:#eab308></i> medium</span>
+              <span><i class=sevdot style=background:#64748b></i> low</span>
+            </div>
+          </div>
+          <div class=panel><h2>Качество детектора</h2>
+            <div class=sub>Метрики появятся, когда подключишь ML/правило-детектор
+              (см. <code>rule_baseline.py</code> и <code>export_dataset.py</code>).</div>
+            <div class=kpis style=grid-template-columns:repeat(2,1fr);margin-top:8px>
+              <div class=kpi><div class=n id=mPrec>—</div><div class=l>Precision</div></div>
+              <div class=kpi><div class=n id=mRec>—</div><div class=l>Recall</div></div>
+              <div class=kpi><div class=n id=mF1>—</div><div class=l>F1</div></div>
+              <div class=kpi><div class=n id=mAnom>—</div><div class=l>Инцидентов всего</div></div>
+            </div>
+            <div class=sub style=margin-top:12px>Пока детектор не подключён, заполнено
+              только число размеченных инцидентов.</div>
+          </div>
+        </div>
+
+        <div class=panel style=margin-top:16px>
+          <h2>Кто в каком репозитории · actor ↔ repo</h2>
+          <div class=sub>Двудольный граф взаимодействий — основа UEBA-нарратива.
+            Толщина связи ∝ числу действий актора в репозитории.</div>
+          <div id=arGraph style=margin-top:12px;overflow-x:auto></div>
+        </div>
+      </section>
+
     </div>
   </main>
 </div>
@@ -832,7 +898,7 @@ function colorFor(n){let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%PAL.lengt
 function initials(n){return n.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();}
 
 /* навигация */
-const TITLES={overview:'Обзор',config:'Конфигурация',logs:'Журнал событий',data:'Данные · датасет для ML',people:'Сотрудники · слежение'};
+const TITLES={overview:'Обзор',config:'Конфигурация',logs:'Журнал событий',data:'Данные · датасет для ML',insights:'Аналитика',people:'Сотрудники · слежение'};
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>{
   document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));
   a.classList.add('active');
@@ -1122,6 +1188,49 @@ async function pollEvents(){try{const d=await jget('/api/events?n=120');const st
 pollSeries();setInterval(pollSeries,2000);
 pollEvents();setInterval(pollEvents,2000);
 setInterval(()=>openUsers.forEach(refreshActor),2000);
+
+// ---------- Аналитика ----------
+const DOW=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const SEVCOL={critical:'#dc2626',high:'#f59e0b',medium:'#eab308',low:'#64748b'};
+function heatColor(v,mx){if(!v)return '#eef0f7';const t=v/mx;
+ return t>0.75?'#312e81':t>0.5?'#4f46e5':t>0.25?'#818cf8':'#c7d2fe';}
+function drawHeat(grid,agrid){const el=$('heatmap');if(!el)return;
+ let mx=1;grid.forEach(r=>r.forEach(v=>{if(v>mx)mx=v;}));
+ let h='<div class=hmrow><div class=hmlab></div>'+Array.from({length:24},(_,x)=>'<div style="width:17px;font-size:9px;color:#9aa0ad;text-align:center">'+(x%3===0?x:'')+'</div>').join('')+'</div>';
+ for(let d=0;d<7;d++){h+='<div class=hmrow><div class=hmlab>'+DOW[d]+'</div>';
+  for(let x=0;x<24;x++){const v=grid[d][x],a=agrid[d][x];
+   h+='<div class=hmcell title="'+DOW[d]+' '+x+':00 — '+v+' действий'+(a?(', '+a+' аномал.'):'')+'" style="background:'+heatColor(v,mx)+(a?';box-shadow:0 0 0 2px #ef4444 inset':'')+'"></div>';}
+  h+='</div>';}
+ el.innerHTML=h;}
+function drawAnomTimeline(items){const el=$('anomTimeline');if(!el)return;
+ if(!items||!items.length){el.innerHTML='<div class=help style=color:#9aa0ad>аномалий пока нет</div>';return;}
+ const ts=items.map(a=>Date.parse((a.ts_sim||'').replace('T',' '))||0);
+ const mn=Math.min(...ts),mx=Math.max(...ts),span=Math.max(1,mx-mn);
+ const W=100,H=46;
+ let dots='';items.forEach((a,i)=>{const x=((ts[i]-mn)/span)*96+2;
+  const c=SEVCOL[a.severity]||'#eab308';
+  dots+='<circle cx="'+x.toFixed(2)+'%" cy="'+(20+(i%3-1)*9)+'" r="4" fill="'+c+'"><title>'+(a.ts_sim||'')+' · '+(a.anomaly_type||a.subtype||'')+' · '+(a.severity||'')+' · '+(a.actor||'')+'</title></circle>';});
+ el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio=none style="width:100%;height:64px">'+
+  '<line x1=2 y1=20 x2=98 y2=20 stroke=#e7e9f3 stroke-width=0.4 vector-effect=non-scaling-stroke/>'+dots+'</svg>'+
+  '<div style="display:flex;justify-content:space-between;font-size:11px;color:#9aa0ad"><span>'+(items[0].ts_sim||'').replace('T',' ')+'</span><span>'+(items[items.length-1].ts_sim||'').replace('T',' ')+'</span></div>';}
+function drawArGraph(edges){const el=$('arGraph');if(!el)return;
+ if(!edges||!edges.length){el.innerHTML='<div class=help style=color:#9aa0ad>пока нет данных</div>';return;}
+ edges=edges.slice(0,60);
+ const actors=[...new Set(edges.map(e=>e.actor))],repos=[...new Set(edges.map(e=>e.repo))];
+ const rowH=26,H=Math.max(actors.length,repos.length)*rowH+20,W=560,xa=150,xr=W-150;
+ const ya={},yr={};actors.forEach((a,i)=>ya[a]=20+i*rowH);repos.forEach((r,i)=>yr[r]=20+i*rowH);
+ const mxn=Math.max(...edges.map(e=>e.n));
+ let svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;min-width:560px;height:'+H+'px">';
+ edges.forEach(e=>{const w=0.6+(e.n/mxn)*3.2;
+  svg+='<line x1='+xa+' y1='+ya[e.actor]+' x2='+xr+' y2='+yr[e.repo]+' stroke=#6366f1 stroke-opacity=0.28 stroke-width='+w.toFixed(2)+'><title>'+e.actor+' → '+e.repo+': '+e.n+'</title></line>';});
+ actors.forEach(a=>{svg+='<circle cx='+xa+' cy='+ya[a]+' r=4 fill=#4f46e5/><text class=arnode x='+(xa-9)+' y='+(ya[a]+4)+' text-anchor=end>'+a+'</text>';});
+ repos.forEach(r=>{svg+='<circle cx='+xr+' cy='+yr[r]+' r=4 fill=#0ea5e9/><text class=arnode x='+(xr+9)+' y='+(yr[r]+4)+'>'+r+'</text>';});
+ el.innerHTML=svg+'</svg>';}
+async function pollInsights(){try{const d=await jget('/api/insights');
+ drawHeat(d.heat||[],d.heat_anom||[]);drawAnomTimeline(d.anom_timeline||[]);drawArGraph(d.edges||[]);
+ if($('mAnom'))$('mAnom').textContent=(d.anom_timeline||[]).length;
+}catch(e){}}
+pollInsights();setInterval(pollInsights,3000);
 </script></body></html>"""
 
 

@@ -92,6 +92,13 @@ ACTIVITY_WEIGHTS = {
     "dependency_bump":        0.04,
     "docs_wiki":              0.04,
     "benign_quirk":           0.06,
+    # тематические сценарии для специализированных репозиториев
+    "hunt_query":             0.05,
+    "cloud_detection":        0.05,
+    "siem_content":           0.05,
+    "edr_rule":               0.05,
+    "automation_script":      0.05,
+    "ir_runbook":             0.04,
 }
 
 
@@ -244,28 +251,32 @@ ANOMALY_RATE          = 0.05   # в рабочее время
 ANOMALY_RATE_OFFHOURS = 0.30   # ночью/в выходные доля выше (тревожный сигнал)
 
 # Типы аномалий и их относительные веса. Секреты держим РЕДКИМИ.
+# ВАЖНО (для диплома): self_approval_merge / merge_without_review — это «правило, а не
+# ML» (сигнал = approver==author / нет approve). Раньше они доминировали в позитивном
+# классе и модель училась бы одному булеву полю. Веса перебалансированы: тривиальные
+# срезаны, «тонкие» (secret_*, exfil, pipeline) подняты. Тривиальные ловит rule_baseline.py.
 ANOMALIES = {
-    # --- утечки секретов (суммарно очень редко) ---
-    "secret_in_commit":      {"enabled": True, "weight": 0.5},
-    "secret_in_ci":          {"enabled": True, "weight": 0.4},
-    "secret_in_mr_comment":  {"enabled": True, "weight": 0.3},
-    "secret_exfil_vault":    {"enabled": True, "weight": 0.3},
-    "hardcoded_token":       {"enabled": True, "weight": 0.4},
-    # --- права и доступы ---
-    "self_approval_merge":   {"enabled": True, "weight": 1.4},
-    "merge_without_review":  {"enabled": True, "weight": 1.4},
-    "direct_push_protected": {"enabled": True, "weight": 0.9},
-    "weaken_protection":     {"enabled": True, "weight": 0.7},
-    "grant_secret_access":   {"enabled": True, "weight": 0.7},
-    "rogue_token":           {"enabled": True, "weight": 0.6},
+    # --- утечки секретов («тонкие» — основной интерес для ML) ---
+    "secret_in_commit":      {"enabled": True, "weight": 1.0},
+    "secret_in_ci":          {"enabled": True, "weight": 0.9},
+    "secret_in_mr_comment":  {"enabled": True, "weight": 0.6},
+    "secret_exfil_vault":    {"enabled": True, "weight": 0.8},
+    "hardcoded_token":       {"enabled": True, "weight": 0.9},
+    # --- права и доступы (тривиальные — срезаны, их берёт rule-based baseline) ---
+    "self_approval_merge":   {"enabled": True, "weight": 0.4},
+    "merge_without_review":  {"enabled": True, "weight": 0.4},
+    "direct_push_protected": {"enabled": True, "weight": 0.6},
+    "weaken_protection":     {"enabled": True, "weight": 0.6},
+    "grant_secret_access":   {"enabled": True, "weight": 0.8},
+    "rogue_token":           {"enabled": True, "weight": 0.7},
     # --- разрушительные действия ---
-    "mass_deletion":         {"enabled": True, "weight": 0.7},
-    # --- пайплайны / токены / эксфильтрация ---
-    "pipeline_token_leak":       {"enabled": True, "weight": 0.4},
-    "disable_pipeline_security": {"enabled": True, "weight": 0.7},
-    "artifact_secret_exposure":  {"enabled": True, "weight": 0.4},
-    "commit_to_secrets_repo":    {"enabled": True, "weight": 0.6},
-    "data_exfiltration":         {"enabled": True, "weight": 0.4},
+    "mass_deletion":         {"enabled": True, "weight": 0.6},
+    # --- пайплайны / токены / эксфильтрация («тонкие» — подняты) ---
+    "pipeline_token_leak":       {"enabled": True, "weight": 1.0},
+    "disable_pipeline_security": {"enabled": True, "weight": 0.9},
+    "artifact_secret_exposure":  {"enabled": True, "weight": 0.9},
+    "commit_to_secrets_repo":    {"enabled": True, "weight": 0.9},
+    "data_exfiltration":         {"enabled": True, "weight": 1.0},
 }
 # Множитель частоты именно секретных утечек (чтобы делать их ещё реже).
 SECRET_RATE_MULT = 0.5

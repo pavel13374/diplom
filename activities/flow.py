@@ -113,4 +113,15 @@ def approve_and_merge(lead, author, pid: int, mr_iid: int, branch: str = "",
         lead.approve_mr(pid, mr_iid)
     lead.comment_mr(pid, mr_iid, approve_comment)
     lead.think(config.DELAYS["merge_wait"])
-    return lead.merge_mr(pid, mr_iid)
+    if lead.merge_mr(pid, mr_iid):
+        return True
+    # Неустранимый конфликт (ветка правит те же строки, что уже в main) — закрываем
+    # MR и удаляем ветку, чтобы открытые MR не копились и не давали каскад конфликтов.
+    try:
+        author.comment_mr(pid, mr_iid, "Закрываю: конфликт с main после параллельных правок, пересоздадим поверх актуального.")
+        author.close_mr(pid, mr_iid)
+        if branch:
+            author.gl.delete_branch(pid, branch, author.token)
+    except Exception:
+        pass
+    return False
