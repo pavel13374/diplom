@@ -1,0 +1,23 @@
+{
+  "rules": {
+    "account_access_removal": {
+      "path": "rules/impact/account_access_removal.yml",
+      "tactic": "impact",
+      "status": "stable",
+      "author": "maria.ivanova",
+      "created": "2026-06-08",
+      "modified": "2026-06-09",
+      "fp_rate": 0,
+      "noisy": false,
+      "tunes": 0
+    }
+  },
+  "sprint_start": "2026-06-07",
+  "sprint_number": 1,
+  "oncall_index": 3,
+  "issue_seq": 1000,
+  "release_seq": 0,
+  "campaign_seq": 0,
+  "pto": {},
+  "pending_reverts": []
+}

@@ -1,0 +1,161 @@
+{
+  "GITLAB_URL": "https://gitlab.polenov.ru",
+  "ADMIN_TOKEN": "glpat-mC78ra0fuJHR7aa2npn0D286MQp1OnoH.01.0w0ula1pu",
+  "TIMELAPSE_ENABLED": true,
+  "SIM_WORKDAY_REAL_MINUTES": 5,
+  "TIME_SCALE_OVERRIDE": null,
+  "SIM_START": "",
+  "FAST_FORWARD_OFFHOURS": true,
+  "API_MIN_PAUSE": 0.4,
+  "MAX_REAL_SLEEP": 8.0,
+  "WORK_HOURS_START": 10,
+  "WORK_HOURS_END": 18,
+  "OFF_HOURS_MODE": "oncall",
+  "OFF_HOURS_ACTIVITY_PROBABILITY": 0.04,
+  "OFF_HOURS_POLL_SECONDS": 300,
+  "SPEED_MULTIPLIER": 1,
+  "MAX_OPEN_MRS": 20,
+  "SPRINT_DAYS": 14,
+  "PTO_PROBABILITY_PER_DAY": 0.05,
+  "LOG_LEVEL": "INFO",
+  "GITLAB_DATES": "real",
+  "ANOMALY_RATE": 0.05,
+  "ANOMALY_RATE_OFFHOURS": 0.3,
+  "SECRET_RATE_MULT": 0.5,
+  "SCENARIO_INTERVAL": {
+    "min": 40,
+    "max": 120
+  },
+  "FEATURES": {
+    "approvals": true,
+    "campaigns": true,
+    "change_freeze_friday": true,
+    "ci_pipeline": true,
+    "draft_mrs": true,
+    "emoji_reactions": true,
+    "issues": true,
+    "lifecycle_state": true,
+    "peer_review": true,
+    "pto": true,
+    "releases": true,
+    "standup": true
+  },
+  "PROBS": {
+    "ci_fail": 0.2,
+    "delayed_revert": 0.12,
+    "emoji": 0.5,
+    "mr_abandoned": 0.06,
+    "mr_draft_first": 0.3,
+    "peer_review": 0.35,
+    "promote": 0.3
+  },
+  "ACTIVITY_WEIGHTS": {
+    "add_test_sample": 0.05,
+    "benign_quirk": 0.06,
+    "bulk_maintenance": 0.02,
+    "campaign": 0.03,
+    "ci_variable_update": 0.04,
+    "dependency_bump": 0.04,
+    "deprecate_rule": 0.05,
+    "docs_wiki": 0.04,
+    "fix_existing_rule": 0.14,
+    "handle_incident": 0.03,
+    "new_detection_rule": 0.16,
+    "open_issue": 0.06,
+    "recreate_fixed_rule": 0.05,
+    "refactor_rule": 0.06,
+    "revert_bad_rule": 0.05,
+    "threat_intel_update": 0.06,
+    "triage_false_positive": 0.05,
+    "tune_threshold": 0.08,
+    "update_dashboard": 0.04,
+    "update_parser": 0.09,
+    "update_playbook": 0.07
+  },
+  "LUNCH_BREAK": {
+    "enabled": true,
+    "hour": 13,
+    "duration_min": 45
+  },
+  "ANOMALIES": {
+    "secret_in_commit": {
+      "enabled": true,
+      "weight": 0.5
+    },
+    "secret_in_ci": {
+      "enabled": true,
+      "weight": 0.4
+    },
+    "secret_in_mr_comment": {
+      "enabled": true,
+      "weight": 0.3
+    },
+    "secret_exfil_vault": {
+      "enabled": true,
+      "weight": 0.3
+    },
+    "hardcoded_token": {
+      "enabled": true,
+      "weight": 0.4
+    },
+    "self_approval_merge": {
+      "enabled": true,
+      "weight": 1.4
+    },
+    "merge_without_review": {
+      "enabled": true,
+      "weight": 1.4
+    },
+    "direct_push_protected": {
+      "enabled": true,
+      "weight": 0.9
+    },
+    "weaken_protection": {
+      "enabled": true,
+      "weight": 0.7
+    },
+    "grant_secret_access": {
+      "enabled": true,
+      "weight": 0.7
+    },
+    "rogue_token": {
+      "enabled": true,
+      "weight": 0.6
+    },
+    "mass_deletion": {
+      "enabled": true,
+      "weight": 0.7
+    },
+    "pipeline_token_leak": {
+      "enabled": true,
+      "weight": 0.4
+    },
+    "disable_pipeline_security": {
+      "enabled": true,
+      "weight": 0.7
+    },
+    "artifact_secret_exposure": {
+      "enabled": true,
+      "weight": 0.4
+    },
+    "commit_to_secrets_repo": {
+      "enabled": true,
+      "weight": 0.6
+    },
+    "data_exfiltration": {
+      "enabled": true,
+      "weight": 0.4
+    }
+  },
+  "EVENT_LOG": {
+    "enabled": true,
+    "file": "data/events.jsonl"
+  },
+  "WORK_DAYS": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ]
+}

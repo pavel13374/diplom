@@ -1,0 +1,5 @@
+2026-06-08 18:44:47 INFO    runlog: Полный лог прогона: /sessions/nice-tender-bohr/mnt/soc-simulator/logs/run-20260608-184447.log
+2026-06-08 18:44:47 WARNING test: это тестовое предупреждение
+2026-06-08 18:44:47 ERROR   test: это тестовая ошибка для отчёта
+2026-06-08 18:44:47 DEBUG   urllib3.connectionpool: Starting new HTTPS connection (1): api.telegram.org:443
+2026-06-08 18:44:47 WARNING telegram: telegram send failed: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot8717621147:AAGd2snyzC4TOfTDCXgyKXx8MimMA_nsmzM/sendMessage (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
