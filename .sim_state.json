@@ -1,34 +1,91 @@
 {
   "rules": {
-    "account_access_removal": {
-      "path": "rules/impact/account_access_removal.yml",
-      "tactic": "impact",
+    "sql_injection_attempt": {
+      "path": "rules/initial_access/sql_injection_attempt.yml",
+      "tactic": "initial_access",
       "status": "stable",
       "author": "maria.ivanova",
-      "created": "2026-06-08",
-      "modified": "2026-06-09",
+      "created": "2026-06-16",
+      "modified": "2026-06-18",
+      "fp_rate": 0,
+      "noisy": false,
+      "tunes": 2
+    },
+    "adfs": {
+      "path": "rules/credential_access/password_spraying_against_owa/adfs.yml",
+      "tactic": "credential_access",
+      "status": "stable",
+      "author": "pavel.morozov",
+      "created": "2026-06-16",
+      "modified": "2026-06-17",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 0
     },
-    "windows_event_log_cleared": {
-      "path": "rules/defense_evasion/windows_event_log_cleared.yml",
+    "malicious_vbscript_execution_via_wscript": {
+      "path": "rules/execution/malicious_vbscript_execution_via_wscript.yml",
+      "tactic": "execution",
+      "status": "experimental",
+      "author": "nikita.orlov",
+      "created": "2026-06-16",
+      "modified": "2026-06-18",
+      "fp_rate": 0,
+      "noisy": false,
+      "tunes": 0
+    },
+    "exploitation_for_privilege_escalation_(c": {
+      "path": "rules/privilege_escalation/exploitation_for_privilege_escalation_(c.yml",
+      "tactic": "privilege_escalation",
+      "status": "experimental",
+      "author": "maria.ivanova",
+      "created": "2026-06-16",
+      "modified": "2026-06-17",
+      "fp_rate": 0,
+      "noisy": false,
+      "tunes": 1
+    },
+    "cloud_logging_disabled": {
+      "path": "rules/defense_evasion/cloud_logging_disabled.yml",
       "tactic": "defense_evasion",
       "status": "stable",
+      "author": "maria.ivanova",
+      "created": "2026-06-17",
+      "modified": "2026-06-17",
+      "fp_rate": 0,
+      "noisy": false,
+      "tunes": 0
+    },
+    "exfiltration_to_cloud_storage": {
+      "path": "rules/exfiltration/exfiltration_to_cloud_storage.yml",
+      "tactic": "exfiltration",
+      "status": "experimental",
       "author": "sergey.volkov",
       "created": "2026-06-17",
       "modified": "2026-06-17",
-      "fp_rate": 10,
+      "fp_rate": 4,
+      "noisy": false,
+      "tunes": 0
+    },
+    "volume_shadow_copy_deletion": {
+      "path": "rules/impact/volume_shadow_copy_deletion.yml",
+      "tactic": "impact",
+      "status": "experimental",
+      "author": "sergey.volkov",
+      "created": "2026-06-18",
+      "modified": "2026-06-18",
+      "fp_rate": 1,
       "noisy": false,
       "tunes": 0
     }
   },
-  "sprint_start": "2026-06-07",
+  "sprint_start": "2026-06-16",
   "sprint_number": 1,
-  "oncall_index": 7,
+  "oncall_index": 0,
   "issue_seq": 1000,
   "release_seq": 0,
   "campaign_seq": 2,
-  "pto": {},
+  "pto": {
+    "2026-06-17": "anna.smirnova"
+  },
   "pending_reverts": []
 }

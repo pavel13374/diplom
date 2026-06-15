@@ -45,6 +45,15 @@ ANOMALY_ONLY = {  # эти ключи проставляются только в
 SERVICE = {"meta", "activity"}
 DROP_COLUMNS = TARGET_COLUMNS | DIRECT_LEAK | ANOMALY_ONLY | SERVICE
 
+# Наблюдаемые признаки контента (content_features.analyze) — это ЧЕСТНЫЕ ФИЧИ,
+# их видит и настоящий secret-scanner. Считаются для ВСЕХ пушей, поэтому НЕ являются
+# утечкой разметки и НЕ должны попадать в DROP_COLUMNS:
+#   shannon_entropy, has_high_entropy_token, regex_hits, n_regex_hits,
+#   filename_signal, placeholder_signal
+CONTENT_FEATURES = {"shannon_entropy", "has_high_entropy_token", "regex_hits",
+                    "n_regex_hits", "filename_signal", "placeholder_signal"}
+assert not (CONTENT_FEATURES & DROP_COLUMNS), "признаки контента не должны быть в drop-листе!"
+
 
 def load_rows(path):
     rows = []

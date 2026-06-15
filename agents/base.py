@@ -48,10 +48,17 @@ class BaseAgent:
         if ok:
             logger.info(f"[{self.username}] pushed {path} -> {message[:60]}")
             ext = path.rsplit(".", 1)[-1] if "." in path else ""
+            extra = {"lines": content.count(chr(10)) + 1,
+                     "bytes": len(content), "ext": ext}
+            # Наблюдаемые признаки контента — честные ФИЧИ для детектора секретов
+            # (считаются для ВСЕХ пушей: и нормальных, и аномальных).
+            try:
+                import content_features
+                extra.update(content_features.analyze(content, path))
+            except Exception:
+                pass
             self._emit("push", project_id=project_id, path=path, branch=branch,
-                       message=message,
-                       extra={"lines": content.count(chr(10)) + 1,
-                              "bytes": len(content), "ext": ext})
+                       message=message, extra=extra)
         return ok
 
     def create_branch(self, project_id: int, branch: str, ref: str = "main") -> bool:

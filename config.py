@@ -99,6 +99,10 @@ ACTIVITY_WEIGHTS = {
     "edr_rule":               0.08,
     "automation_script":      0.08,
     "ir_runbook":             0.07,
+    # новые ТИПЫ рабочих процессов
+    "iterative_review":       0.06,
+    "dependency_audit":       0.05,
+    "sprint_retro":           0.03,
 }
 
 

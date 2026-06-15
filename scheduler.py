@@ -335,6 +335,8 @@ class Scheduler:
         from activities.quirks           import BenignQuirk
         from activities.repo_scenarios   import (HuntQueryActivity, CloudDetectionActivity,
             SiemContentActivity, EdrRuleActivity, AutomationActivity, IrRunbookActivity)
+        from activities.dev_workflows    import (IterativeReviewActivity,
+            DependencyAuditActivity, SprintRetroActivity)
 
         lead   = self._lead()
         author = (self._agent_or_lead(forced_actor) if forced_actor
@@ -403,6 +405,13 @@ class Scheduler:
             elif activity == "docs_wiki":
                 eng = lead if random.random() < 0.25 else author
                 return DocsWiki(eng, lead).run()
+            elif activity == "iterative_review":
+                return IterativeReviewActivity(author, lead).run()
+            elif activity == "dependency_audit":
+                eng = self._pick_role("devops", "detection_engineer") or author
+                return DependencyAuditActivity(eng, lead).run()
+            elif activity == "sprint_retro":
+                return SprintRetroActivity(self.agents, lead, state=st).run()
             elif activity == "hunt_query":
                 eng = self._pick_role("threat_hunter") or author
                 return HuntQueryActivity(eng, lead).run()

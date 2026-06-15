@@ -14,6 +14,11 @@ FEAT_TEMPLATES = [
     "feat: new rule for {tactic} — {title}",
     "feat({tactic}): detect {title}",
     "feat(sigma): add {title} rule ({tid})",
+    "feat({tactic}): coverage for {title} ({tid})",
+    "feat(rules): {title} — initial detection logic",
+    "feat(detection): {title} via behavioral signature",
+    "feat({tactic}): add correlation-ready {title} rule",
+    "feat(rules): onboard {title} from threat report",
 ]
 
 # -----------------------------------------------------------------------
@@ -28,6 +33,11 @@ FIX_TEMPLATES = [
     "fix(sigma): fix {rule} condition logic",
     "fix({rule}): patch false positive on {what}",
     "fix: hotfix {rule} — {what} causing noise in prod",
+    "fix({rule}): exclude {what} from selection",
+    "fix({rule}): narrow scope after triage of {what}",
+    "fix(sigma): correct field name in {rule}",
+    "fix({rule}): handle edge case for {what}",
+    "fix({rule}): align condition with data schema",
 ]
 
 FIX_WHAT_POOL = [
@@ -46,6 +56,15 @@ FIX_WHAT_POOL = [
     "scheduled maintenance",
     "vendor management tools",
     "CI/CD runner processes",
+    "EDR sensor processes",
+    "patch management agents",
+    "vulnerability scanners",
+    "service desk automation",
+    "container runtime processes",
+    "cloud agent daemons",
+    "log shipper agents",
+    "database backup jobs",
+    "certificate renewal jobs",
 ]
 
 # -----------------------------------------------------------------------
@@ -59,6 +78,10 @@ REFACTOR_TEMPLATES = [
     "refactor({rule}): optimize condition performance",
     "refactor(detection): restructure {rule} detection logic",
     "style({rule}): fix indentation and formatting",
+    "refactor({rule}): extract shared selection to template",
+    "refactor(rules): unify naming convention for {rule}",
+    "refactor({rule}): convert to modular detection blocks",
+    "style(rules): normalize YAML quoting in {rule}",
 ]
 
 # -----------------------------------------------------------------------
@@ -73,6 +96,11 @@ DOCS_TEMPLATES = [
     "test({rule}): add edge case test coverage",
     "docs(playbooks): update {rule} response steps",
     "docs: add investigation commands to {rule} playbook",
+    "docs({rule}): document tuning history and rationale",
+    "test({rule}): add positive sample from lab replay",
+    "test({rule}): cover false-positive scenario",
+    "docs({rule}): add data-source requirements",
+    "docs(rules): link related rules to {rule}",
 ]
 
 # -----------------------------------------------------------------------
@@ -87,6 +115,11 @@ CHORE_TEMPLATES = [
     "chore(infra): update GitLab Runner config",
     "chore: regenerate rule IDs for conflicting entries",
     "chore(deps): update sigma-cli to latest",
+    "chore(ci): cache sigma-cli deps in pipeline",
+    "chore(rules): sort fields for deterministic diffs",
+    "chore(infra): rotate runner registration token",
+    "chore(deps): bump pyyaml and jsonschema",
+    "chore(repo): add CODEOWNERS for rules/",
 ]
 
 # -----------------------------------------------------------------------
@@ -107,6 +140,9 @@ PROMOTE_TEMPLATES = [
     "fix({rule}): promote to production — 0 FP in 30 days",
     "chore({rule}): update status: experimental → stable",
     "chore({rule}): graduate to production after validation",
+    "chore({rule}): status experimental → test",
+    "fix({rule}): promote after analyst sign-off",
+    "chore({rule}): enable in prod ruleset",
 ]
 
 # -----------------------------------------------------------------------
@@ -127,12 +163,18 @@ PARSER_SOURCES = [
     "palo_alto", "cisco_asa", "aws_cloudtrail",
     "azure_monitor", "crowdstrike", "zeek_dns",
     "nginx_access", "apache_access",
+    "okta_system", "gsuite_admin", "o365_audit",
+    "kubernetes_audit", "docker_daemon", "fortinet_fgt",
+    "juniper_srx", "f5_asm", "suricata_eve", "osquery",
 ]
 
 PARSER_FIELDS = [
     "user.name", "source.ip", "destination.port",
     "process.executable", "event.action", "host.hostname",
     "network.bytes", "url.path", "error.code",
+    "user.domain", "destination.ip", "process.parent.name",
+    "file.hash.sha256", "dns.question.name", "http.response.status_code",
+    "cloud.account.id", "event.outcome", "rule.name",
 ]
 
 # -----------------------------------------------------------------------
@@ -147,6 +189,10 @@ PLAYBOOK_TEMPLATES = [
     "docs(playbooks): update SLA escalation criteria",
     "fix(playbooks): correct evidence collection procedure",
     "docs(playbooks): add post-incident lessons learned",
+    "docs(playbooks): add decision tree for {tactic}",
+    "feat(playbooks): add automation hooks for {tactic}",
+    "fix(playbooks): update contact/escalation matrix",
+    "docs(playbooks): add evidence chain-of-custody steps",
 ]
 
 # -----------------------------------------------------------------------
@@ -237,6 +283,9 @@ TUNE_TEMPLATES = [
     "perf({rule}): replace regex with keyword match",
     "tune({rule}): lower severity until baseline established",
     "tune({rule}): recalibrate after 7-day FP review",
+    "tune({rule}): add time-of-day baseline",
+    "tune({rule}): suppress known-good {what}",
+    "perf({rule}): index-friendly field ordering",
 ]
 
 DEPRECATE_TEMPLATES = [
@@ -260,6 +309,9 @@ INTEL_TEMPLATES = [
     "chore(intel): refresh threat-intel indicators ({n} new)",
     "feat({rule}): add IOC hashes from latest TI report",
     "feat(intel): update C2 user-agent blocklist",
+    "feat(intel): add {actor} TTP mapping",
+    "chore(intel): expire stale indicators",
+    "feat(intel): import STIX bundle from feed",
 ]
 
 DASHBOARD_TEMPLATES = [
@@ -275,6 +327,8 @@ INCIDENT_TEMPLATES = [
     "docs(ir): post-mortem for INC-{n}",
     "docs(ir): timeline and IOCs for {sev} incident",
     "chore(ir): close INC-{n} with lessons learned",
+    "docs(ir): add containment summary for INC-{n}",
+    "docs(ir): root-cause analysis for {sev} incident",
 ]
 
 BULK_TEMPLATES = [
