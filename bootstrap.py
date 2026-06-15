@@ -83,7 +83,41 @@ def ensure_environment(gl):
         except Exception as e:
             logger.warning(f"ensure_members failed: {e}")
 
+    # 5) посеять стартовый контент в пустые специализированные репозитории
+    try:
+        summary["seeded"] = seed_repos(gl)
+    except Exception as e:
+        logger.warning(f"seed_repos failed: {e}")
+
     logger.info(f"Среда готова: репозиториев {summary['repos']} "
                 f"(новых {summary['new_repos']}), сотрудников {summary['users']} "
                 f"(новых {summary['new_users']}), назначений прав {summary['members']}")
     return summary
+
+
+def seed_repos(gl):
+    """Засевает стартовый контент в специализированные репозитории, если их
+    профильная папка ещё пуста. Пишет прямо в main под админ-токеном (без MR)."""
+    from content import seed as seedmod
+    seeded = 0
+    plan = seedmod.build()
+    for name, (key_dir, files) in plan.items():
+        pid = config.WORK_REPOS.get(name)
+        if not pid:
+            continue
+        try:
+            if gl.list_files(pid, key_dir):
+                continue  # уже не пустой — не трогаем
+        except Exception:
+            pass
+        pushed = 0
+        for path, content in files:
+            try:
+                if gl.push_file(pid, path, content, f"seed: initial {path}", "main"):
+                    pushed += 1
+            except Exception:
+                pass
+        if pushed:
+            seeded += 1
+            logger.info(f"Посев репозитория {name}: добавлено файлов {pushed}")
+    return seeded

@@ -81,15 +81,14 @@ class GitLabClient:
         return r.status_code == 200
 
     def get_file(self, project_id: int, path: str, ref: str = "main") -> Optional[str]:
-        data = self._api("GET",
-            f"/projects/{project_id}/repository/files/{self._encode(path)}",
-            params={"ref": ref},
-        )
-        if not data:
-            return None
-        import base64
+        """Содержимое файла. 404 (нет файла) -> None без ERROR в лог."""
+        url = f"{self.url}/api/v4/projects/{project_id}/repository/files/{self._encode(path)}"
         try:
-            return base64.b64decode(data.get("content", "")).decode("utf-8")
+            r = self.session.get(url, params={"ref": ref}, timeout=20)
+            if r.status_code != 200:
+                return None
+            import base64
+            return base64.b64decode(r.json().get("content", "")).decode("utf-8")
         except Exception:
             return None
 

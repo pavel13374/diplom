@@ -10,14 +10,25 @@
       "fp_rate": 0,
       "noisy": false,
       "tunes": 0
+    },
+    "windows_event_log_cleared": {
+      "path": "rules/defense_evasion/windows_event_log_cleared.yml",
+      "tactic": "defense_evasion",
+      "status": "stable",
+      "author": "sergey.volkov",
+      "created": "2026-06-17",
+      "modified": "2026-06-17",
+      "fp_rate": 10,
+      "noisy": false,
+      "tunes": 0
     }
   },
   "sprint_start": "2026-06-07",
   "sprint_number": 1,
-  "oncall_index": 6,
+  "oncall_index": 7,
   "issue_seq": 1000,
   "release_seq": 0,
-  "campaign_seq": 0,
+  "campaign_seq": 2,
   "pto": {},
   "pending_reverts": []
 }

@@ -83,6 +83,13 @@ class HuntQueryActivity(_MixinCycle):
         ("Service creation by non-admins", "T1543.003", "7045 от непривилегированных учёток"),
         ("Cloud metadata access", "T1552.005", "Запросы к 169.254.169.254 из контейнеров"),
         ("Credential dumping via comsvcs", "T1003", "rundll32 comsvcs.dll MiniDump"),
+        ("Kerberoasting", "T1558.003", "Массовые TGS-запросы RC4 от одной учётки"),
+        ("Golden ticket usage", "T1558.001", "TGT с аномально долгим сроком жизни"),
+        ("Container escape attempts", "T1611", "Доступ к /proc/host или privileged-флаги"),
+        ("Cloud key in process args", "T1552.001", "AKIA/секреты в командной строке"),
+        ("Browser credential theft", "T1555.003", "Чтение Login Data из профиля Chrome"),
+        ("Scheduled task via at.exe", "T1053.002", "Создание заданий через устаревший at"),
+        ("Defender exclusions added", "T1562.001", "Set-MpPreference ExclusionPath"),
     ]
     LANGS = ["kql", "spl", "eql", "osquery"]
 
@@ -160,6 +167,20 @@ class CloudDetectionActivity(_MixinCycle):
          "iam.serviceAccountKeys.create для критичных SA"),
         ("gcp", "AuditLog", "Firewall rule allow-all", "T1562.007",
          "compute.firewalls.insert с 0.0.0.0/0"),
+        ("aws", "CloudTrail", "IAM policy attached to user", "T1098.001",
+         "AttachUserPolicy с AdministratorAccess"),
+        ("aws", "CloudTrail", "GuardDuty disabled", "T1562.008",
+         "DeleteDetector / StopMonitoringMembers"),
+        ("aws", "CloudTrail", "KMS key scheduled for deletion", "T1485",
+         "ScheduleKeyDeletion для рабочего ключа"),
+        ("azure", "AuditLogs", "App registration secret added", "T1098.001",
+         "Добавление client secret к service principal"),
+        ("azure", "SigninLogs", "Legacy auth protocol used", "T1110",
+         "Вход по IMAP/POP/SMTP в обход MFA"),
+        ("gcp", "AuditLog", "IAM role granted to allUsers", "T1098",
+         "setIamPolicy с member=allUsers"),
+        ("gcp", "AuditLog", "VM serial port enabled", "T1078",
+         "Включение serial-console на инстансе"),
     ]
 
     def __init__(self, author, lead):
@@ -207,6 +228,12 @@ class SiemContentActivity(_MixinCycle):
         ("Mass file rename (ransomware)", "всплеск переименований с расширением", "critical"),
         ("VPN from new ASN + data pull", "вход из нового ASN и крупная выгрузка", "high"),
         ("Service account interactive logon", "type=2/10 от сервисной учётки", "medium"),
+        ("Password spray", "много 4625 на разные учётки с одного src", "high"),
+        ("Account created then privileged", "4720 затем 4728 в течение часа", "high"),
+        ("Off-hours admin activity", "действия Domain Admin ночью/в выходные", "medium"),
+        ("Multiple geo logins", "успешные входы из 3+ стран за день", "high"),
+        ("Sudden data egress spike", "рост исходящего трафика хоста x10", "high"),
+        ("New service binary unsigned", "7045 с неподписанным бинарём", "high"),
     ]
 
     def __init__(self, author, lead):
@@ -266,6 +293,12 @@ class EdrRuleActivity(_MixinCycle):
         ("Shadow copy deletion", "T1490", "vssadmin delete shadows /all"),
         ("LOLBin proxy execution", "T1218", "mshta/regsvr32 с удалённым payload"),
         ("Suspicious child of services.exe", "T1543.003", "нетипичный дочерний процесс"),
+        ("WMI process call create", "T1047", "wmic process call create из remote"),
+        ("Credential access via reg save", "T1003.002", "reg save HKLM\\SAM"),
+        ("Clear event logs", "T1070.001", "wevtutil cl / Clear-EventLog"),
+        ("Disable firewall", "T1562.004", "netsh advfirewall set allprofiles state off"),
+        ("Remote service via sc", "T1021.002", "sc \\\\host create с binPath"),
+        ("Renamed system binary", "T1036.003", "powershell под именем svchost.exe"),
     ]
 
     def __init__(self, author, lead):
@@ -315,6 +348,13 @@ class AutomationActivity(_MixinCycle):
         ("phishing-triage", "triage", "разбор репорта о фишинге из почты"),
         ("auto-ticket", "notify", "создание тикета и нотификация дежурного"),
         ("hash-lookup", "enrichment", "проверка хэша в sandbox/TI"),
+        ("block-ioc-edr", "containment", "добавление IOC в blocklist EDR"),
+        ("revoke-sessions", "containment", "отзыв активных сессий пользователя"),
+        ("snapshot-host", "forensics", "снятие образа диска/памяти хоста"),
+        ("enrich-domain", "enrichment", "WHOIS/passive DNS по домену"),
+        ("notify-slack", "notify", "оповещение канала дежурных в Slack"),
+        ("quarantine-email", "containment", "карантин фишингового письма у получателей"),
+        ("geo-enrich-ip", "enrichment", "гео/ASN-обогащение IP-адреса"),
     ]
 
     def __init__(self, author, lead):
@@ -368,6 +408,11 @@ class IrRunbookActivity(_MixinCycle):
         ("Web shell on server", "T1505.003", ["Снять веб-логи", "Удалить шелл", "Закрыть уязвимость", "Ротация секретов"]),
         ("Data exfiltration", "T1041", ["Заблокировать канал", "Оценить объём", "Привлечь юристов/комплаенс"]),
         ("Credential leak in repo", "T1552.001", ["Отозвать секрет", "Ротация", "Аудит доступа", "Скан истории git"]),
+        ("Insider data theft", "T1052", ["Заблокировать доступ", "Снять DLP-логи", "Привлечь HR/юристов", "Оценить объём"]),
+        ("Supply chain compromise", "T1195", ["Зафиксировать версию пакета", "Откатить деплой", "Проверить артефакты", "Ротация ключей CI"]),
+        ("DDoS attack", "T1498", ["Включить WAF/anti-DDoS", "Связаться с провайдером", "Масштабировать", "Постмортем"]),
+        ("Privilege escalation", "T1068", ["Изолировать хост", "Снять артефакты", "Закрыть уязвимость", "Ротация учёток"]),
+        ("Malware on endpoint", "T1059", ["Карантин файла", "Изоляция хоста", "Сканирование сети", "Восстановление"]),
     ]
 
     def __init__(self, author, lead):

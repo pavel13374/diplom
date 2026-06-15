@@ -71,8 +71,8 @@ OFF_HOURS_POLL_SECONDS = 300
 #  ВЕРОЯТНОСТИ АКТИВНОСТЕЙ
 # =======================================================================
 ACTIVITY_WEIGHTS = {
-    "new_detection_rule":     0.16,
-    "fix_existing_rule":      0.14,
+    "new_detection_rule":     0.12,
+    "fix_existing_rule":      0.10,
     "tune_threshold":         0.08,
     "refactor_rule":          0.06,
     "update_parser":          0.09,
@@ -93,12 +93,12 @@ ACTIVITY_WEIGHTS = {
     "docs_wiki":              0.04,
     "benign_quirk":           0.06,
     # тематические сценарии для специализированных репозиториев
-    "hunt_query":             0.05,
-    "cloud_detection":        0.05,
-    "siem_content":           0.05,
-    "edr_rule":               0.05,
-    "automation_script":      0.05,
-    "ir_runbook":             0.04,
+    "hunt_query":             0.09,
+    "cloud_detection":        0.09,
+    "siem_content":           0.08,
+    "edr_rule":               0.08,
+    "automation_script":      0.08,
+    "ir_runbook":             0.07,
 }
 
 

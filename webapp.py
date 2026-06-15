@@ -464,6 +464,53 @@ def api_reset_state():
         return jsonify({"ok": False, "msg": str(e)})
 
 
+@app.route("/api/reset_repos", methods=["POST"])
+@login_required
+def api_reset_repos():
+    """Очистка контента репозиториев: закрыть MR, удалить ветки (кроме main),
+    стереть файлы до README. Команда и сами проекты сохраняются."""
+    if runner.running:
+        return jsonify({"ok": False, "msg": "сначала останови симуляцию"})
+    try:
+        gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=False)
+        repos = dict(config.PROJECTS)
+        try:
+            repos.update(gl.discover_projects(config.PROJECT_NAMESPACE) or {})
+        except Exception:
+            pass
+        H = {"PRIVATE-TOKEN": config.ADMIN_TOKEN}
+        mr_n = br_n = fl_n = 0
+        for name, pid in repos.items():
+            for mr in gl.get_open_mrs(pid):
+                iid = mr.get("iid")
+                if iid and gl.close_mr(pid, iid):
+                    mr_n += 1
+            try:
+                r = gl.session.get(f"{gl.url}/api/v4/projects/{pid}/repository/branches",
+                                   params={"per_page": 100}, headers=H, timeout=20)
+                branches = r.json() if r.status_code == 200 else []
+            except Exception:
+                branches = []
+            for b in branches:
+                nm = b.get("name")
+                if nm not in ("main", "master") and gl.delete_branch(pid, nm):
+                    br_n += 1
+            victims = [f for f in gl.list_files(pid, "") if f.lower() != "readme.md"]
+            if victims:
+                actions = [{"action": "delete", "file_path": f} for f in victims]
+                if gl.create_commit(pid, "main", "reset: wipe repository to README", actions):
+                    fl_n += len(victims)
+        # локальный стейт тоже сбрасываем — иначе ссылается на удалённые правила
+        sp = os.path.join(BASE_DIR, config.STATE_FILE)
+        if os.path.exists(sp):
+            os.remove(sp)
+        runner.logger.info(f"Сброс репозиториев: MR {mr_n}, веток {br_n}, файлов {fl_n}")
+        return jsonify({"ok": True, "msg": f"очищено: MR {mr_n}, веток {br_n}, файлов {fl_n}. "
+                        f"Команда и репозитории сохранены."})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)})
+
+
 LOGIN_HTML = """<!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>SOC Simulator — вход</title>
 <style>
@@ -779,6 +826,19 @@ input[type=range]{accent-color:var(--accent);width:100%;height:6px;cursor:pointe
           <span class=toast id=saveToast></span>
           <span class=grow></span>
           <button class="btn" id=btnReload>Сбросить форму к сохранённому</button>
+        </div>
+
+        <div class=panel style="margin-top:18px;border:1px solid #f1c4c4;background:#fdf6f6">
+          <h2 style=color:#b42318>Сброс состояния репозиториев</h2>
+          <div class=sub>Откат к чистому проекту: закрываются все открытые MR, удаляются все
+            ветки кроме <code>main</code>, контент репозиториев очищается до <code>README</code>.
+            <b>Команда и сами репозитории сохраняются</b> — удаляется только наработанный контент.
+            Локальное состояние правил тоже обнуляется. Доступно только при остановленной симуляции;
+            при следующем старте репозитории будут засеяны заново.</div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+            <button class="btn danger" id=btnResetRepos>Очистить репозитории</button>
+            <span class=toast id=resetReposToast></span>
+          </div>
         </div>
       </section>
 
@@ -1165,6 +1225,11 @@ async function pollLogs(){
 $('btnStart').onclick=async()=>{await jpost('/api/start');setTimeout(tick,300);};
 $('btnStop').onclick=async()=>{await jpost('/api/stop');setTimeout(tick,300);};
 $('btnReset').onclick=async()=>{const r=await jpost('/api/reset_state');alert(r.msg);};
+if($('btnResetRepos'))$('btnResetRepos').onclick=async()=>{
+ if(!confirm('Очистить контент всех репозиториев?\n\nБудут закрыты все MR, удалены ветки (кроме main) и стёрты файлы до README.\nКоманда и сами репозитории сохранятся. Действие необратимо.'))return;
+ const b=$('btnResetRepos');b.disabled=true;const t=$('resetReposToast');t.textContent='очищаю репозитории…';
+ try{const r=await jpost('/api/reset_repos');t.textContent=r.msg||'';}catch(e){t.textContent='ошибка';}
+ b.disabled=false;setTimeout(()=>{t.textContent='';},9000);};
 if($('btnTg'))$('btnTg').onclick=async()=>{$('tgToast').textContent='отправляю…';const r=await jpost('/api/tg_report');$('tgToast').textContent=r.msg||'';setTimeout(()=>$('tgToast').textContent='',4000);};
 $('btnSave').onclick=save;
 $('btnReload').onclick=()=>jget('/api/config').then(renderCfg);
