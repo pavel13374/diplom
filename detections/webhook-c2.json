@@ -1,0 +1,11 @@
+{
+  "id": "webhook-c2",
+  "title": "Управление через внешний веб-сервис",
+  "technique": "T1102",
+  "tactic": "Command and Control",
+  "severity": "high",
+  "risk": 0.6,
+  "when": {
+    "action": "webhook_c2"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "large-encoded-blob",
+  "title": "Крупный закодированный архив (эксфильтрация)",
+  "technique": "T1567",
+  "tactic": "Exfiltration",
+  "severity": "high",
+  "risk": 0.62,
+  "when": {
+    "action": "push",
+    "bytes": {
+      ">=": 1500
+    },
+    "shannon_entropy": {
+      ">=": 4.0
+    },
+    "placeholder_signal": false
+  }
+}

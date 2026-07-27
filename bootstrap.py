@@ -29,12 +29,20 @@ def ensure_environment(gl):
     if config.CREATE_REPOS:
         gid = None
         try:
-            gid = gl.group_id(config.PROJECT_NAMESPACE)
+            gid, gcreated = gl.ensure_group(config.PROJECT_NAMESPACE, "SOC Team",
+                                            "Security Operations Center — Detection as Code")
+            if gcreated:
+                logger.info(f"Создана группа: {config.PROJECT_NAMESPACE} (id {gid})")
+            elif not gid:
+                logger.warning(f"Не удалось найти/создать группу {config.PROJECT_NAMESPACE} "
+                               f"— нужны права на создание групп у токена")
         except Exception as e:
-            logger.warning(f"group_id failed: {e}")
-        for name in config.NEW_REPOS:
-            if name in config.WORK_REPOS:
-                continue
+            logger.warning(f"ensure_group failed: {e}")
+        # ВСЕ репозитории: базовые (config.PROJECTS) + тематические (NEW_REPOS).
+        # Базовые тоже пересоздаём, если их снесли полным сбросом.
+        wanted = list(config.PROJECTS.keys())
+        wanted += [n for n in config.NEW_REPOS if n not in wanted]
+        for name in wanted:
             try:
                 pid, created = gl.ensure_project(name, config.PROJECT_NAMESPACE, gid)
                 if pid:
@@ -48,17 +56,23 @@ def ensure_environment(gl):
 
     # 3) создать недостающих сотрудников
     if config.CREATE_USERS:
-        for u in config.NEW_USERS:
+        # ВСЕ участники команды: базовые (из config.USERS, кроме бота) + новые.
+        # Пересоздаём, если были удалены полным сбросом; иначе идемпотентно.
+        team = [{"username": u, "name": i.get("name", u), "email": i.get("email"),
+                 "role": i.get("role")} for u, i in list(config.USERS.items())
+                if i.get("role") != "bot"]
+        team += [u for u in config.NEW_USERS if u["username"] not in config.USERS]
+        for u in team:
             uname = u["username"]
-            if uname in config.USERS:
-                continue
             try:
-                uid, created = gl.ensure_user(uname, u["name"])
+                uid, created = gl.ensure_user(uname, u.get("name") or uname, u.get("email"))
                 if uid:
-                    config.add_user(uname, uid, name=u["name"], role=u.get("role"))
+                    config.add_user(uname, uid, name=u.get("name"), role=u.get("role"))
+                    if gl.unblock_user(uid):
+                        logger.info(f"Разблокирован сотрудник: {uname}")
                     if created:
                         summary["new_users"] += 1
-                        logger.info(f"Создан сотрудник: {uname} ({u['name']}, {u.get('role')})")
+                        logger.info(f"Создан сотрудник: {uname} ({u.get('name')}, {u.get('role')})")
             except Exception as e:
                 logger.warning(f"ensure_user {uname} failed: {e}")
 

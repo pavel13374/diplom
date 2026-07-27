@@ -1,0 +1,11 @@
+{
+  "id": "deploy-tool-abuse",
+  "title": "Злоупотребление средством развёртывания",
+  "technique": "T1072",
+  "tactic": "Execution",
+  "severity": "high",
+  "risk": 0.6,
+  "when": {
+    "action": "deploy_tool_abuse"
+  }
+}

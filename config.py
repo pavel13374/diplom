@@ -11,7 +11,32 @@ WORK_HOURS_START/END — рабочие часы.
 #  ПОДКЛЮЧЕНИЕ К GITLAB
 # =======================================================================
 GITLAB_URL  = "https://gitlab.polenov.ru"
-ADMIN_TOKEN = "glpat-mC78ra0fuJHR7aa2npn0D286MQp1OnoH.01.0w0ula1pu"
+
+# Токен НЕ хардкодится (config.py под git!). Порядок:
+#   1) переменная окружения GITLAB_ADMIN_TOKEN;
+#   2) файл .gitlab_token рядом с config.py (в .gitignore).
+import os as _os_tok
+
+
+def _load_admin_token():
+    t = _os_tok.environ.get("GITLAB_ADMIN_TOKEN", "").strip()
+    if t:
+        return t
+    p = _os_tok.path.join(_os_tok.path.dirname(_os_tok.path.abspath(__file__)),
+                          ".gitlab_token")
+    try:
+        with open(p, encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return ""
+
+
+ADMIN_TOKEN = _load_admin_token()
+
+# Offline/dry-run: мир пишет события БЕЗ реального GitLab. Авто-включается, если
+# GitLab недоступен (чтобы не висеть на таймаутах и не «молчать»).
+import os as _os0
+OFFLINE_MODE = _os0.environ.get("SOC_OFFLINE", "").lower() in ("1", "true", "yes")
 
 PROJECTS = {
     "detection-rules":     1,
@@ -34,6 +59,23 @@ USERS = {
 # =======================================================================
 #  СКОРОСТЬ / ТАЙМИНГ
 # =======================================================================
+# Глобальный seed для воспроизводимости ML/оценки (НЕ для самого симулятора —
+# его специально оставляем варьирующимся, чтобы данные были разнообразны).
+SEED = 42
+
+def seed_all(seed=None):
+    """Сеет random и numpy (если есть). Зови в ML/eval-скриптах перед обучением."""
+    import random as _r
+    s = SEED if seed is None else seed
+    _r.seed(s)
+    try:
+        import numpy as _np
+        _np.random.seed(s)
+    except Exception:
+        pass
+    return s
+
+
 SPEED_MULTIPLIER = 1.0
 
 BASE_DELAYS = {
@@ -65,6 +107,7 @@ OFF_HOURS_ALLOWED_ACTIVITIES = [
     "fix_existing_rule", "revert_bad_rule", "handle_incident", "triage_false_positive",
 ]
 OFF_HOURS_POLL_SECONDS = 300
+NIGHT_NOISE_PROB = 0.12   # доля ночных тиков с ЛЕГИТИМНОЙ активностью (кранч/дежурный) — честные FP
 
 
 # =======================================================================
@@ -120,9 +163,40 @@ LOG_FILE  = "simulator.log"
 # =======================================================================
 WEB_HOST = "127.0.0.1"
 WEB_PORT = 8787
-WEB_ADMIN_USER = "admin"
-WEB_ADMIN_PASS = "123"
-WEB_SECRET     = "soc-sim-secret-change-me"
+PURPLE_WEB_PORT = 8788   # Purple Team Console (контур «защита»)
+
+# --- Blue Detection Stack (контур защиты) ---
+DETECTIONS_DIR = "detections"     # папка с правилами Detection-as-Code (*.json)
+LOAD_PROPOSED  = False            # подхватывать ли detections/proposed/ (после ревью)
+UEBA_MIN_EVENTS = 12              # прогрев профиля актора до начала скоринга
+UEBA_THRESHOLD  = 0.45            # порог поведенческого алерта
+UEBA_VELOCITY_WINDOW_MIN = 30     # окно для детекта всплеска активности (sim-мин)
+UEBA_VELOCITY_SPIKE = 8           # событий в окне -> всплеск
+CORRELATION_WINDOW_MIN = 180      # окно склейки алертов в инцидент (sim-мин)
+FUSION_MODE = "noisy_or"          # слияние рисков слоёв: noisy_or|max (согласие слоёв -> выше)
+ALERT_SUPPRESS_MIN = 60           # окно подавления дублей (actor+rule) против alert fatigue
+
+import os as _os, secrets as _secrets
+WEB_ADMIN_USER = _os.environ.get("SOC_ADMIN_USER", "admin")
+# Пароль: из переменной окружения SOC_ADMIN_PASS; иначе — случайный на запуск
+# (печатается в консоль). Для демо можно оставить дефолт SOC_ADMIN_PASS=admin.
+WEB_ADMIN_PASS = _os.environ.get("SOC_ADMIN_PASS") or _secrets.token_urlsafe(9)
+_WEB_PASS_GENERATED = "SOC_ADMIN_PASS" not in _os.environ
+# Секрет сессии: из окружения или файла .secret_key (не в git), иначе генерим
+def _load_secret():
+    env = _os.environ.get("SOC_WEB_SECRET")
+    if env:
+        return env
+    p = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".secret_key")
+    try:
+        if _os.path.exists(p):
+            return open(p).read().strip()
+        s = _secrets.token_hex(32)
+        open(p, "w").write(s)
+        return s
+    except Exception:
+        return _secrets.token_hex(32)
+WEB_SECRET = _load_secret()
 
 # Полный лог каждого прогона (DEBUG, со всеми ошибками) — папка logs/
 RUN_LOG_DIR = "logs"
@@ -142,13 +216,31 @@ TELEGRAM = {
 
 
 # =======================================================================
+#  ЛОКАЛЬНАЯ LLM (Ollama) — слой объяснимого триажа инцидентов
+# =======================================================================
+# Установка: запусти setup_llm.bat (поставит Ollama и скачает модель).
+# Если LLM недоступна — система работает на правилах/ML, триаж даёт фолбэк.
+LLM = {
+    "enabled": True,
+    "host":    "http://localhost:11434",   # локальный Ollama
+    "model":   "qwen2.5:7b-instruct",      # под 16+ ГБ RAM / GPU; послабее ПК: qwen2.5:3b-instruct
+    "timeout": 60,
+}
+
+# Авто-триаж инцидентов: LLM сам разбирает каждую кампанию (без кнопки)
+LLM_AUTO_TRIAGE = True
+LLM_AUTO_TRIAGE_MIN_RISK = 0.6
+LLM_CHATTER = True            # живые реплики стендапов/ревью через LLM (фолбэк — банки фраз)
+
+
+# =======================================================================
 #  ТАЙМЛАПС  (сжатие времени: «сутки за час»)
 # =======================================================================
-TIMELAPSE_ENABLED = True
+TIMELAPSE_ENABLED = False   # по умолчанию ВЫКЛ — время идёт 1:1 с реальным (не «бежит само»)
 SIM_WORKDAY_REAL_MINUTES = 60     # реальных минут на один sim рабочий день
 TIME_SCALE_OVERRIDE = None        # прямой масштаб (sim-сек/реал-сек); None=авто
 SIM_START = None                  # None = сегодня 10:00; либо "2026-06-01 10:00"
-FAST_FORWARD_OFFHOURS = True
+FAST_FORWARD_OFFHOURS = False   # НЕ проматывать ночь — время идёт ровно 1:1 с реальным
 API_MIN_PAUSE  = 0.4
 MAX_REAL_SLEEP = 8.0
 
@@ -157,6 +249,18 @@ MAX_REAL_SLEEP = 8.0
 #   "sim"  — симулированное время (нарратив; created_at учитывается только admin-токеном
 #            и не для будущих дат, поэтому может игнорироваться)
 GITLAB_DATES = "real"
+
+
+def default_sim_start():
+    """Ближайший БУДНИЙ день 10:00 — чтобы старт симуляции не «прыгал» вечером/в выходные."""
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    d = now.replace(hour=WORK_HOURS_START, minute=0, second=0, microsecond=0)
+    if now.weekday() not in WORK_DAYS or now.hour >= WORK_HOURS_END:
+        d = d + timedelta(days=1)
+        while d.weekday() not in WORK_DAYS:
+            d = d + timedelta(days=1)
+    return d
 
 
 def compute_time_scale() -> float:
@@ -247,12 +351,21 @@ EVENT_LOG = {
     "file":    "data/events.jsonl",   # каждое действие — строкой JSON
 }
 
+# Event-store (SQLite) — backbone между «миром» и «защитой» (стрим по курсору).
+EVENT_STORE = {
+    "enabled": True,
+    "path":    "data/events.db",
+}
+
 # =======================================================================
 #  АНОМАЛИИ (редкие размеченные инциденты для обучения детектора)
 # =======================================================================
 # Доля итераций, которые становятся аномалией вместо обычного действия.
-ANOMALY_RATE          = 0.05   # в рабочее время
-ANOMALY_RATE_OFFHOURS = 0.30   # ночью/в выходные доля выше (тревожный сигнал)
+ANOMALY_RATE          = 0.10   # в рабочее время (редко — чтобы было видно каждую атаку)
+ANOMALY_RATE_OFFHOURS = 0.18   # ночью чуть выше, но не «паровоз»
+# Доля аномалий, которые разворачиваются в МНОГОШАГОВУЮ кампанию (Red Team).
+CAMPAIGN_RATE = 0.20
+ATTACK_AUTO = False           # False = атаки ТОЛЬКО вручную (Red Launcher). True = редкие авто-атаки
 
 # Типы аномалий и их относительные веса. Секреты держим РЕДКИМИ.
 # ВАЖНО (для диплома): self_approval_merge / merge_without_review — это «правило, а не
@@ -267,14 +380,16 @@ ANOMALIES = {
     "secret_exfil_vault":    {"enabled": True, "weight": 0.8},
     "hardcoded_token":       {"enabled": True, "weight": 0.9},
     # --- права и доступы (тривиальные — срезаны, их берёт rule-based baseline) ---
-    "self_approval_merge":   {"enabled": True, "weight": 0.4},
-    "merge_without_review":  {"enabled": True, "weight": 0.4},
+    "self_approval_merge":   {"enabled": True, "weight": 0.25},  # process: мягкий сигнал, ловится правилами
+    "merge_without_review":  {"enabled": True, "weight": 0.25},  # process: пересекается с нормой (~28%)
     "direct_push_protected": {"enabled": True, "weight": 0.6},
     "weaken_protection":     {"enabled": True, "weight": 0.6},
     "grant_secret_access":   {"enabled": True, "weight": 0.8},
     "rogue_token":           {"enabled": True, "weight": 0.7},
     # --- разрушительные действия ---
     "mass_deletion":         {"enabled": True, "weight": 0.6},
+    # --- разведка ---
+    "recon_enumeration":     {"enabled": True, "weight": 0.4},
     # --- пайплайны / токены / эксфильтрация («тонкие» — подняты) ---
     "pipeline_token_leak":       {"enabled": True, "weight": 1.0},
     "disable_pipeline_security": {"enabled": True, "weight": 0.9},
@@ -351,9 +466,13 @@ def random_work_repo():
     return name, WORK_REPOS[name]
 
 def repo_name(pid):
-    for n, i in WORK_REPOS.items():
-        if i == pid:
-            return n
+    """Имя репозитория по id. Ищем во ВСЕХ известных словарях: раньше
+    смотрели только в WORK_REPOS, и для остальных репо в ленте детектов
+    вместо названия показывался голый id («6»)."""
+    for src in (WORK_REPOS, PROJECTS):
+        for n, i in (src or {}).items():
+            if i == pid:
+                return n
     return str(pid)
 
 
@@ -393,7 +512,9 @@ def apply_settings(updates: dict):
         if k in EDITABLE_SCALARS:
             g[k] = v
         elif k in EDITABLE_DICTS and isinstance(g.get(k), dict) and isinstance(v, dict):
-            g[k].clear(); g[k].update(v)
+            # МЕРЖ, а не замена: сохранённые из веба значения накладываются поверх,
+            # но НОВЫЕ ключи из кода (новые активности/аномалии/фичи) не теряются.
+            g[k].update(v)
         elif k == "WORK_DAYS" and isinstance(v, list):
             g["WORK_DAYS"][:] = v
 

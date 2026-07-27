@@ -1,0 +1,14 @@
+{
+  "id": "ci-pipeline-change",
+  "title": "Изменение .gitlab-ci.yml (потенц. отравление)",
+  "technique": "T1059",
+  "tactic": "Execution",
+  "severity": "medium",
+  "risk": 0.45,
+  "when": {
+    "action": "push",
+    "path": {
+      "contains": ".gitlab-ci.yml"
+    }
+  }
+}

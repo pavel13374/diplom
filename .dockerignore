@@ -1,0 +1,13 @@
+# не тащим в образ мусор и историю
+.git
+__pycache__
+**/__pycache__
+*.pyc
+logs/
+data/archive/
+data/*.db-shm
+data/*.db-wal
+*.log
+.sim_state.json
+.fuse_hidden*
+PROMPT_FOR_CLAUDE.md

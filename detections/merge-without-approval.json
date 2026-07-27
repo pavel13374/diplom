@@ -1,0 +1,12 @@
+{
+  "id": "merge-without-approval",
+  "title": "MR смёржен без единого апрува",
+  "technique": "T1562",
+  "tactic": "Defense Evasion",
+  "severity": "medium",
+  "risk": 0.45,
+  "when": {
+    "action": "mr_merge",
+    "approvals_count": 0
+  }
+}

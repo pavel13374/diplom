@@ -1,0 +1,11 @@
+{
+  "id": "cloud-account-create",
+  "title": "Создан облачный служебный аккаунт",
+  "technique": "T1136.003",
+  "tactic": "Persistence",
+  "severity": "high",
+  "risk": 0.62,
+  "when": {
+    "action": "cloud_account_create"
+  }
+}

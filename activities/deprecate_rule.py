@@ -48,13 +48,9 @@ class DeprecateRuleActivity:
         # Удаляем правило и кладём архивную заметку одним коммитом
         archive_path = f"archive/{slug}_DEPRECATED.md"
         note = self._archive_note(slug, target, reason)
-        actions = [
-            {"action": "delete", "file_path": target},
-            {"action": "create", "file_path": archive_path, "content": note},
-        ]
-        ok = self.author.gl.create_commit(
+        ok = self.author.commit_changes(
             self.pid, branch, cm.deprecate_message(slug),
-            actions, self.author.token,
+            deletes=[target], creates=[(archive_path, note)],
         )
         if not ok:
             self.author.warn("deprecate commit failed")

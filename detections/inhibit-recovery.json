@@ -1,0 +1,11 @@
+{
+  "id": "inhibit-recovery",
+  "title": "Удаление резервных веток и тегов",
+  "technique": "T1490",
+  "tactic": "Impact",
+  "severity": "high",
+  "risk": 0.7,
+  "when": {
+    "action": "inhibit_recovery"
+  }
+}

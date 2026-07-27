@@ -1,9 +1,0 @@
-2026-06-14 20:33:27 INFO    runlog: Полный лог прогона: C:\Users\pavel\Desktop\soc-simulator\logs\run-20260614-203327.log
-2026-06-14 20:33:27 INFO    werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on http://127.0.0.1:8787
-2026-06-14 20:33:27 INFO    werkzeug: [33mPress CTRL+C to quit[0m
-2026-06-14 20:33:27 INFO    werkzeug: 127.0.0.1 - - [14/Jun/2026 20:33:27] "GET / HTTP/1.1" 200 -
-2026-06-14 20:33:27 INFO    werkzeug: 127.0.0.1 - - [14/Jun/2026 20:33:27] "GET /api/config HTTP/1.1" 200 -
-2026-06-14 20:33:27 INFO    werkzeug: 127.0.0.1 - - [14/Jun/2026 20:33:27] "GET /api/status HTTP/1.1" 200 -
-2026-06-14 20:33:27 INFO    werkzeug: 127.0.0.1 - - [14/Jun/2026 20:33:27] "GET /api/series HTTP/1.1" 200 -
-2026-06-14 20:33:27 INFO    werkzeug: 127.0.0.1 - - [14/Jun/2026 20:33:27] "GET /api/events?n=120 HTTP/1.1" 200 -

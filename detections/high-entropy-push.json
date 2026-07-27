@@ -1,0 +1,16 @@
+{
+  "id": "high-entropy-push",
+  "title": "Высокоэнтропийный секрет (без сигнатуры)",
+  "technique": "T1552",
+  "tactic": "Credential Access",
+  "severity": "high",
+  "risk": 0.6,
+  "when": {
+    "action": "push",
+    "shannon_entropy": {
+      ">=": 4.5
+    },
+    "placeholder_signal": false,
+    "n_regex_hits": 0
+  }
+}

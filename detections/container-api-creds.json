@@ -1,0 +1,11 @@
+{
+  "id": "container-api-creds",
+  "title": "Учётные данные контейнерного реестра в манифесте",
+  "technique": "T1552.007",
+  "tactic": "Credential Access",
+  "severity": "high",
+  "risk": 0.66,
+  "when": {
+    "action": "container_creds"
+  }
+}

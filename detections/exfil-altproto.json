@@ -1,0 +1,11 @@
+{
+  "id": "exfil-altproto",
+  "title": "Вынос по альтернативному протоколу",
+  "technique": "T1048",
+  "tactic": "Exfiltration",
+  "severity": "high",
+  "risk": 0.66,
+  "when": {
+    "action": "exfil_altproto"
+  }
+}

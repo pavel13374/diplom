@@ -1,0 +1,11 @@
+{
+  "id": "dep-poison",
+  "title": "Подмена зависимости (supply-chain)",
+  "technique": "T1195.001",
+  "tactic": "Initial Access",
+  "severity": "high",
+  "risk": 0.62,
+  "when": {
+    "action": "dep_poison"
+  }
+}

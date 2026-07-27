@@ -21,7 +21,14 @@ import threading
 from collections import deque, Counter, defaultdict
 from datetime import datetime
 
+import logging
+
 import simclock
+
+# Молчаливая потеря события здесь означает, что защита его никогда не
+# увидит, а на дашборде всё будет выглядеть штатно. Поэтому сбои записи
+# логируются: процесс продолжает работать, но след остаётся.
+_log = logging.getLogger("events")
 
 _LOCK = threading.Lock()
 _TL = threading.local()
@@ -36,6 +43,7 @@ _STATE = {
     "counts": Counter(),           # по action
     "anom_counts": Counter(),      # по anomaly_type
     "total": 0,
+    "last_real": None,
     "anomalies": 0,
     "by_actor": defaultdict(lambda: deque(maxlen=150)),
     "actor_counts": defaultdict(Counter),
@@ -46,6 +54,11 @@ _STATE = {
     "actor_repo": Counter(),        # "actor\x01repo" -> кол-во (граф UEBA)
     "session_id": None,             # id запуска процесса симулятора
     "actor_sessions": {},           # actor -> {"last": datetime, "n": int}
+    "repo_counts": defaultdict(Counter),                 # repo -> Counter(action)
+    "repo_recent": defaultdict(lambda: deque(maxlen=40)),# repo -> последние события
+    "repo_open_mrs": defaultdict(dict),                  # repo -> {iid: {...}}
+    "repo_files": defaultdict(set),                      # repo -> текущее множество путей (дерево)
+    "repo_deleted": defaultdict(lambda: deque(maxlen=12)),# repo -> недавно удалённые файлы
 }
 
 SESSION_GAP_MIN = 30                 # разрыв (sim-минут) → новая рабочая сессия актора
@@ -72,6 +85,12 @@ def init(path=None, enabled=True):
         import uuid
         _STATE["session_id"] = "sess-" + uuid.uuid4().hex[:12]
         _STATE["actor_sessions"] = {}
+    try:
+        import eventstore
+        eventstore.init()
+    except Exception:
+        _log.error("не удалось инициализировать event-store: события не дойдут "
+                   "до консоли защиты", exc_info=True)
     return _STATE["run_id"]
 
 
@@ -127,7 +146,8 @@ def _project_name(project_id):
 
 def emit(action, actor=None, role=None, project=None, project_id=None,
          path=None, branch=None, mr_iid=None, message=None, target=None,
-         extra=None, anomaly_type=None, severity=None, is_anomaly=None):
+         extra=None, anomaly_type=None, severity=None, is_anomaly=None,
+         campaign_id=None):
     """Записать событие. Метки берутся из явных аргументов ИЛИ из активной аннотации."""
     if not _STATE["enabled"]:
         return
@@ -160,6 +180,10 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
         "message":   (message or "")[:200] or None,
         "is_anomaly": anom,
         "meta": False,
+        "episode_id": None,
+        "campaign_id": campaign_id,
+        "is_decisive": False,
+        "family": None,
         "anomaly_type": a_type,
         "severity":  sev,
     }
@@ -182,12 +206,32 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
                 _STATE["heat_anom"][_hk] += 1
             if actor and rec["project"]:
                 _STATE["actor_repo"][actor + "\x01" + rec["project"]] += 1
+            _proj = rec["project"]
+            if _proj:
+                _STATE["repo_counts"][_proj][action] += 1
+                _STATE["repo_recent"][_proj].append({
+                    "ts_sim": rec["ts_sim"], "actor": actor, "action": action,
+                    "path": path, "mr_iid": mr_iid, "message": rec.get("message"),
+                    "is_anomaly": anom, "anomaly_type": a_type})
+                if action == "push" and path:
+                    _STATE["repo_files"][_proj].add(path)
+                if action == "file_delete" and path:
+                    _STATE["repo_files"][_proj].discard(path)
+                    _STATE["repo_deleted"][_proj].append({"path": path, "actor": actor,
+                                                          "ts_sim": rec["ts_sim"]})
+                if action == "mr_open" and mr_iid:
+                    _STATE["repo_open_mrs"][_proj][mr_iid] = {
+                        "iid": mr_iid, "title": (rec.get("message") or "")[:80],
+                        "actor": actor, "ts_sim": rec["ts_sim"], "is_anomaly": anom}
+                elif action in ("mr_merge", "mr_close") and mr_iid:
+                    _STATE["repo_open_mrs"][_proj].pop(mr_iid, None)
         if is_meta and action == "anomaly":
             _STATE["anom_feed"].append({
                 "ts_sim": rec["ts_sim"], "anomaly_type": a_type, "severity": sev,
                 "actor": actor, "project": rec.get("repo") or rec.get("project"),
                 "subtype": rec.get("anomaly_subtype")})
         _STATE["total"] += 1
+        import time as _t; _STATE["last_real"] = _t.time()
         _STATE["counts"][action] += 1
         if anom:
             _STATE["anomalies"] += 1
@@ -198,7 +242,16 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
                 _STATE["fh"].write(json.dumps(rec, ensure_ascii=False) + "\n")
                 _STATE["fh"].flush()
             except Exception:
-                pass
+                _log.error("не удалось записать событие в журнал %s",
+                           _STATE.get("path"), exc_info=True)
+        try:
+            import eventstore
+            eventstore.append(rec)
+        except Exception:
+            _STATE["store_errors"] = _STATE.get("store_errors", 0) + 1
+            _log.error("событие не попало в event-store (action=%s actor=%s): "
+                       "защита его не увидит", rec.get("action"), rec.get("actor"),
+                       exc_info=True)
         # Служебные (meta) события — только в файл/телеметрию, в живую ленту не кладём,
         # чтобы схема ленты была единой: actor/role/action/project/ts у каждого события.
         if not is_meta:
@@ -253,6 +306,7 @@ def stats():
             "file": _STATE["file"],
             "run_id": _STATE["run_id"],
             "total": _STATE["total"],
+            "last_real": _STATE["last_real"],
             "anomalies": _STATE["anomalies"],
             "by_action": dict(_STATE["counts"].most_common()),
             "by_anomaly": dict(_STATE["anom_counts"].most_common()),
@@ -311,3 +365,37 @@ def insights():
     edges.sort(key=lambda e: -e["n"])
     return {"heat": grid, "heat_anom": agrid,
             "anom_timeline": anom[-160:], "edges": edges}
+
+
+# ----------------------------------------------------------------------
+def repo_streams(recent_n=14):
+    """Состояние по каждому репозиторию для живой страницы «Репозитории»:
+    счётчики, открытые MR (с подписью), последние события (файлы/MR)."""
+    import config as _cfg
+    with _LOCK:
+        out = {}
+        names = list(_cfg.WORK_REPOS.keys()) if getattr(_cfg, "WORK_REPOS", None) else []
+        seen = set(names)
+        for proj in list(_STATE["repo_counts"].keys()):
+            if proj not in seen:
+                names.append(proj); seen.add(proj)
+        for proj in names:
+            cnt = _STATE["repo_counts"].get(proj, Counter())
+            recent = list(_STATE["repo_recent"].get(proj, []))[-recent_n:][::-1]
+            open_mrs = list(_STATE["repo_open_mrs"].get(proj, {}).values())
+            open_mrs = sorted(open_mrs, key=lambda m: m.get("ts_sim", ""), reverse=True)[:8]
+            tree = sorted(_STATE["repo_files"].get(proj, ()))[:80]
+            deleted = list(_STATE["repo_deleted"].get(proj, []))[-8:][::-1]
+            out[proj] = {
+                "files": len(_STATE["repo_files"].get(proj, ())),
+                "tree": tree,
+                "deleted_recent": deleted,
+                "pushes": cnt.get("push", 0),
+                "mr_open": cnt.get("mr_open", 0),
+                "mr_merge": cnt.get("mr_merge", 0),
+                "mr_close": cnt.get("mr_close", 0),
+                "total": sum(cnt.values()),
+                "open_mrs": open_mrs,
+                "recent": recent,
+            }
+    return out

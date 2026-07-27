@@ -1,0 +1,14 @@
+{
+  "id": "mailbox-forward-rule",
+  "title": "Скрытое правило пересылки почты",
+  "technique": "T1114.003",
+  "tactic": "Collection",
+  "severity": "high",
+  "risk": 0.6,
+  "when": {
+    "action": "push",
+    "path": {
+      "contains": "forward"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "steal-oauth",
+  "title": "Кража OAuth/приложенческого токена",
+  "technique": "T1528",
+  "tactic": "Credential Access",
+  "severity": "high",
+  "risk": 0.66,
+  "when": {
+    "action": "steal_oauth"
+  }
+}

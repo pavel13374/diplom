@@ -1,0 +1,11 @@
+{
+  "id": "automated-collection",
+  "title": "Автоматический сбор данных из репозиториев",
+  "technique": "T1119",
+  "tactic": "Collection",
+  "severity": "high",
+  "risk": 0.6,
+  "when": {
+    "action": "automated_collection"
+  }
+}

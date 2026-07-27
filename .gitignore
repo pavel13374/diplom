@@ -1,0 +1,35 @@
+# секреты и состояние процесса
+.secret_key
+.gitlab_token
+.sim_state.json
+
+# данные симуляции (генерируются make_demo.py / прогоном мира)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/events.jsonl
+data/archive/
+data/.gitlab_watch.json
+data/.fuse_hidden*
+.fuse_hidden*
+
+# логи
+logs/
+simulator.log
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# конфигурация с боевым токеном: в репозиторий не кладём,
+# рядом лежит web_config.example.json с той же структурой
+web_config.json
+
+# состояние процесса и рабочие выгрузки
+.sim_state.json
+data/
+results/
+reports/
+demo/out/

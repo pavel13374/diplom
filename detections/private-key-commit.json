@@ -1,0 +1,14 @@
+{
+  "id": "private-key-commit",
+  "title": "Приватный ключ в коммите",
+  "technique": "T1552.001",
+  "tactic": "Credential Access",
+  "severity": "critical",
+  "risk": 0.95,
+  "when": {
+    "action": "push",
+    "regex_hits": {
+      "contains": "private_key"
+    }
+  }
+}

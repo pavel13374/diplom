@@ -1,0 +1,11 @@
+{
+  "id": "history-rewrite",
+  "title": "Переписывание истории и удаление следов",
+  "technique": "T1070.004",
+  "tactic": "Defense Evasion",
+  "severity": "high",
+  "risk": 0.64,
+  "when": {
+    "action": "history_rewrite"
+  }
+}

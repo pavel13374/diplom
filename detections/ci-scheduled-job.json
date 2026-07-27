@@ -1,0 +1,11 @@
+{
+  "id": "ci-scheduled-job",
+  "title": "Плановое CI-задание с полезной нагрузкой",
+  "technique": "T1053",
+  "tactic": "Execution",
+  "severity": "high",
+  "risk": 0.6,
+  "when": {
+    "action": "ci_schedule"
+  }
+}

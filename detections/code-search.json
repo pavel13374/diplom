@@ -1,0 +1,11 @@
+{
+  "id": "code-search",
+  "title": "Поиск по коду в поисках секретов",
+  "technique": "T1593.003",
+  "tactic": "Reconnaissance",
+  "severity": "medium",
+  "risk": 0.42,
+  "when": {
+    "action": "code_search"
+  }
+}

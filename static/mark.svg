@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <!-- щит из смещённых полос: собственный знак проекта -->
+  <path d="M32 3 L57 12 v22 c0 14-11 24-25 27 C18 58 7 48 7 34 V12 Z" fill="#0d0f14"/>
+  <rect x="17" y="20" width="30" height="6.5" rx="1" fill="#ffffff"/>
+  <rect x="17" y="30" width="21" height="6.5" rx="1" fill="#d81f2a"/>
+  <rect x="17" y="40" width="26" height="6.5" rx="1" fill="#ffffff" fill-opacity="0.62"/>
+</svg>

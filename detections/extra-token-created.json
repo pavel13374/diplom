@@ -1,0 +1,11 @@
+{
+  "id": "extra-token-created",
+  "title": "Создан дополнительный API-токен",
+  "technique": "T1098.001",
+  "tactic": "Persistence",
+  "severity": "high",
+  "risk": 0.6,
+  "when": {
+    "action": "token_create"
+  }
+}

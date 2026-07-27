@@ -41,6 +41,7 @@ class Scheduler:
         self.stats["total_ok"]   = 0
         self.stats["total_fail"] = 0
         self.stats["skipped_offhours"] = 0
+        self.last_ff = None
         self._last_day        = None
         self._standup_day     = None
         self._lunch_day       = None
@@ -164,7 +165,8 @@ class Scheduler:
             if timelapse:
                 target = clock.next_work_start()
                 clock.fast_forward_to(target)
-                logger.info(f"[Scheduler] [night] промотали нерабочее время -> {simclock.stamp()}")
+                self.last_ff = f"⏩ промотка нерабочего времени → {target:%a %H:%M}"
+                logger.info(f"[Scheduler] {self.last_ff} (сейчас {simclock.stamp()})")
                 simclock.sleep(0)
                 return False
             else:
@@ -175,8 +177,13 @@ class Scheduler:
                         _t.sleep(min(config.OFF_HOURS_POLL_SECONDS, 30))
                 return False
 
+        # честный ночной шум: легитимная активность (релизный кранч / дежурный чинит баг),
+        # чтобы off-hours перестал быть тривиальным признаком атаки (FP становятся честными)
+        if random.random() < getattr(config, "NIGHT_NOISE_PROB", 0.12):
+            return self._offhours_benign_burst()
+
         if random.random() < config.OFF_HOURS_ACTIVITY_PROBABILITY:
-            if random.random() < config.ANOMALY_RATE_OFFHOURS:
+            if getattr(config, "ATTACK_AUTO", False) and random.random() < config.ANOMALY_RATE_OFFHOURS:
                 return self._run_anomaly(offhours=True)
             activity = random.choice(OFF_HOURS_ALLOWED_ACTIVITIES)
             oncall = self.state.current_oncall() if self.state else "dmitry.kozlov"
@@ -190,10 +197,37 @@ class Scheduler:
         self.stats["skipped_offhours"] += 1
         if timelapse:
             clock.fast_forward(random.uniform(30, 120) * 60)
+            self.last_ff = f"⏩ промотка нерабочего времени (сейчас {simclock.stamp()})"
+            logger.info(f"[Scheduler] {self.last_ff}")
             simclock.sleep(0)
         else:
             simclock.sleep(config.OFF_HOURS_POLL_SECONDS)
         return False
+
+    def _offhours_benign_burst(self) -> bool:
+        """Легитимная ночная/выходная активность (НЕ атака): релизный кранч,
+        дежурный чинит горящий баг, плановое обслуживание. Эмитит нормальные
+        события ночью, чтобы off-hours не был тривиальным маркером атаки."""
+        import events as _ev
+        import random as _r
+        oncall = self.state.current_oncall() if self.state else "dmitry.kozlov"
+        scenario = _r.choice(["release_crunch", "oncall_hotfix", "weekend_maintenance"])
+        repos = ["detection-rules", "normalization-rules", "playbooks", "soc-infra"]
+        paths = ["rules/win/fix.yml", "src/util.py", "docs/runbook.md", "ci/deploy.yml",
+                 "config/.env.example", "normalizers/parse.py"]
+        n = _r.randint(1, 3)
+        for _ in range(n):
+            path = _r.choice(paths)
+            ph = path.endswith(".env.example")
+            _ev.emit("push", actor=oncall, role="detection_engineer",
+                     project=_r.choice(repos), path=path,
+                     extra={"shannon_entropy": 3.2 if ph else round(_r.uniform(2.0, 3.6), 2),
+                            "regex_hits": [], "n_regex_hits": 0,
+                            "filename_signal": ph, "placeholder_signal": ph,
+                            "bytes": _r.randint(120, 900), "ext": path.split(".")[-1]})
+        self.stats["offhours_benign"] = self.stats.get("offhours_benign", 0) + n
+        logger.info(f"[Scheduler] [night benign @{oncall}] {simclock.stamp()}: {scenario} x{n}")
+        return True
 
     # ------------------------------------------------------------------
     def _choose_activity_and_target(self):
@@ -240,6 +274,10 @@ class Scheduler:
         self.iteration += 1
         self.stats["total_runs"] += 1
 
+        # команды из Purple-консоли (например, запуск red-кампании по кнопке)
+        if self._poll_commands():
+            return True
+
         self._daily_and_rhythm_hooks()
 
         if not simclock.is_work_time():
@@ -248,7 +286,7 @@ class Scheduler:
         self._maybe_lunch()
 
         # редкая инъекция размеченной аномалии
-        if random.random() < config.ANOMALY_RATE:
+        if getattr(config, "ATTACK_AUTO", False) and random.random() < config.ANOMALY_RATE:
             return self._run_anomaly()
 
         activity, kwargs = self._choose_activity_and_target()
@@ -304,14 +342,131 @@ class Scheduler:
         return (merged + closed) > 0
 
     def _run_anomaly(self, offhours=False) -> bool:
+        # КТО и ЗАЧЕМ: назначаем персону-нарушителя (мотив, время, dwell, уклонение)
+        import personas
+        p = personas.assign(self.agents, offhours=offhours)
+        # полноценная многошаговая кампания — с вероятностью CAMPAIGN_RATE (если у персоны она есть)
+        if p.get("campaign") and random.random() < getattr(config, "CAMPAIGN_RATE", 0.0):
+            return self._run_campaign(offhours=offhours, persona=p)
+        # иначе одиночная аномалия (в т.ч. careless_dev — случайная утечка, НЕ атака по мотиву)
         from activities.anomaly import AnomalyActivity
         self.stats["anomaly"] = self.stats.get("anomaly", 0) + 1
-        self.last_activity = "anomaly"
+        self.last_activity = "anomaly:" + p.get("kind", "?")
         self.last_activity_ts = simclock.stamp()
-        ok = AnomalyActivity(self.agents, self.state).run()
+        actor = self.agents.get(p.get("actor")) if p.get("actor") else None
+        ctx = {"evasion_profile": p.get("evasion", "noisy"),
+               "persona": p.get("kind"), "motive": p.get("motive")}
+        ok = AnomalyActivity(self.agents, self.state).run(
+            anom_type=p.get("single_anomaly"), actor=actor, campaign=ctx)
         self.stats["total_ok" if ok else "total_fail"] += 1
         simclock.sleep(config.scenario_pause_seconds())
         return ok
+
+    def _run_campaign(self, offhours=False, persona=None) -> bool:
+        from red_team import RedTeamEngine
+        self.stats["campaign"] = self.stats.get("campaign", 0) + 1
+        self.last_activity = "red_campaign" + (":" + persona["kind"] if persona else "")
+        self.last_activity_ts = simclock.stamp()
+        eng = RedTeamEngine(self.agents, self.state)
+        if persona:
+            # персона задаёт актора, кампанию, уклонение и dwell time (low-and-slow)
+            actor = self.agents.get(persona.get("actor")) if persona.get("actor") else None
+            res = eng.run_campaign(key=persona.get("campaign"),
+                                   evasion=persona.get("evasion", "noisy"),
+                                   actor=actor, dwell_days=persona.get("dwell_days", 0),
+                                   persona=persona.get("kind"), motive=persona.get("motive"))
+        else:
+            evasion = "stealthy" if offhours and random.random() < 0.5 else "noisy"
+            res = eng.run_campaign(evasion=evasion)
+        ok = bool(res and res.get("ok_steps"))
+        self.stats["total_ok" if ok else "total_fail"] += 1
+        simclock.sleep(config.scenario_pause_seconds())
+        return ok
+
+    def _poll_commands(self) -> bool:
+        """Опрос очереди команд из event-store (управление из Purple-консоли)."""
+        try:
+            import eventstore
+            if not eventstore.enabled():
+                return False
+            cmd = eventstore.claim_command()
+        except Exception:
+            return False
+        if not cmd:
+            return False
+        ctype = cmd.get("type"); payload = cmd.get("payload") or {}
+        try:
+            if ctype == "campaign":
+                from red_team import RedTeamEngine
+                key = payload.get("key")
+                evasion = payload.get("evasion", "noisy")
+                self.stats["campaign"] = self.stats.get("campaign", 0) + 1
+                self.last_activity = "red_campaign(cmd)"
+                res = RedTeamEngine(self.agents, self.state).run_campaign(key=key, evasion=evasion)
+                eventstore.set_command_result(cmd["id"],
+                    f"{res.get('key')}: {res.get('ok_steps')}/{res.get('steps')} steps" if res else "failed")
+                self.stats["total_ok"] += 1
+                return True
+            elif ctype == "anomaly":
+                self._run_anomaly()
+                eventstore.set_command_result(cmd["id"], "anomaly injected")
+                return True
+            elif ctype == "response":
+                issue_iid = self._respond_incident(payload)
+                if issue_iid:
+                    ns = getattr(config, "PROJECT_NAMESPACE", "soc-team")
+                    repo = getattr(self, "_last_ir_repo", None) or "playbooks"
+                    url = f"{config.GITLAB_URL.rstrip('/')}/{ns}/{repo}/-/issues/{issue_iid}"
+                    eventstore.set_command_result(cmd["id"], url)
+                else:
+                    from agents.base import GITLAB_STATUS
+                    eventstore.set_command_result(cmd["id"],
+                        "failed: " + (GITLAB_STATUS.get("last_error") or "issue не создан (проверь права/доступ lead)"))
+                return True
+        except Exception as e:
+            logger.exception(f"command {ctype} failed: {e}")
+        return False
+
+    def _respond_incident(self, payload) -> bool:
+        """Ответное действие защиты (sandbox): завести IR-issue по инциденту."""
+        try:
+            lead = self._lead()
+            pid = config.playbook_repo_id()
+            # путь репозитория, в котором реально заводим issue (для корректной ссылки)
+            repo_path = None
+            for _nm, _id in getattr(config, "WORK_REPOS", {}).items():
+                if _id == pid:
+                    repo_path = _nm
+                    break
+            if not repo_path:
+                for _nm, _id in getattr(config, "PROJECTS", {}).items():
+                    if _id == pid:
+                        repo_path = _nm
+                        break
+            self._last_ir_repo = repo_path or "playbooks"
+            actor = payload.get("actor", "?"); sev = payload.get("severity", "high")
+            tactics = ", ".join(payload.get("tactics", []) or [])
+            repos = ", ".join(payload.get("repos", []) or [])
+            title = f"[IR] Инцидент по @{actor} ({sev})"
+            body = (f"## Автоматический инцидент (Purple Team)\n\n"
+                    f"**Подозреваемый:** @{actor}\n**Severity:** {sev}\n"
+                    f"**ATT&CK-цепочка:** {tactics}\n**Затронутые репозитории:** {repos}\n\n"
+                    f"### Рекомендованные действия\n"
+                    f"- [ ] Отозвать токены/секреты подозреваемого\n"
+                    f"- [ ] Заморозить ветки/доступ до разбора\n"
+                    f"- [ ] Проверить kill-chain, собрать таймлайн\n\n"
+                    f"_Заведено автоматически детектором по кнопке «Реагировать»._")
+            iid = lead.create_issue(pid, title, body, labels=["type::incident", "auto::ir"])
+            if iid:
+                logger.warning(f"[RESPONSE] заведён IR-issue #{iid} в репо id={pid} по @{actor} (sev={sev})")
+            else:
+                from agents.base import GITLAB_STATUS
+                logger.warning(f"[RESPONSE] НЕ удалось завести IR-issue (репо id={pid}): "
+                               f"{GITLAB_STATUS.get('last_error') or 'нет ответа GitLab'}")
+            return iid or 0
+        except Exception as e:
+            logger.exception(f"respond failed: {e}")
+            return False
 
     # ------------------------------------------------------------------
     def _dispatch(self, activity: str, target=None, target_slug=None,
@@ -350,7 +505,7 @@ class Scheduler:
             events.emit("activity", actor=getattr(author, 'username', None),
                         role=getattr(author, 'role', None), extra={"activity": activity, "meta": True})
         except Exception:
-            pass
+            logger.error("не удалось записать событие активности %s", activity, exc_info=True)
 
         try:
             if activity == "new_detection_rule":
@@ -494,7 +649,9 @@ class Scheduler:
             logger.info(f"  Правил в стейте:    {self.state.rule_count()}")
             logger.info(f"  Спринт:             #{self.state.data['sprint_number']}")
         logger.info("  По активностям:")
-        for k, v in self.stats.items():
-            if k not in ("total_runs", "total_ok", "total_fail", "skipped_offhours") and v > 0:
-                logger.info(f"    {k}: {v}")
+        for k, v in sorted(self.stats.items(), key=lambda kv: -kv[1]):
+            if k in ("total_runs", "total_ok", "total_fail", "skipped_offhours"):
+                continue
+            if v:
+                logger.info(f"    {k:24} {v}")
         logger.info("=" * 50)

@@ -1,0 +1,11 @@
+{
+  "id": "elevate-privs",
+  "title": "Повышение прав через обход контроля",
+  "technique": "T1548",
+  "tactic": "Privilege Escalation",
+  "severity": "high",
+  "risk": 0.66,
+  "when": {
+    "action": "elevate_privs"
+  }
+}

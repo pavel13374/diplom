@@ -1,0 +1,14 @@
+{
+  "id": "branch-protection-weakened",
+  "title": "Ослабление branch-protection",
+  "technique": "T1556",
+  "tactic": "Defense Evasion",
+  "severity": "high",
+  "risk": 0.65,
+  "when": {
+    "action": "push",
+    "path": {
+      "contains": "branch-protection"
+    }
+  }
+}

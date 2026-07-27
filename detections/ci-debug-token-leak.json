@@ -1,0 +1,17 @@
+{
+  "id": "ci-debug-token-leak",
+  "title": "CI печатает токены/env в лог",
+  "technique": "T1552.004",
+  "tactic": "Credential Access",
+  "severity": "critical",
+  "risk": 0.85,
+  "when": {
+    "action": "push",
+    "path": {
+      "contains": ".gitlab-ci.yml"
+    },
+    "message": {
+      "contains": "debug"
+    }
+  }
+}

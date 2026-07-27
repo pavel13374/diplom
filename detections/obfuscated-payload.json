@@ -1,0 +1,11 @@
+{
+  "id": "obfuscated-payload",
+  "title": "Обфусцированный код в коммите",
+  "technique": "T1027",
+  "tactic": "Defense Evasion",
+  "severity": "medium",
+  "risk": 0.55,
+  "when": {
+    "action": "obfuscated_payload"
+  }
+}

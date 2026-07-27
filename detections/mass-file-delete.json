@@ -1,0 +1,11 @@
+{
+  "id": "mass-file-delete",
+  "title": "Удаление файла (кандидат на массовое)",
+  "technique": "T1485",
+  "tactic": "Impact",
+  "severity": "medium",
+  "risk": 0.45,
+  "when": {
+    "action": "file_delete"
+  }
+}

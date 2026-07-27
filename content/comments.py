@@ -144,22 +144,39 @@ PARSER_REVIEW_COMMENTS = [
 # Функции выбора комментариев
 # -----------------------------------------------------------------------
 
+# Живая болтовня через LLM — необязательная надстройка. Если модуля нет или
+# он упал, работаем на банках фраз: реплики команды не должны ронять активность.
+try:
+    import chatter as _chatter
+except Exception:                                    # pragma: no cover
+    class _ChatterStub:
+        @staticmethod
+        def line(_kind, fallback):
+            return fallback()
+    _chatter = _ChatterStub()
+
+
+def _say(kind, fallback):
+    try:
+        return __say(kind, fallback)
+    except Exception:
+        return fallback()
+
+
 def lead_initial_review(has_issues: bool = True) -> str:
     if has_issues:
-        return random.choice(LEAD_REVIEW_REQUESTS)
-    else:
-        return random.choice(LEAD_APPROVE_COMMENTS)
+        return _say("review_request", lambda: random.choice(LEAD_REVIEW_REQUESTS))
+    return _say("approve", lambda: random.choice(LEAD_APPROVE_COMMENTS))
 
 
 def engineer_response(to_review_request: bool = True) -> str:
     if to_review_request:
-        return random.choice(ENGINEER_FIX_RESPONSES)
-    else:
-        return random.choice(ENGINEER_QUESTION_RESPONSES)
+        return _say("review_response", lambda: random.choice(ENGINEER_FIX_RESPONSES))
+    return _say("review_response", lambda: random.choice(ENGINEER_QUESTION_RESPONSES))
 
 
 def lead_approve() -> str:
-    return random.choice(LEAD_APPROVE_COMMENTS)
+    return _say("approve", lambda: random.choice(LEAD_APPROVE_COMMENTS))
 
 
 def revert_reason() -> str:
@@ -427,4 +444,4 @@ def dashboard_note() -> str:
 
 
 def standup_note() -> str:
-    return random.choice(STANDUP_NOTES)
+    return _say("standup", lambda: random.choice(STANDUP_NOTES))

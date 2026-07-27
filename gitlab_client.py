@@ -36,6 +36,11 @@ class GitLabClient:
                     logger.warning(f"Rate limited, waiting {wait}s")
                     time.sleep(wait)
                     continue
+                if r.status_code in (403, 404):
+                    # «нет доступа / не найдено» — это НОРМАЛЬНО для проверок
+                    # существования (get_project_id/group_id): без ретраев и без ERROR.
+                    logger.debug(f"{method} {path}: {r.status_code}")
+                    return {}
                 r.raise_for_status()
                 return r.json() if r.text else {}
             except requests.exceptions.HTTPError as e:
@@ -205,6 +210,17 @@ class GitLabClient:
         405 обычно = «пайплайн должен пройти», поэтому проекты заранее
         настраиваются через ensure_project_settings()."""
         url = f"{self.url}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/merge"
+        # Ждём, пока GitLab досчитает mergeability. Мержить при
+        # merge_status=checking бессмысленно: сервер стабильно отвечает 405,
+        # и в статистике мира копились «ошибки» на ровном месте.
+        for _ in range(6):
+            try:
+                _mr = self.get_mr(project_id, mr_iid) or {}
+            except Exception:
+                break
+            if str(_mr.get("merge_status") or "") not in ("checking", "unchecked", ""):
+                break
+            time.sleep(1.2)
         attempts = [user_token or self.token, self.token]
         last = ""
         for i, tok in enumerate(attempts):
@@ -361,6 +377,50 @@ class GitLabClient:
         data = self._api("GET", f"/groups/{self._encode(namespace)}")
         return data.get("id") if isinstance(data, dict) else None
 
+    def create_group(self, path, name=None, description=""):
+        """Создать группу (namespace). Нужны права на создание групп."""
+        try:
+            r = self._api("POST", "/groups", json={
+                "name": name or path, "path": path,
+                "description": description, "visibility": "private"})
+            return r.get("id") if isinstance(r, dict) else None
+        except Exception:
+            return None
+
+    def unblock_user(self, uid):
+        """Снять блокировку с пользователя (после пересоздания он может быть blocked)."""
+        try:
+            r = self.session.post(f"{self.url}/api/v4/users/{uid}/unblock",
+                                  headers={"PRIVATE-TOKEN": self.token}, timeout=15)
+            return r.status_code in (200, 201, 204)
+        except Exception:
+            return False
+
+    def restore_group(self, gid):
+        """Отменить запланированное удаление группы (вернуть из scheduled)."""
+        try:
+            r = self.session.post(f"{self.url}/api/v4/groups/{gid}/restore",
+                                  headers={"PRIVATE-TOKEN": self.token}, timeout=15)
+            return r.status_code in (200, 201, 204)
+        except Exception:
+            return False
+
+    def restore_project(self, pid):
+        try:
+            r = self.session.post(f"{self.url}/api/v4/projects/{pid}/restore",
+                                  headers={"PRIVATE-TOKEN": self.token}, timeout=15)
+            return r.status_code in (200, 201, 204)
+        except Exception:
+            return False
+
+    def ensure_group(self, namespace, name=None, description=""):
+        """Вернуть (id, created). Создаёт группу, если её нет."""
+        gid = self.group_id(namespace)
+        if gid:
+            return gid, False
+        gid = self.create_group(namespace, name, description)
+        return gid, bool(gid)
+
     def get_project_id(self, namespace, name):
         data = self._api("GET", f"/projects/{self._encode(namespace + '/' + name)}")
         return data.get("id") if isinstance(data, dict) else None
@@ -397,6 +457,10 @@ class GitLabClient:
                 if namespace and not pwn.startswith(namespace + "/"):
                     continue
                 name = pr.get("path") or pr.get("name", "")
+                # НЕ подхватывать репозитории, запланированные на удаление
+                if ("deletion_scheduled" in name or "deletion_scheduled" in pwn
+                        or pr.get("marked_for_deletion_on") or pr.get("marked_for_deletion_at")):
+                    continue
                 if name and pr.get("id"):
                     found[name] = pr["id"]
         return found

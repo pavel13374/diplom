@@ -1,0 +1,14 @@
+{
+  "id": "data-repo-collection",
+  "title": "Сбор данных из репозитория (vault export)",
+  "technique": "T1213",
+  "tactic": "Collection",
+  "severity": "high",
+  "risk": 0.62,
+  "when": {
+    "action": "push",
+    "path": {
+      "contains": "vault"
+    }
+  }
+}

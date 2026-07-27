@@ -1,0 +1,11 @@
+{
+  "id": "recon-enumeration",
+  "title": "Перебор/листинг репозиториев и секрет-путей",
+  "technique": "T1087",
+  "tactic": "Reconnaissance",
+  "severity": "medium",
+  "risk": 0.4,
+  "when": {
+    "action": "repo_enum"
+  }
+}

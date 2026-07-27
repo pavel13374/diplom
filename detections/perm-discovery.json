@@ -1,0 +1,11 @@
+{
+  "id": "perm-discovery",
+  "title": "Перечисление прав и групп доступа",
+  "technique": "T1069",
+  "tactic": "Discovery",
+  "severity": "medium",
+  "risk": 0.4,
+  "when": {
+    "action": "perm_discovery"
+  }
+}
