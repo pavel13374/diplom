@@ -790,13 +790,21 @@ def _entity_profile(actor):
         n_alerts = _STATE["by_actor"].get(actor, 0)
     out = {"actor": actor, "alerts_total": n_alerts, "recent_alerts": recent[::-1]}
     if prof:
-        hours = sorted(prof["hours"].items())
+        # Профиль UEBA стал вероятностным: часы теперь круговая оценка плотности
+        # (_VonMisesHours), а репозитории и действия — мультиномиальные
+        # распределения со сглаживанием (_Categorical). У этих объектов нет
+        # интерфейса Counter, поэтому раньше страница «Сущности» падала с
+        # AttributeError: '_VonMisesHours' object has no attribute 'items'.
+        hours_hist = [(h, prof["hours"].counts[h]) for h in range(24)]
         out["baseline"] = {
             "events_seen": prof["n"],
-            "top_hours": [h for h, _ in prof["hours"].most_common(4)],
-            "top_repos": [r for r, _ in prof["repos"].most_common(5)],
-            "top_actions": [a for a, _ in prof["actions"].most_common(5)],
-            "hours_hist": hours,
+            "top_hours": [h for h, c in sorted(hours_hist, key=lambda x: -x[1])[:4] if c],
+            "top_repos": [r for r, _ in prof["repos"].c.most_common(5)],
+            "top_actions": [a for a, _ in prof["actions"].c.most_common(5)],
+            "hours_hist": hours_hist,
+            # средняя интенсивность актора — то, относительно чего считается
+            # пуассоновский хвост всплеска
+            "rate_per_window": round(prof.get("rate_ewma") or 0.0, 2),
         }
     else:
         out["baseline"] = None

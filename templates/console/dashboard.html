@@ -170,12 +170,26 @@ body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
 .sla.ok{background:var(--success-bg);color:var(--success)}.sla.warn{background:var(--warning-bg);color:var(--warning)}.sla.breach{background:var(--critical-bg);color:var(--critical);animation:pulse 1.4s infinite}
 .stpill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--info-bg);color:var(--info)}
 .stpill.investigating{background:var(--info-bg);color:var(--accent-brand)}.stpill.contained{background:var(--warning-bg);color:var(--warning)}.stpill.closed{background:var(--success-bg);color:var(--success)}
-.vpill{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px}
-.vpill.tp{background:var(--critical-bg);color:var(--critical)}.vpill.fp{background:var(--info-bg);color:var(--info)}
+.vpill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;
+ letter-spacing:.02em;white-space:nowrap;border:1px solid transparent}
+.vpill.tp{background:var(--critical-bg);color:var(--critical);border-color:var(--critical-border)}
+.vpill.fp{background:var(--info-bg);color:var(--info);border-color:var(--info-border)}
+.vbanner .vpill{font-size:12px;padding:4px 11px}
 .tchart{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
 .tchart h3{margin:0 0 3px;font-size:13px}.tchart .cur{font-size:22px;font-weight:800;letter-spacing:-.02em}
 .wfstatus{margin-top:10px}
 .wfline{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+/* ПОЛОСА ВЕРДИКТА.
+   У .vbanner не было ни одного правила: блок прижимался вплотную к кнопкам
+   TP/FP и читался как их продолжение. Теперь это отдельная карточка с
+   отступом, своим фоном и полосой слева — видно, что это результат решения,
+   а не ещё одна кнопка. Цвет полосы повторяет вердикт. */
+.vbanner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+ margin-top:14px;padding:11px 14px;border-radius:10px;
+ background:var(--surface-3);border:1px solid var(--line)}
+.vbanner:has(.vpill.tp){box-shadow:inset 3px 0 0 0 var(--critical)}
+.vbanner:has(.vpill.fp){box-shadow:inset 3px 0 0 0 var(--info)}
+.vbanner .sub{font-size:12px;line-height:1.5}
 .wfstep{border:1px solid var(--line);background:var(--panel);color:var(--soft);border-radius:8px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:pointer;transition:all .14s}
 .wfstep:hover{border-color:var(--accent-border)}.wfstep.on{background:var(--accent-brand);color:#fff;border-color:transparent}
 .wfarr{color:var(--accent-border);font-weight:800}
@@ -1062,7 +1076,7 @@ async function pollAlerts(){
 async function pollIncidents(){const d=await jget('/api/incidents');
  $('incList').innerHTML=(d.incidents||[]).map(i=>'<div class="inc'+(String(i.id)===String(_incSel)?' sel':'')+'" data-inc="'+i.id+'" tabindex=0 role=button aria-current="'+(String(i.id)===String(_incSel)?'true':'false')+'" onclick="openInc('+i.id+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openInc('+i.id+')}"><div class=h>'+
    '<span class=a>@'+esc(i.actor)+'</span>'+sevBadge(i.severity)+(i.is_campaign?'<span class="badge b-camp">CAMPAIGN</span>':'')+(i.triage?'<span class="badge b-camp">LLM: '+esc(i.triage)+'</span>':'')+
-   (i.verdict?'<span class="vpill '+esc(i.verdict)+'" title="ваш вердикт">'+(i.verdict==='tp'?'✔ TP':'✘ FP')+'</span>':'')+
+   (i.verdict?'<span class="vpill '+esc(i.verdict)+'" title="ваш вердикт">'+(i.verdict==='tp'?'TP':'FP')+'</span>':'')+
    (i.status&&i.status!=='new'?'<span class="stpill '+esc(i.status)+'">'+esc(i.status)+'</span>':'')+
    '<span class=grow></span><span class=sub>риск '+i.max_risk+'</span></div>'+
    '<div class=sub style=margin-top:5px>'+i.alerts+' алертов · '+esc((i.repos||[]).join(', '))+'</div>'+
@@ -1192,10 +1206,10 @@ function renderWfStatus(id,wf){const box=$('wfStatus');if(!box)return;wf=wf||{st
  const steps=['new','investigating','contained','closed'];
  box.innerHTML='<div class=wfline>'+steps.map(s=>'<button class="wfstep'+(wf.status===s?' on':'')+'" onclick="setStatus('+id+',\''+s+'\')">'+CN[s]+'</button>').join('<span class=wfarr>›</span>')+
   '<span class=grow></span>'+
-  '<button class="wfv tp'+(wf.verdict==='tp'?' on':'')+'" onclick="setStatus('+id+',\'closed\',\'tp\')">✔ TP</button>'+
-  '<button class="wfv fp'+(wf.verdict==='fp'?' on':'')+'" onclick="setStatus('+id+',\'closed\',\'fp\')">✘ FP</button></div>'+
+  '<button class="wfv tp'+(wf.verdict==='tp'?' on':'')+'" onclick="setStatus('+id+',\'closed\',\'tp\')">TP</button>'+
+  '<button class="wfv fp'+(wf.verdict==='fp'?' on':'')+'" onclick="setStatus('+id+',\'closed\',\'fp\')">FP</button></div>'+
   (wf.verdict
-    ? '<div class=vbanner><span class="vpill '+wf.verdict+'">'+(wf.verdict==='tp'?'✔ TP — подтверждённая атака':'✘ FP — ложное срабатывание')+'</span>'+
+    ? '<div class=vbanner><span class="vpill '+wf.verdict+'">'+(wf.verdict==='tp'?'TP — подтверждённая атака':'FP — ложное срабатывание')+'</span>'+
       (wf.verdict==='fp'?'<span class=sub>правила из этого инцидента получают +1 FP; после 3 подтверждений правило глушится (см. «Очередь триажа» → «Самые шумные правила»)</span>':'<span class=sub>инцидент закрыт как настоящая атака</span>')+
       (wf.updated?'<span class=sub style=margin-left:auto>'+wf.updated.replace('T',' ')+'</span>':'')+'</div>'
     : '<div class=sub style=margin-top:5px>вердикт не выставлен — нажмите TP или FP</div>');}

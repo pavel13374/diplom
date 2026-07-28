@@ -163,13 +163,23 @@ body{margin:0;color:var(--ink);
 .group .g-chev{margin-left:auto;color:var(--soft);transition:.2s}.group[open] .g-chev{transform:rotate(180deg)}
 .group .body{padding:6px 20px 22px;border-top:1px solid var(--line)}
 .fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px 26px;margin-top:16px}
-.field{display:flex;flex-direction:column;gap:7px}
-.field .top{display:flex;justify-content:space-between;align-items:baseline}
-.field label{font-size:13px;font-weight:700;color:var(--ink)}
-.field .val{font-size:13px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;
- background:var(--accent-soft);padding:1px 9px;border-radius:7px}
-.field .help{font-size:12px;color:var(--muted);line-height:1.5}
-input[type=range]{accent-color:var(--accent);width:100%;height:6px;cursor:pointer}
+/* ПОЛЕ-СЛАЙДЕР.
+   Подпись и значение раньше стояли по краям строки, растянутой на всю ширину
+   колонки: между «Рабочий день за, минут» и «10 мин» зияла пустота, а
+   значение висело в отдельной цветной плашке далеко от того, к чему
+   относится. Теперь подпись и значение стоят рядом, значение выровнено по
+   базовой линии подписи и набрано моноширинным — при перетаскивании ручки
+   цифры не «прыгают» по ширине. */
+.field{display:flex;flex-direction:column;gap:6px}
+.field .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.field label{font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
+.field .val{font-size:13px;font-weight:700;color:var(--accent-text);
+ font-family:'JetBrains Mono',Consolas,monospace;font-variant-numeric:tabular-nums;
+ background:var(--accent-bg);border:1px solid var(--accent-border);
+ padding:2px 8px;border-radius:6px;line-height:1.35}
+.field .help{font-size:12px;color:var(--muted);line-height:1.5;margin-top:2px}
+input[type=range]{accent-color:var(--accent);width:100%;height:6px;cursor:pointer;margin:2px 0}
+input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 .tin,select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--info-bg);font-size:13px;width:100%;color:var(--ink)}
 .tin:focus,select:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 4px #5b5bd61a}
 .switch-field{flex-direction:row;align-items:center;justify-content:space-between;gap:14px}
@@ -215,12 +225,24 @@ input[type=range]{accent-color:var(--accent);width:100%;height:6px;cursor:pointe
 .evrow.look{background:var(--warning-bg);border-color:var(--warning-border)}
 .evrow .mono{font-family:'JetBrains Mono',Consolas,monospace;color:var(--muted)}
 .evrow .atag{font-size:11px;font-weight:700;color:var(--critical)}
-/* console */
-.console{background:var(--info);border:1px solid var(--line);border-radius:var(--radius);height:480px;overflow:auto;padding:14px 16px;
- font-family:'JetBrains Mono','Cascadia Code',Consolas,monospace;font-size:12.5px;line-height:1.6}
-.console .line{white-space:pre-wrap;word-break:break-word}
-.lt{color:var(--text-1)}
-.l-INFO{color:var(--info)}.l-WARNING{color:var(--warning)}.l-ERROR{color:var(--critical)}.l-DEBUG{color:var(--text-1)}
+/* КОНСОЛЬ ЖУРНАЛА — всегда тёмная подложка.
+   Цвета текста здесь НЕ берутся из темы. Раньше брались, и в светлой теме
+   получалось нечитаемо: метка времени набиралась --text-1 (почти чёрный) на
+   почти чёрном фоне — контраст 1.12:1, текст просто пропадал; уровни INFO и
+   WARNING давали 4.4:1. Тема рассчитана на светлый фон, а этот блок тёмный
+   всегда — значит, и палитра у него своя, зафиксированная. */
+.console{
+  --con-bg:#0B1120; --con-text:#E2E8F0; --con-dim:#94A3B8;
+  --con-info:#7DD3FC; --con-warn:#FCD34D; --con-error:#FCA5A5; --con-ok:#86EFAC;
+  background:var(--con-bg);border:1px solid var(--line);border-radius:var(--radius);
+  height:480px;overflow:auto;padding:14px 16px;color:var(--con-text);
+  font-family:'JetBrains Mono','Cascadia Code',Consolas,monospace;font-size:12.5px;line-height:1.6}
+.console .line{white-space:pre-wrap;word-break:break-word;color:var(--con-text)}
+.console .lt{color:var(--con-dim)}
+.console .l-INFO{color:var(--con-info)}
+.console .l-WARNING{color:var(--con-warn)}
+.console .l-ERROR{color:var(--con-error)}
+.console .l-DEBUG{color:var(--con-dim)}
 @media(max-width:1000px){.app{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap}.kpis{grid-template-columns:repeat(3,1fr)}.clocks,.grid2{grid-template-columns:1fr}}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:var(--info-bg);border-radius:6px;border:2px solid var(--surface-3)}
@@ -651,7 +673,7 @@ async function tick(){
  $('sSprint').textContent=s.sprint??'—';$('sRules').textContent=s.rules;
  $('sRuns').textContent=s.total_runs;$('sOk').textContent=s.total_ok;
  $('sFail').textContent=s.total_fail;$('sSkip').textContent=s.offhours_skipped;
- if(s.runlog){const rl=s.runlog;const lc=$('logCounts');if(lc)lc.innerHTML='⚠️ warnings: <b>'+(rl.warnings||0)+'</b> · ❌ errors: <b>'+(rl.errors||0)+'</b> · TG: '+(s.telegram?'вкл':'выкл');}
+ if(s.runlog){const rl=s.runlog;const lc=$('logCounts');if(lc)lc.innerHTML='предупреждений: <b>'+(rl.warnings||0)+'</b> · ошибок: <b>'+(rl.errors||0)+'</b> · Telegram: '+(s.telegram?'вкл':'выкл');}
  $('oncall').textContent=s.oncall||'—';$('pto').textContent=s.pto||'никого';
  $('team').innerHTML=s.team.map(m=>{const st=m.stats||{};const la=st.last_action?((ACT_HELP[st.last_action]||st.last_action)+(st.last_project?(' · '+st.last_project):'')):'нет активности';
    return '<div class=member><div class=avatar style="background:'+colorFor(m.name)+'">'+initials(m.name)+'</div>'+

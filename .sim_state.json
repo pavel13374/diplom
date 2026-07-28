@@ -105,8 +105,8 @@
       "status": "experimental",
       "author": "dmitry.kozlov",
       "created": "2026-08-18",
-      "modified": "2026-08-18",
-      "fp_rate": 4,
+      "modified": "2026-07-29",
+      "fp_rate": 0,
       "noisy": false,
       "tunes": 0
     },
@@ -193,7 +193,7 @@
       "status": "experimental",
       "author": "sergey.volkov",
       "created": "2026-08-17",
-      "modified": "2026-08-17",
+      "modified": "2026-07-28",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 1
@@ -268,10 +268,10 @@
       "path": "rules/initial_access/supply_chain_—_unexpected_update_binary.yml",
       "tactic": "initial_access",
       "status": "stable",
-      "author": "irina.belova",
-      "created": "2026-08-11",
-      "modified": "2026-07-29",
-      "fp_rate": 0,
+      "author": "maria.ivanova",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 2,
       "noisy": false,
       "tunes": 0
     },
@@ -389,10 +389,10 @@
       "path": "rules/collection/archive_collected_data_via_7zip/rar.yml",
       "tactic": "collection",
       "status": "experimental",
-      "author": "maria.ivanova",
-      "created": "2026-08-19",
-      "modified": "2026-08-19",
-      "fp_rate": 7,
+      "author": "nikita.orlov",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 11,
       "noisy": false,
       "tunes": 0
     },
@@ -597,11 +597,11 @@
     "cloud_storage_bucket_enumeration": {
       "path": "rules/collection/cloud_storage_bucket_enumeration.yml",
       "tactic": "collection",
-      "status": "stable",
-      "author": "olga.novak",
-      "created": "2026-08-13",
-      "modified": "2026-08-13",
-      "fp_rate": 4,
+      "status": "experimental",
+      "author": "nikita.orlov",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 7,
       "noisy": false,
       "tunes": 0
     },
@@ -656,7 +656,7 @@
       "author": "nikita.orlov",
       "created": "2026-07-28",
       "modified": "2026-07-28",
-      "fp_rate": 10,
+      "fp_rate": 0,
       "noisy": false,
       "tunes": 0
     },
@@ -741,9 +741,9 @@
       "path": "rules/credential_access/ntds.dit_extraction_via_ntdsutil.yml",
       "tactic": "credential_access",
       "status": "stable",
-      "author": "irina.belova",
-      "created": "2026-08-19",
-      "modified": "2026-08-19",
+      "author": "dmitry.kozlov",
+      "created": "2026-07-29",
+      "modified": "2026-07-29",
       "fp_rate": 1,
       "noisy": false,
       "tunes": 0
@@ -755,18 +755,62 @@
       "author": "sergey.volkov",
       "created": "2026-07-28",
       "modified": "2026-07-28",
-      "fp_rate": 7,
+      "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "lsass_memory_dump_via_procdump": {
       "path": "rules/credential_access/lsass_memory_dump_via_procdump.yml",
       "tactic": "credential_access",
       "status": "experimental",
-      "author": "nikita.orlov",
+      "author": "irina.belova",
       "created": "2026-07-29",
-      "modified": "2026-07-29",
-      "fp_rate": 0,
+      "modified": "2026-07-28",
+      "fp_rate": 3,
+      "noisy": false,
+      "tunes": 0
+    },
+    "ut": {
+      "path": "rules/persistence/accessibility_feature_backdoor_(sethc/ut.yml",
+      "tactic": "persistence",
+      "status": "experimental",
+      "author": "maria.ivanova",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 1,
+      "noisy": false,
+      "tunes": 0
+    },
+    "windows_event_log_cleared": {
+      "path": "rules/defense_evasion/windows_event_log_cleared.yml",
+      "tactic": "defense_evasion",
+      "status": "stable",
+      "author": "pavel.morozov",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 1,
+      "noisy": false,
+      "tunes": 0
+    },
+    "signed_script_proxy_(pubprn)": {
+      "path": "rules/defense_evasion/signed_script_proxy_(pubprn).yml",
+      "tactic": "defense_evasion",
+      "status": "experimental",
+      "author": "olga.novak",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 8,
+      "noisy": false,
+      "tunes": 0
+    },
+    "dns_query_with_unusually_long_subdomain": {
+      "path": "rules/exfiltration/dns_query_with_unusually_long_subdomain.yml",
+      "tactic": "exfiltration",
+      "status": "stable",
+      "author": "irina.belova",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 9,
       "noisy": false,
       "tunes": 0
     }
@@ -776,12 +820,13 @@
   "oncall_index": 6,
   "issue_seq": 1000,
   "release_seq": 3,
-  "campaign_seq": 54,
+  "campaign_seq": 55,
   "pto": {
     "2026-07-08": "maria.ivanova",
     "2026-07-22": "maria.ivanova",
     "2026-07-21": "maria.ivanova",
-    "2026-07-29": "anna.smirnova"
+    "2026-07-29": "anna.smirnova",
+    "2026-07-28": "dmitry.kozlov"
   },
   "pending_reverts": []
 }

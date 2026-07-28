@@ -453,8 +453,15 @@ class UEBA:
 
         t = _parse_ts(ev.get("ts_sim"))
         if t is not None and p["rate_ewma"]:
-            lo = t.timestamp() - self.VEL_WIN * 60
-            c = sum(1 for x in p["recent"] if x.timestamp() >= lo) + 1
+            # Окно ДВУСТОРОННЕЕ — по той же причине, что и в Enricher: поток не
+            # упорядочен по симулированному времени (шаги кампании датируются
+            # задним числом, журнал копится между запусками). При односторонней
+            # границе событие со «старой» меткой видело всю последующую историю
+            # актора, и интенсивность завышалась в разы: вместо 5 событий за
+            # полчаса получалось 147.
+            hi = t.timestamp()
+            lo = hi - self.VEL_WIN * 60
+            c = sum(1 for x in p["recent"] if lo <= x.timestamp() <= hi) + 1
             s = _surprisal(_poisson_sf(c, p["rate_ewma"]))
             bits += s
             if s >= 6.0:
@@ -483,8 +490,13 @@ class UEBA:
             p["actions"].update(ev["action"]); self.vocab_actions.add(ev["action"])
         t = _parse_ts(ev.get("ts_sim"))
         if t:
-            lo = t.timestamp() - self.VEL_WIN * 60
-            c = sum(1 for x in p["recent"] if x.timestamp() >= lo)
+            # смена прогона: прежняя история к новому потоку не относится
+            if p["recent"] and (p["recent"][-1] - t).total_seconds() > 6 * 3600:
+                p["recent"].clear()
+                p["rate_ewma"] = None
+            hi = t.timestamp()
+            lo = hi - self.VEL_WIN * 60
+            c = sum(1 for x in p["recent"] if lo <= x.timestamp() <= hi)
             # EWMA личной интенсивности (событий за окно VEL_WIN)
             p["rate_ewma"] = float(c) if p["rate_ewma"] is None \
                 else 0.97 * p["rate_ewma"] + 0.03 * c
