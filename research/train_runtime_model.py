@@ -67,7 +67,13 @@ class LogReg:
     из-за сильного дисбаланса: атакующих событий заметно меньше процента.
     """
 
-    def __init__(self, dim, lr=0.15, epochs=90, l2=3e-4, seed=42):
+    #: L2 намеренно сильная. Слабая регуляризация (3e-4) приводила к тому, что
+    #: РЕДКИЙ, но идеально разделяющий признак — например «ручной прогон в
+    #: production» — получал вес +18 и подминал модель под себя: она переставала
+    #: смотреть на остальные 54 признака, порог под FP-бюджет уезжал вверх, и
+    #: эпизодный recall падал втрое. Штраф удерживает веса сопоставимыми, и
+    #: решение принимается по совокупности слабых сигналов — что и требуется.
+    def __init__(self, dim, lr=1.2, epochs=900, l2=2e-3, seed=42):
         self.w = [0.0] * dim; self.b = 0.0
         self.lr = lr; self.epochs = epochs; self.l2 = l2
         self.mu = [0.0] * dim; self.sd = [1.0] * dim
@@ -83,7 +89,35 @@ class LogReg:
         return [(x[j] - self.mu[j]) / self.sd[j] for j in range(len(x))]
 
     def fit(self, X, y):
+        """Обучение. При наличии numpy — векторизованный полный градиент,
+        иначе тот же алгоритм на чистом Python.
+
+        Векторизация здесь не роскошь: перебор силы регуляризации по сетке на
+        20 тысячах событий и 55 признаках в поэлементном цикле занимает минуты,
+        и обучение перестают запускать. Результат обоих путей совпадает с
+        точностью до порядка обхода выборки.
+        """
         self._std(X)
+        try:
+            import numpy as np
+        except ImportError:
+            return self._fit_python(X, y)
+
+        Xn = (np.asarray(X, dtype=np.float64) - np.asarray(self.mu)) / np.asarray(self.sd)
+        yv = np.asarray(y, dtype=np.float64)
+        n = len(yv); pos = max(1.0, yv.sum()); neg = max(1.0, n - pos)
+        sw = np.where(yv > 0, n / (2.0 * pos), n / (2.0 * neg))
+        w = np.zeros(Xn.shape[1]); b = 0.0
+        for ep in range(self.epochs):
+            lr = self.lr / (1.0 + 0.02 * ep)
+            z = np.clip(Xn @ w + b, -30.0, 30.0)
+            p = 1.0 / (1.0 + np.exp(-z))
+            g = (p - yv) * sw
+            w -= lr * ((Xn.T @ g) / n + self.l2 * w)
+            b -= lr * (g.mean())
+        self.w = w.tolist(); self.b = float(b)
+
+    def _fit_python(self, X, y):
         Xn = [self._norm(r) for r in X]
         n = len(Xn); pos = sum(y) or 1; neg = n - pos or 1
         wpos = n / (2.0 * pos); wneg = n / (2.0 * neg)
@@ -210,11 +244,32 @@ def main():
     print(f"  признаков: {len(ml_features.FEATURES)}")
     print("-" * 74)
 
-    m = LogReg(dim=len(ml_features.FEATURES))
-    m.fit([r["x"] for r in train], [r["y"] for r in train])
+    # --- подбор силы регуляризации ПО ВАЛИДАЦИИ ---
+    # Штраф нельзя назначать на глаз: слабый (3e-4) отдавал вес +18 одному
+    # редкому идеально разделяющему признаку и ронял эпизодный recall втрое,
+    # сильный (2e-2) недообучал. Выбираем по PR-AUC на валидации — на той
+    # части, которая не участвует ни в обучении, ни в финальной оценке.
+    Xtr = [r["x"] for r in train]; ytr = [r["y"] for r in train]
+    v_y = [r["y"] for r in val]
+    grid = [3e-4, 1e-3, 3e-3, 1e-2, 3e-2]
+    best = None
+    print(f"  {'L2':>8} | {'PR-AUC (val)':>12} | {'макс|w|':>8}")
+    print("  " + "-" * 36)
+    for l2 in grid:
+        cand = LogReg(dim=len(ml_features.FEATURES), l2=l2)
+        cand.fit(Xtr, ytr)
+        vs = [cand.raw(r["x"]) for r in val]
+        score = pr_auc([s for s, y in zip(vs, v_y) if y == 1],
+                       [s for s, y in zip(vs, v_y) if y == 0])
+        wmax = max(abs(w) for w in cand.w)
+        print(f"  {l2:>8.4f} | {score:>12.3f} | {wmax:>8.2f}")
+        if best is None or score > best[0]:
+            best = (score, l2, cand)
+    _, best_l2, m = best
+    print(f"  выбрано: L2 = {best_l2} (по PR-AUC на валидации)")
+    print("-" * 74)
 
     v_raw = [m.raw(r["x"]) for r in val]
-    v_y = [r["y"] for r in val]
     platt = fit_platt(v_raw, v_y)
 
     def calibrated(x):

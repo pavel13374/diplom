@@ -154,10 +154,32 @@ class BaseAgent:
                    branch=source, mr_iid=iid or 0, message=title)
         return iid or 0
 
+    def _content_features(self, text, path=""):
+        """Наблюдаемые признаки текста — те же, что у настоящего secret-scanner.
+
+        Считаются для ЛЮБОГО текста, а не только для содержимого файлов:
+        комментарий к merge request — такой же канал утечки секрета, как и
+        коммит, и настоящий сканер проверяет его наравне с кодом.
+        """
+        feats = {"bytes": len(text or ""), "lines": (text or "").count("\n") + 1}
+        try:
+            import content_features
+            feats.update(content_features.analyze(text or "", path))
+        except Exception:
+            logger.error("не удалось посчитать признаки содержимого — "
+                         "детектор недосчитается сигналов", exc_info=True)
+        return feats
+
     def comment_mr(self, project_id: int, mr_iid: int, body: str) -> bool:
+        # Признаки содержимого обязательны: без них правило secret-in-mr-comment
+        # не могло сработать НИ РАЗУ — поле n_regex_hits в событии просто
+        # отсутствовало, и секрет, вставленный в обсуждение, был невидим.
+        # Нашлось тестом tests/test_rule_coverage.py (правило молчало на всём
+        # корпусе), а не глазами.
         res, ok, err = self._call("comment_mr", project_id, mr_iid, body)
         self._emit("mr_comment", gitlab_ok=ok, gitlab_error=err,
-                   project_id=project_id, mr_iid=mr_iid, message=body)
+                   project_id=project_id, mr_iid=mr_iid, message=body,
+                   extra=self._content_features(body))
         return ok
 
     def merge_mr(self, project_id: int, mr_iid: int) -> bool:
@@ -273,9 +295,11 @@ class BaseAgent:
         return iid or 0
 
     def comment_issue(self, project_id: int, issue_iid: int, body: str) -> bool:
+        # Комментарий к задаче — такой же канал утечки, как и к merge request.
         res, ok, err = self._call("comment_issue", project_id, issue_iid, body)
         self._emit("issue_comment", gitlab_ok=ok, gitlab_error=err,
-                   project_id=project_id, mr_iid=issue_iid, message=body)
+                   project_id=project_id, mr_iid=issue_iid, message=body,
+                   extra=self._content_features(body))
         return ok
 
     def close_issue(self, project_id: int, issue_iid: int) -> bool:

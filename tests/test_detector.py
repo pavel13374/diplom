@@ -146,6 +146,38 @@ def test_mass_delete_rule():
     check("движок грузит 38 правил", eng.rule_count() == 38)
 
 
+def test_layer_never_reduces_recall():
+    """Добавление слоя не может УМЕНЬШИТЬ обнаружение.
+
+    Регрессия на реальный дефект: подавление дублей проверяло только самый
+    рисковый алерт события. Сработка ML часто оказывалась верхней по риску,
+    попадала в окно подавления — и вместе с ней терялась сработка правила,
+    которая дублем не была. В ablation это выглядело так, что «rules+ml» ловит
+    меньше эпизодов, чем «rules», чего не может быть в принципе.
+    """
+    supp = detector.Suppressor(window_min=60)
+    base = datetime(2026, 6, 1, 12, 0, 0)
+    ts = base.strftime("%Y-%m-%dT%H:%M:%S")
+
+    # алерт правила уже был -> он дубль; алерт ML новый
+    supp.is_duplicate("u", "rule-a", ts)
+    alerts = [{"rule_id": "rule-a", "risk": 0.5}, {"rule_id": "ml-content", "risk": 0.9}]
+    fresh = [a for a in alerts
+             if not supp.is_duplicate("u", a["rule_id"],
+                                      (base + timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%S"))]
+    check("поалертное подавление сохраняет новый алерт", len(fresh) == 1)
+    check("уцелел именно новый слой", fresh and fresh[0]["rule_id"] == "ml-content")
+
+    # если дублями стали все — событие подавляется целиком
+    supp2 = detector.Suppressor(window_min=60)
+    supp2.is_duplicate("u", "rule-a", ts)
+    supp2.is_duplicate("u", "ml-content", ts)
+    fresh2 = [a for a in alerts
+              if not supp2.is_duplicate("u", a["rule_id"],
+                                        (base + timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%S"))]
+    check("полный дубль подавляется целиком", not fresh2)
+
+
 def test_no_tautological_rules():
     """Ни одно правило не должно опираться ТОЛЬКО на имя действия.
 
@@ -282,6 +314,7 @@ def main():
     test_suppressor()
     test_enricher()
     test_mass_delete_rule()
+    test_layer_never_reduces_recall()
     test_no_tautological_rules()
     test_ueba_silent_before_calibration()
     test_ueba_behavior()

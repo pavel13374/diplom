@@ -106,6 +106,9 @@ ATTRIBUTES = {
                         "base64-иконка, собранный артефакт (не секрет)",
     "net_sink_signal":  "в содержимом есть выгрузка на внешний хост: scp/rsync, "
                         "DNS-туннель, curl на внешний домен",
+    "obfuscation_signal": "в содержимом есть исполнение закодированной строки: "
+                          "eval(atob(...)), new Function(atob(...)), "
+                          "exec(b64decode(...)), «| base64 -d | sh»",
     "deps_manifest":    "файл является манифестом зависимостей "
                         "(requirements.txt, package.json, go.mod, pom.xml)",
     "regex_hits":       "список сработавших secret-сигнатур по именам",

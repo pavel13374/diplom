@@ -59,6 +59,22 @@ _NET_SINK_RE = re.compile(
     r"(?:https?://|@)[\w.-]*(?:attacker|exfil|ngrok|pastebin)[\w.-]*",
     re.IGNORECASE)
 
+# СТРУКТУРА ОБФУСКАЦИИ — для T1027 (Obfuscated Files or Information).
+#
+# Одной энтропии здесь мало, и это принципиально: атакующий прячет полезную
+# нагрузку именно в минифицированном JS, где высокая энтропия ЛЕГИТИМНА и
+# правило по энтропии обязано молчать (generated_signal). Отличает вредонос не
+# «случайность» текста, а конструкция исполнения закодированной строки:
+# eval(atob(...)), new Function(atob(...)), exec(base64.b64decode(...)).
+_OBFUSCATION_RE = re.compile(
+    r"eval\s*\(\s*(?:atob|unescape|decodeURIComponent|String\.fromCharCode)|"
+    r"new\s+Function\s*\(\s*(?:atob|unescape)|"
+    r"(?:exec|eval)\s*\(\s*(?:base64\.)?b64decode|"
+    r"exec\s*\(\s*__import__\s*\(\s*['\"]base64|"
+    r"\|\s*base64\s+-d\s*\|\s*(?:sh|bash)|"
+    r"IEX\s*\(\s*\[System\.Text\.Encoding\]",
+    re.IGNORECASE)
+
 # Манифесты зависимостей — для T1195.001 (подмена зависимости)
 _DEPS_RE = re.compile(
     r"(?:^|/)(?:requirements[\w.-]*\.txt|package\.json|go\.mod|pom\.xml|"
@@ -110,4 +126,6 @@ def analyze(content, path="") -> dict:
         "net_sink_signal":        bool(_NET_SINK_RE.search(content)),
         # файл является манифестом зависимостей
         "deps_manifest":          bool(_DEPS_RE.search(path)),
+        # в содержимом есть исполнение закодированной строки (обфускация)
+        "obfuscation_signal":     bool(_OBFUSCATION_RE.search(content)),
     }

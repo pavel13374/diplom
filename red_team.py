@@ -124,6 +124,37 @@ CAMPAIGNS = {
             ("history_rewrite",    "T1070.004", "Defense Evasion"),
         ],
     },
+    # --- сценарии, добавленные по результатам трассируемости ---
+    # tests/test_rule_coverage.py показал, что четыре правила не срабатывали ни
+    # разу: техника описана, а шага атаки, который бы её исполнял, в кампаниях
+    # не было. Правило без исполняемого шага создаёт видимость покрытия ATT&CK.
+    "insider_collection": {
+        "title": "Инсайдер: доступ к секретам → секрет в комментарии → пересылка почты",
+        "steps": [
+            ("grant_secret_access",  "T1098",     "Persistence"),
+            ("secret_in_mr_comment", "T1552.001", "Credential Access"),
+            ("mailbox_forward",      "T1114.003", "Collection"),
+            ("data_exfiltration",    "T1567",     "Exfiltration"),
+        ],
+    },
+    "supply_chain_creds": {
+        "title": "Разведка → креды приватного индекса в манифесте → зашитый токен",
+        "steps": [
+            ("code_search",           "T1593.003", "Reconnaissance"),
+            ("supply_chain_secret",   "T1195.002", "Initial Access"),
+            ("hardcoded_token",       "T1552.001", "Credential Access"),
+            ("artifact_secret_exposure", "T1567",  "Exfiltration"),
+        ],
+    },
+    "review_bypass_push": {
+        "title": "Ослабление защиты → merge без ревью → прямой push в main",
+        "steps": [
+            ("weaken_protection",      "T1562",     "Defense Evasion"),
+            ("merge_without_review",   "T1562",     "Defense Evasion"),
+            ("direct_push_protected",  "T1078",     "Initial Access"),
+            ("secret_in_commit",       "T1552.001", "Credential Access"),
+        ],
+    },
     "deploy_abuse": {
         "title": "Злоупотребление деплоем → сбор → вынос по scp",
         "steps": [

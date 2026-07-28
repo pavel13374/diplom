@@ -51,9 +51,24 @@ function bootEN() {
   eq('13 584 соб.', '13 584 ev.');
   eq('работает · 4м', 'running · 4m');
 
-  console.log('\n=== причины срабатываний (продуктовый контент) ===');
-  eq('Высокоэнтропийный секрет (без сигнатуры)', 'High-entropy secret (no signature)');
-  eq('— Удаление файла (кандидат на массовое)', '— File deletion (mass-delete candidate)');
+  // Названия правил берём ИЗ САМИХ ПРАВИЛ, а не списком в тесте: раньше здесь
+  // были зашиты две строки, и после переписывания правил тест проверял
+  // переводы, которых больше нет, а 36 новых названий не проверял никто.
+  console.log('\n=== причины срабатываний: все названия правил ===');
+  const rulesDir = path.join(__dirname, '..', 'detections');
+  const titles = fs.readdirSync(rulesDir)
+    .filter(f => f.endsWith('.json'))
+    .map(f => JSON.parse(fs.readFileSync(path.join(rulesDir, f), 'utf8')).title);
+  let untranslated = [];
+  for (const t of titles) {
+    const got = T(t);
+    if (got === t) untranslated.push(t);
+  }
+  ok(`все ${titles.length} названий правил переводятся`, untranslated.length === 0,
+     untranslated.slice(0, 3).join(' | '));
+  // и переведённое название по-прежнему подставляется в разметку с дефисом
+  const sample = titles[0];
+  eq('— ' + sample, '— ' + T(sample));
 
   console.log('\n=== данные не трогаем ===');
   eq('@maria.ivanova', '@maria.ivanova');

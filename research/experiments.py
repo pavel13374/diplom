@@ -113,8 +113,14 @@ def evaluate(events_list, cfg):
         det = eng.process(run_defense.observed(ev))
         if not det.get("alert"):
             continue
-        top = max(det["alerts"], key=lambda a: a["risk"])
-        if supp.is_duplicate(ev.get("actor"), top.get("rule_id"), ev.get("ts_sim")):
+        # Подавление поалертное — как в боевом конвейере. Если проверять только
+        # самый рисковый алерт, включение слоя ML снижает полноту: его сработка
+        # становится верхней, попадает в окно подавления и утаскивает с собой
+        # сработку правила. Добавление слоя не может ухудшать обнаружение.
+        fresh = [a for a in det["alerts"]
+                 if not supp.is_duplicate(ev.get("actor"), a.get("rule_id"),
+                                          ev.get("ts_sim"))]
+        if not fresh:
             continue
         if is_att:
             tp += 1

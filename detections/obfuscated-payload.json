@@ -4,17 +4,10 @@
   "tactic": "Defense Evasion",
   "title": "Обфусцированное содержимое в коммите",
   "severity": "high",
-  "risk": 0.66,
-  "rationale": "Крупный высокоэнтропийный блоб в файле, для которого минификация не ожидается (generated_signal=false).",
+  "risk": 0.72,
+  "rationale": "Исполнение закодированной строки: eval(atob(...)), new Function(atob(...)), exec(b64decode(...)), «| base64 -d | sh». Раньше правило опиралось на энтропию — и было слепо ровно там, где обфускацию и прячут: в минифицированном JS высокая энтропия легитимна, файл попадал под исключение generated_signal, и техника T1027 переставала детектироваться. Отличает вредонос не «случайность» текста, а КОНСТРУКЦИЯ исполнения.",
   "when": {
     "action": "push",
-    "shannon_entropy": {
-      ">=": 5.2
-    },
-    "bytes": {
-      ">=": 800
-    },
-    "generated_signal": false,
-    "placeholder_signal": false
+    "obfuscation_signal": true
   }
 }

@@ -17,8 +17,11 @@ for _p in (_ROOT, _os.path.join(_ROOT, "tools"), _os.path.join(_ROOT, "research"
         _sys.path.insert(0, _p)
 _os.chdir(_ROOT)
 del _os, _sys
+import os
 import sys
 import socket
+
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -97,17 +100,51 @@ def main():
     except Exception as e:
         line(False, "llm_client", str(e)[:50])
 
-    print("\n  Детекты:")
+    print("\n  Слои детектирования:")
     try:
         import detector
+        import taxonomy
+        from attack_matrix import all_techniques
         e = detector.DetectionEngine()
-        line(e.rule_count() > 0, "правила загружены", f"{e.rule_count()} шт, {len(e.techniques_covered())} техник")
+        matrix = all_techniques()
+        covered = set(e.techniques_covered()) & matrix
+        line(e.rule_count() > 0, "L0 правила загружены",
+             f"{e.rule_count()} шт, покрыто {len(covered)}/{len(matrix)} техник "
+             f"({len(covered)/len(matrix)*100:.0f}%)")
+
+        # L0: правил-тавтологий быть не должно (см. taxonomy.py)
+        import json as _json, glob as _glob
+        taut = []
+        for fp in _glob.glob(os.path.join(BASE, "detections", "*.json")):
+            w = (_json.load(open(fp, encoding="utf-8")).get("when") or {})
+            if len(w) == 1 and "action" in w:
+                taut.append(os.path.basename(fp))
+        line(not taut, "правила не читают метку",
+             "все опираются на атрибуты" if not taut
+             else f"тавтологии: {', '.join(taut[:3])}")
+
+        line(True, "L1 UEBA",
+             f"порог из данных, бюджет тревог {e.ueba.BUDGET*100:.2f}% "
+             f"событий, калибровка после {e.ueba.MIN_CALIB}")
+
+        if e.ml is not None and e.ml.available():
+            m = e.ml
+            line(True, "L2 ML загружен",
+                 f"порог {m.threshold:.4f}, обучена {m.trained_on}, "
+                 f"калибровка Платта: {'да' if m.platt else 'нет'}")
+        else:
+            line(None, "L2 ML не загружен",
+                 "работаем на L0+L1 — обучить: python research/train_runtime_model.py")
+
+        line(True, "слияние рисков", f"режим {detector._cfg('FUSION_MODE', 'logodds')} "
+             f"(поправка на зависимость слоёв)")
+        line(len(taxonomy.OBSERVABLE) > 0, "словарь наблюдаемых действий",
+             f"{len(taxonomy.OBSERVABLE)} действий, {len(taxonomy.ATTRIBUTES)} атрибутов")
     except Exception as ex:
-        line(False, "detector", str(ex)[:50])
+        line(False, "detector", str(ex)[:70])
 
     print("\n  Event-store и данные:")
     try:
-        import os
         import eventstore
         eventstore.init()
         ok = eventstore.enabled()
@@ -136,14 +173,27 @@ def main():
     print("\n  Конвейер (смоук офлайн):")
     try:
         import run_defense
-        _probe = {"action": "push", "actor": "_doctor", "project": "soc/secrets-vault",
-                  "ts_sim": "2026-01-01T03:00:00", "shannon_entropy": 5.5,
-                  "placeholder_signal": False, "n_regex_hits": 0,
+        # Эталон строится ИЗ РЕАЛЬНОГО СОДЕРЖИМОГО через тот же
+        # content_features, что и в бою: так смоук проверяет весь путь
+        # «текст -> признаки -> правило», а не подставленные вручную поля.
+        import content_features
+        _content = ("# deploy config\n"
+                    "GITLAB_TOKEN=glpat-" + "A1b2C3d4E5f6G7h8I9j0" + "\n")
+        _probe = {"action": "push", "actor": "_doctor", "project": "soc-infra",
+                  "path": "config/prod.env", "branch": "main",
+                  "ts_sim": "2026-01-01T03:00:00", "hour": 3, "is_night": True,
+                  "bytes": len(_content),
                   "is_anomaly": True, "campaign_id": "_doctor"}
+        _probe.update(content_features.analyze(_content, _probe["path"]))
         res = run_defense.process(_probe)
+        hits = [a["rule_id"] for a in res.get("alerts", [])]
         line(bool(res.get("alert")), "детектор ловит эталонное событие",
-             f"risk={res.get('risk')}" if res.get("alert")
-             else "эталон не пойман — правила изменялись?")
+             f"risk={res.get('risk')}, сработало: {', '.join(hits)}"
+             if res.get("alert") else "эталон не пойман — правила изменялись?")
+        line("secret-signature-commit" in hits,
+             "сигнатура секрета распознана по содержимому",
+             "правило secret-signature-commit сработало" if "secret-signature-commit" in hits
+             else "правило молчит — проверь content_features и detections/")
         leak_ok = "campaign_id" not in run_defense.observed(_probe)
         line(leak_ok, "анти-лик: observed() срезает разметку",
              "ок" if leak_ok else "!!! разметка мира видна детектору")

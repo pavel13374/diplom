@@ -35,6 +35,7 @@ FEATURES = [
     "high_entropy_tok", "has_content", "bytes_log",
     # путь
     "path_env", "path_secretdir", "path_ci", "path_deps",
+    "obfuscation_sig", "net_sink_sig", "generated_sig",
     # проект
     "proj_secrets",
     # взаимодействия
@@ -107,6 +108,9 @@ def featurize(r):
         1.0 if any(k in path for k in _SECRET_DIRS) else 0.0,
         1.0 if ("gitlab-ci" in path or path.startswith("ci/")) else 0.0,
         1.0 if any(k in path for k in ("requirements", "package.json", "go.mod", "pom.xml")) else 0.0,
+        _flag(r, "obfuscation_signal"),
+        _flag(r, "net_sink_signal"),
+        _flag(r, "generated_signal"),
 
         1.0 if r.get("project") == "soc-secrets" else 0.0,
 

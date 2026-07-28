@@ -120,18 +120,35 @@ def run(once=False, poll=2.0):
                                              "action": ev.get("action")}})
                     continue
                 if res.get("alert"):
-                    top = max(res["alerts"], key=lambda a: a["risk"]) if res.get("alerts") else {}
-                    risk = res["risk"]
-                    tech = ("[" + top["technique"] + "] ") if top.get("technique") else ""
-                    reason = tech + top.get("reason", "")
-                    # подавление дублей (alert fatigue): тот же actor+rule в окне
-                    if _SUPPRESS.is_duplicate(ev.get("actor"), top.get("rule_id"), ev.get("ts_sim")):
+                    # ПОДАВЛЕНИЕ ДУБЛЕЙ — ПОАЛЕРТНОЕ.
+                    #
+                    # Раньше проверялся только САМЫЙ РИСКОВЫЙ алерт события, и
+                    # если он оказывался дублем, событие пропускалось целиком.
+                    # Из-за этого включение слоя ML СНИЖАЛО полноту: ML-сработка
+                    # часто становилась верхней по риску, попадала в окно
+                    # подавления — и вместе с ней терялась сработка правила,
+                    # которая дублем не была. Добавление слоя не может уменьшать
+                    # обнаружение, это признак ошибки.
+                    #
+                    # Теперь дубли отсеиваются по каждому (actor, rule_id)
+                    # отдельно, и событие доходит до аналитика, если уцелел хотя
+                    # бы один алерт.
+                    fresh = [a for a in res["alerts"]
+                             if not _SUPPRESS.is_duplicate(ev.get("actor"),
+                                                           a.get("rule_id"),
+                                                           ev.get("ts_sim"))]
+                    if not fresh:
                         suppressed += 1
                         log.debug("алерт подавлен как дубль",
                                   extra={"ctx": {"event_id": ev.get("_id"),
                                                  "actor": ev.get("actor"),
-                                                 "rule_id": top.get("rule_id")}})
+                                                 "rules": [a.get("rule_id")
+                                                           for a in res["alerts"]]}})
                         continue
+                    top = max(fresh, key=lambda a: a["risk"])
+                    risk = res["risk"]
+                    tech = ("[" + top["technique"] + "] ") if top.get("technique") else ""
+                    reason = tech + top.get("reason", "")
                     alerts += 1
                     try:
                         eventstore.append_alert({
