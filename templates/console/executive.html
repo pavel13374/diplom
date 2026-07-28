@@ -1,0 +1,151 @@
+<!doctype html><html lang=ru><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>Обзор для комиссии — SOC Purple-Team Platform</title>
+<style>
+
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
+ background:radial-gradient(1000px 460px at 85% -12%,#ede9fe70,transparent 60%),
+            radial-gradient(760px 400px at -8% 30%,#dbeafe55,transparent 55%),var(--bg)}
+.wrap{max-width:1060px;margin:0 auto;padding:34px 26px 70px}
+.crumb{font-size:12.5px;color:var(--soft);margin-bottom:20px}
+.crumb a{color:var(--accent);font-weight:700;text-decoration:none}
+h1{font-size:30px;letter-spacing:-.02em;margin:0 0 10px;line-height:1.25}
+h1 b{background:linear-gradient(90deg,var(--accent-brand),var(--info));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:16.5px;color:var(--line-strong);line-height:1.65;max-width:840px;margin:0 0 26px}
+h2{font-size:15px;font-weight:600;letter-spacing:0;color:var(--text-1);margin:38px 0 14px;display:flex;align-items:center;gap:9px}
+h2:before{content:'';width:5px;height:16px;border-radius:3px;background:var(--accent-brand)}
+/* конвейер */
+.pipe{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.pnode{flex:1;min-width:150px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 14px;
+ box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease;position:relative}
+.pnode:hover{transform:translateY(-3px);box-shadow:0 2px 4px rgba(23,28,40,.06),0 16px 36px rgba(124,58,237,.14)}
+.pnode .ic{font-size:22px}
+.pnode b{display:block;font-size:13.5px;margin:7px 0 4px}
+.pnode .d{font-size:11.5px;color:var(--soft);line-height:1.5}
+.parr{display:flex;align-items:center;padding:0 7px;color:var(--accent-brand);font-size:20px;font-weight:800}
+/* факты */
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.fact{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:17px 18px;box-shadow:var(--shadow)}
+.fact .n{font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--red)}
+.fact .t{font-size:13px;line-height:1.55;margin-top:6px}
+.fact .src{font-size:11px;color:var(--soft);margin-top:8px}
+/* метрики */
+.mets{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.met{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:17px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.met:before{content:'';position:absolute;inset:0 0 auto 0;height:3px;background:var(--accent-brand)}
+.met .n{font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.met .l{font-size:12px;font-weight:700;margin-top:2px}
+.met .d{font-size:11.5px;color:var(--soft);line-height:1.5;margin-top:6px}
+.met .n.ok{color:var(--green)}.met .n.acc{color:var(--accent)}
+.computing{font-size:12.5px;color:var(--soft);margin-top:10px}
+/* holdout-график */
+.hold{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow)}
+.hrow{display:grid;grid-template-columns:110px 1fr 1fr;gap:10px;align-items:center;margin-bottom:9px;font-size:12px}
+.hrow .fam{font-family:ui-monospace,SFMono-Regular,monospace;font-weight:700;color:var(--line-strong)}
+.hbar{height:17px;border-radius:5px;background:var(--info-bg);overflow:hidden;position:relative}
+.hbar i{display:block;height:100%;width:0;border-radius:5px;transition:width .8s ease}
+.hbar.rg i{background:var(--info-bg)}.hbar.ml i{background:var(--accent-brand)}
+.hbar span{position:absolute;right:7px;top:1.5px;font-size:10.5px;font-weight:700;color:var(--line-strong)}
+.hleg{display:flex;gap:18px;font-size:11.5px;color:var(--soft);margin:4px 0 14px}
+.hleg i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+.concl{margin-top:14px;padding:12px 15px;border-radius:11px;background:var(--accent-bg);
+ border:1px solid var(--accent-border);color:var(--accent-brand);font-size:13px;line-height:1.6}
+/* CTA */
+.cta{display:flex;gap:12px;margin-top:34px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent-brand);color:#fff;border:none;
+ border-radius:12px;padding:13px 22px;font-weight:700;cursor:pointer;font-size:14px;text-decoration:none;
+ box-shadow:0 2px 10px #7c3aed44;transition:all .16s ease}
+.btn:hover{transform:translateY(-1px);box-shadow:0 5px 16px #7c3aed55}
+.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow)}
+.btn.ghost:hover{border-color:var(--accent-border)}
+.note{font-size:11.5px;color:var(--soft);margin-top:26px;line-height:1.6}
+@media(max-width:760px){.pipe{flex-direction:column}.parr{transform:rotate(90deg);justify-content:center;padding:2px 0}}
+</style><link rel="stylesheet" href="/static/design-system.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🛡</text></svg>"></head><body><div class=wrap>
+<div class=crumb><a href="/">← Sentinel SOC</a> · Purple Team Platform · обзор простым языком</div>
+<h1>Система сама замечает <b>кражу секретов</b> в конвейере разработки — и объясняет, что случилось</h1>
+<p class=lead>Пароли, токены и ключи (секреты) регулярно утекают через git-репозитории и CI/CD-конвейеры.
+Платформа наблюдает за поведением всех участников разработки, ловит цепочки подозрительных действий,
+собирает их в инциденты и объясняет каждый инцидент человеческим языком.</p>
+
+<h2>Как это работает</h2>
+<div class=pipe>
+  <div class=pnode><span class=ic>01</span><b>Атакующий</b><div class=d>инсайдер или взломанный аккаунт крадёт токены, ключи, код</div></div>
+  <div class=parr>→</div>
+  <div class=pnode><span class=ic>02</span><b>События CI/CD</b><div class=d>каждый push, ветка, MR и настройка пишутся в единый журнал</div></div>
+  <div class=parr>→</div>
+  <div class=pnode><span class=ic>03</span><b>Детектор</b><div class=d>3 слоя: правила + профиль поведения каждого сотрудника (UEBA) + ML</div></div>
+  <div class=parr>→</div>
+  <div class=pnode><span class=ic>04</span><b>Инцидент</b><div class=d>разрозненные сработки склеиваются в цепочку шагов атаки (kill-chain)</div></div>
+  <div class=parr>→</div>
+  <div class=pnode><span class=ic>05</span><b>Объяснение</b><div class=d>LLM пишет вердикт: что произошло, насколько серьёзно, что делать</div></div>
+</div>
+
+<h2>Почему это важно</h2>
+<div class=facts>
+  <div class=fact><div class=n>12,8 млн</div><div class=t>секретов утекло в публичные GitHub-репозитории за один год — в 4 раза больше, чем четырьмя годами ранее</div><div class=src>GitGuardian, State of Secrets Sprawl 2024</div></div>
+  <div class=fact><div class=n>CircleCI, 2023</div><div class=t>компрометация CI-платформы: тысячам компаний пришлось экстренно ротировать все секреты всех проектов</div><div class=src>инцидент января 2023, официальный отчёт CircleCI</div></div>
+  <div class=fact><div class=n>дни и недели</div><div class=t>утёкший ключ часто остаётся действительным — никто не замечает утечку, пока им не воспользуются</div><div class=src>поэтому важно ловить кражу в момент, а не постфактум</div></div>
+</div>
+
+<h2>Живые показатели этой установки</h2>
+<div class=mets id=mets>
+  <div class=met><div class="n acc" id=mDet>—</div><div class=l>обнаружение атак</div><div class=d>доля атакующих эпизодов, на которые детектор поднял тревогу</div></div>
+  <div class=met><div class="n ok" id=mMttd>—</div><div class=l>время до обнаружения</div><div class=d>от первого шага атаки до первого алерта (MTTD, сим-время)</div></div>
+  <div class=met><div class="n" id=mFp>—</div><div class=l>ложные тревоги</div><div class=d>доля алертов, поднятых на нормальной работе команды (чем меньше, тем лучше)</div></div>
+  <div class=met><div class="n acc" id=mCov>—</div><div class=l>покрытие ATT&CK</div><div class=d>доля техник атакующих (по матрице MITRE ATT&CK), которые платформа умеет замечать</div></div>
+</div>
+<div class=computing id=metSt>считаю метрики по всему журналу событий…</div>
+
+<h2>Почему не просто «поиск по шаблону»</h2>
+<div class=hold>
+  <div style="font-size:13.5px;line-height:1.6;margin-bottom:10px">Секреты нового, незнакомого формата.
+  Классический поиск по шаблонам (regex) знает только то, что в него заложили. Проверка: прячем от детектора
+  один формат секретов при обучении — и смотрим, найдёт ли он его.</div>
+  <div class=hleg><span><i style=background:#cbd0e0></i>поиск по шаблонам (regex)</span>
+    <span><i style="background:linear-gradient(90deg,#a855f7,#7c3aed)"></i>ML-детектор платформы</span></div>
+  <div id=holdRows><div style="color:#6d7585;font-size:12px">загружаю results/holdout.csv… (если пусто — запусти <code>python research/experiments_holdout.py</code>)</div></div>
+  <div class=concl id=holdConcl style=display:none></div>
+</div>
+
+<div class=cta>
+  <a class=btn href="/#red">Показать живую атаку</a>
+  <a class="btn ghost" href="/">Открыть Sentinel SOC</a>
+  <a class="btn ghost" href="http://127.0.0.1:8787" target=_blank>Консоль среды (:8787)</a>
+</div>
+
+<p class=note>Оценка честная: детектор не видит разметку симулятора (какое событие — атака), метрики считаются
+постфактум сопоставлением алертов с разметкой. Внешние цифры — из публичных отчётов, проверь актуальность перед защитой.</p>
+</div>
+<script>
+const $=x=>document.getElementById(x);
+async function jget(u){const r=await fetch(u);return r.json();}
+function pct(v){return Math.round((v||0)*100)+'%';}
+async function poll(){
+ let d;try{d=await jget('/api/executive');}catch(e){return;}
+ const m=d.metrics;
+ if(m){
+  $('mDet').textContent=pct(m.detection_rate);
+  $('mMttd').textContent=(m.mttd_sim_min!=null?m.mttd_sim_min:'—')+' мин';
+  $('mFp').textContent=pct(m.fp_rate);
+  $('mFp').className='n '+(m.fp_rate<=0.15?'ok':'');
+  $('mCov').textContent=pct(m.attack_coverage);
+  $('metSt').textContent='по '+m.events+' событиям · '+m.anomaly_episodes+' атакующих эпизодов · '+m.alerts+' алертов';
+ } else {
+  $('metSt').textContent=d.computing?'считаю метрики по всему журналу событий… (10–30 сек)':(d.metrics_err?('не удалось: '+d.metrics_err):'нет данных — запусти мир или демо');
+ }
+ const rows=d.holdout||[];
+ if(rows.length){
+  $('holdRows').innerHTML=rows.map(r=>{
+   const rg=Math.round(parseFloat(r.regex_recall||0)*100), ml=Math.round(parseFloat(r.ml_recall||0)*100);
+   return '<div class=hrow><span class=fam>'+r.held_out_family+'</span>'+
+    '<div class="hbar rg"><i style=width:'+rg+'%></i><span>'+rg+'%</span></div>'+
+    '<div class="hbar ml"><i style=width:'+ml+'%></i><span>'+ml+'%</span></div></div>';}).join('');
+  const win=rows.filter(r=>parseFloat(r.ml_recall)>parseFloat(r.regex_recall)).length;
+  const c=$('holdConcl');c.style.display='block';
+  c.innerHTML='<b>Вывод:</b> на '+win+' из '+rows.length+' незнакомых форматов ML-детектор находит секреты, которые поиск по шаблонам не находит вовсе — модель обобщает на новое, сигнатуры нет.';
+ }
+ if(!m&&!window._t2)window._t2=setInterval(poll,3000);
+ if(m&&window._t2){clearInterval(window._t2);window._t2=null;}
+}
+poll();
+</script></body></html>

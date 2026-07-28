@@ -1,0 +1,102 @@
+<!doctype html><html lang=ru><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>ROI — окно экспозиции секрета</title>
+<style>
+
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
+ background:radial-gradient(1000px 460px at 85% -12%,#ede9fe70,transparent 60%),var(--bg)}
+.wrap{max-width:920px;margin:0 auto;padding:34px 26px 70px}
+.crumb{font-size:12.5px;color:var(--soft);margin-bottom:18px}.crumb a{color:var(--accent);font-weight:700;text-decoration:none}
+h1{font-size:26px;margin:0 0 8px;letter-spacing:-.02em}
+.lead{font-size:15px;color:var(--line-strong);line-height:1.6;margin:0 0 24px;max-width:760px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 1px 2px rgba(23,28,40,.05),0 8px 24px rgba(23,28,40,.06);margin-bottom:18px}
+h2{font-size:15px;font-weight:600;letter-spacing:0;color:var(--text-1);margin:0 0 14px}
+.ctrl{display:grid;grid-template-columns:1fr;gap:15px}
+.field label{font-size:12.5px;font-weight:700;display:flex;justify-content:space-between}
+.field label b{color:var(--accent);font-variant-numeric:tabular-nums}
+.field input[type=range]{width:100%;accent-color:var(--accent);margin-top:7px}
+.field .h{font-size:11px;color:var(--soft);margin-top:2px}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px}
+.stat{background:linear-gradient(180deg,var(--info-bg),var(--accent-bg));border:1px solid var(--accent-border);border-radius:13px;padding:18px}
+.stat .l{font-size:12px;color:var(--soft);font-weight:600}
+.stat .v{font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+.stat.win .v{color:var(--green)}
+.stat .s{font-size:11.5px;color:var(--soft);margin-top:5px}
+.bar2{margin-top:16px}
+.brow{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:12.5px}
+.brow .lab{width:180px;color:var(--line-strong);font-weight:600}
+.btrack{flex:1;height:22px;border-radius:6px;background:var(--info-bg);overflow:hidden}
+.btrack i{display:block;height:100%;border-radius:6px;transition:width .5s ease}
+.assum{font-size:12px;color:var(--soft);line-height:1.7}
+.assum code{background:var(--accent-bg);padding:1px 5px;border-radius:4px}
+.btn{display:inline-flex;gap:8px;align-items:center;background:var(--accent-brand);color:#fff;
+ border:none;border-radius:11px;padding:11px 18px;font-weight:700;font-size:13.5px;text-decoration:none;box-shadow:0 2px 10px #7c3aed44}
+</style><link rel="stylesheet" href="/static/design-system.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🛡</text></svg>"></head><body><div class=wrap>
+<div class=crumb><a href="/">← Sentinel SOC</a> · оценка эффекта в деньгах</div>
+<h1>Сколько стоит «окно экспозиции» секрета</h1>
+<p class=lead>Утёкший ключ опасен ровно столько, сколько он остаётся незамеченным и действительным.
+Платформа сокращает это окно с дней (до планового ротейта) до минут (MTTD — время до обнаружения).
+Двигай ползунки — оценка пересчитывается вживую.</p>
+
+<div class=card><h2>Параметры</h2>
+<div class=ctrl>
+  <div class=field><label>Инцидентов с утечкой секрета в год <b id=vN>12</b></label>
+    <input type=range id=n min=1 max=200 value=12><div class=h>сколько раз в год у вас реально утекает секрет</div></div>
+  <div class=field><label>Средний ущерб от одной полноценной компрометации, $ <b id=vC>250 000</b></label>
+    <input type=range id=c min=10000 max=2000000 step=10000 value=250000><div class=h>дефолт — порядок публичных оценок стоимости утечки данных (проверь актуальную цифру перед защитой)</div></div>
+  <div class=field><label>Окно БЕЗ системы — дней до планового ротейта <b id=vD>14</b></label>
+    <input type=range id=d min=1 max=90 value=14><div class=h>сколько живёт скомпрометированный секрет, пока его не заметят/не сменят по расписанию</div></div>
+  <div class=field><label>Доля ущерба, зависящая от времени экспозиции <b id=vK>70%</b></label>
+    <input type=range id=k min=0 max=100 value=70><div class=h>часть ущерба, которую можно предотвратить быстрым обнаружением (остальное — мгновенный эффект утечки)</div></div>
+</div></div>
+
+<div class=card><h2>Оценка</h2>
+<div class=big>
+  <div class=stat><div class=l>Окно экспозиции сейчас → с системой</div><div class=v id=oWin>—</div><div class=s id=oWinS></div></div>
+  <div class="stat win"><div class=l>Оценочная экономия в год</div><div class=v id=oSave>—</div><div class=s>предотвращённая, зависящая от времени часть ущерба</div></div>
+</div>
+<div class=bar2>
+  <div class=brow><span class=lab>Ущерб без системы</span><div class=btrack><i id=b1 style="background:#dc2626"></i></div><b id=bl1></b></div>
+  <div class=brow><span class=lab>Остаточный ущерб с системой</span><div class=btrack><i id=b2 style="background:#16a34a"></i></div><b id=bl2></b></div>
+</div>
+<div class=s style="font-size:11.5px;color:var(--soft);margin-top:10px" id=mttdNote>MTTD берётся из живых метрик платформы…</div>
+</div>
+
+<div class=card><h2>Допущения (важно для честности)</h2>
+<div class=assum>
+Модель линейная и намеренно простая: ущерб, зависящий от времени, считается пропорционально длительности экспозиции.
+Экономия = <code>N × C × k × (1 − MTTD_дней / D)</code>, где MTTD переведён из сим-минут в дни.
+Это оценка порядка величины, а не бухгалтерский расчёт: реальные потери зависят от типа секрета, прав доступа и скорости злоумышленника.
+Внешняя цифра ущерба — порядок публичных отчётов (например, IBM Cost of a Data Breach); подставь свою и сверь перед защитой.
+</div></div>
+
+<a class=btn href="/">← Вернуться в консоль</a>
+</div>
+<script>
+const $=x=>document.getElementById(x);
+let MTTD_MIN=1;
+function fmt(n){return n.toLocaleString('ru-RU',{maximumFractionDigits:0});}
+function calc(){
+ const n=+$('n').value,c=+$('c').value,d=+$('d').value,k=+$('k').value/100;
+ $('vN').textContent=n;$('vC').textContent=fmt(c)+' $'.replace(' ','');$('vC').textContent=fmt(c);
+ $('vD').textContent=d;$('vK').textContent=Math.round(k*100)+'%';
+ const mttdDays=MTTD_MIN/60/24;
+ const winCut=Math.max(0,1-mttdDays/d);
+ const base=n*c*k;                 // зависящая от времени часть ущерба/год без системы
+ const save=base*winCut;
+ const resid=base-save;
+ $('oWin').textContent=d+' дн → '+(MTTD_MIN<60?Math.round(MTTD_MIN)+' мин':(MTTD_MIN/60).toFixed(1)+' ч');
+ $('oWinS').textContent='сокращение окна на '+Math.round(winCut*100)+'%';
+ $('oSave').textContent='$'+fmt(save);
+ const mx=Math.max(base,1);
+ $('b1').style.width='100%';$('bl1').textContent='$'+fmt(base);
+ $('b2').style.width=(resid/mx*100)+'%';$('bl2').textContent='$'+fmt(resid);
+}
+['n','c','d','k'].forEach(id=>$(id).addEventListener('input',calc));
+async function pull(){try{const r=await fetch('/api/roi');const d=await r.json();
+ if(d.mttd_sim_min!=null){MTTD_MIN=Math.max(0.1,d.mttd_sim_min);
+  $('mttdNote').textContent='MTTD из живых метрик: '+d.mttd_sim_min+' сим-мин ('+d.incidents_seen+' инцидентов в этом прогоне).';}
+ else $('mttdNote').textContent='Время до обнаружения появится, когда наберётся хотя бы один снапшот метрик.';
+ calc();}catch(e){calc();}}
+pull();
+</script></body></html>

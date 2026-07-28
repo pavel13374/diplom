@@ -32,17 +32,25 @@ def main():
         return 0
 
     os.environ.setdefault("SOC_OFFLINE", "1")
-    try:
-        import console
-        import webapp
-    except Exception as e:
-        print("  не удалось импортировать консоли: %s" % e)
+
+    # Страницы вынесены из .py в templates/ — берём файлы напрямую и не
+    # импортируем консоли ради разметки (импорт поднимал event-store и
+    # фоновые потоки только чтобы прочитать строку).
+    tpl = [
+        ("console.html", os.path.join(ROOT, "templates", "console", "dashboard.html")),
+        ("world.html", os.path.join(ROOT, "templates", "env", "dashboard.html")),
+    ]
+    missing = [p for _, p in tpl if not os.path.isfile(p)]
+    if missing:
+        print("  не найдены шаблоны страниц: %s" % missing)
         return 1
 
     tmp = tempfile.mkdtemp(prefix="soc-a11y-")
     paths = []
-    for name, html in (("console.html", console.DASH), ("world.html", webapp.DASH_HTML)):
+    for name, src in tpl:
         p = os.path.join(tmp, name)
+        with open(src, encoding="utf-8") as f:
+            html = f.read()
         with open(p, "w", encoding="utf-8") as f:
             f.write(html)
         paths.append(p)

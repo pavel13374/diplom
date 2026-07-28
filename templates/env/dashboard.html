@@ -1,0 +1,944 @@
+<!doctype html><html lang=ru><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>Sentinel Env — Team &amp; GitLab</title>
+<style>
+
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);
+ background:radial-gradient(900px 420px at 88% -12%,#e0e7ff70,transparent 60%),
+            radial-gradient(760px 380px at -8% 34%,#ccfbf14d,transparent 55%),var(--bg);
+ font-family:'Inter',-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px}
+.app{display:grid;min-height:100vh}
+/* sidebar */
+.side{background:linear-gradient(176deg,var(--info),var(--info));color:var(--info);display:flex;flex-direction:column;padding:20px 16px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;color:#fff;padding:6px 8px 18px}
+.brand .mk{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--info),var(--info));display:flex;align-items:center;justify-content:center;font-size:16px}
+.nav{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;color:var(--info);
+ text-decoration:none;font-weight:600;font-size:13.5px;cursor:pointer;transition:.15s}
+.nav a svg{width:18px;height:18px;opacity:.85}
+.nav a:hover{background:#ffffff14;color:#fff}
+.nav a.active{background:#ffffff1f;color:#fff}
+.nav a.active svg{opacity:1}
+.side-foot{margin-top:auto;border-top:1px solid #ffffff1f;padding-top:14px;font-size:12px;color:var(--info)}
+.side-foot .st{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.side-foot a{color:var(--info);text-decoration:none}.side-foot a:hover{color:#fff}
+.run-dot{width:9px;height:9px;border-radius:50%;background:var(--text-3)}.run-dot.on{background:var(--success);box-shadow:0 0 0 4px #34d39933}
+/* main */
+.main{padding:0}
+.topbar{position:sticky;top:0;z-index:10;background:#f4f5fbf2;backdrop-filter:blur(8px);
+ border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:16px 28px}
+.topbar h1{font-size:18px;margin:0;font-weight:700}
+.grow{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid var(--line);background:#fff}
+.pill .d{width:7px;height:7px;border-radius:50%;background:var(--text-3)}
+.pill.ok .d{background:var(--ok)}.pill.bad .d{background:var(--bad)}
+.pill.warn{background:var(--warning-bg);border-color:var(--warning-border);color:var(--warning)}.pill.warn .d{background:var(--warn)}
+.pill.ok .d{animation:hpulse 2s ease infinite}
+@keyframes hpulse{0%,100%{opacity:1}50%{opacity:.45}}
+.pill b{font-weight:700}
+.banner{display:flex;align-items:center;flex-wrap:wrap;margin:14px 28px -8px;padding:11px 16px;border-radius:12px;
+ background:linear-gradient(90deg,var(--warning-bg),var(--warning-bg));border:1px solid var(--warning-border);color:var(--warning);font-size:13px;
+ box-shadow:var(--shadow);animation:bslide .3s ease}
+.banner .bsub{color:var(--warning);font-size:12px}
+@keyframes bslide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.ctx{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:14px 28px -10px;padding:9px 15px;border-radius:11px;
+ background:linear-gradient(90deg,var(--accent-bg),var(--info-bg));border:1px solid var(--accent-border);color:var(--accent-brand);font-size:12.5px;box-shadow:var(--shadow)}
+.ctx a{color:var(--accent-brand);font-weight:700}
+.ctx .x{margin-left:auto;cursor:pointer;color:var(--accent-brand);font-weight:800;padding:0 5px;border-radius:6px}
+.ctx .x:hover{background:#4f46e522}
+.pill.work{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent-brand)}.pill.work .d{background:var(--accent-brand)}
+.pill.rest{background:var(--warning-bg);border-color:var(--warning-border);color:var(--warning)}.pill.rest .d{background:var(--warning)}
+.btn{padding:9px 15px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);
+ font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{border-color:var(--info-border)}
+.btn.primary{background:linear-gradient(135deg,var(--info),var(--info));border-color:transparent;color:#fff;box-shadow:0 2px 8px #5b5bd644;transition:all .16s ease}
+.btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px #5b5bd655;filter:brightness(1.04)}
+.btn.danger{background:#fff;border-color:var(--critical-border);color:var(--bad)}.btn.danger:hover{background:var(--critical-bg)}
+.dangerzone{border:1px solid var(--critical-border)!important;background:linear-gradient(180deg,var(--critical-bg),var(--critical-bg))!important}
+.freshbox{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:#fff;border:1px solid var(--critical-border);border-radius:12px;padding:14px 16px}
+.freshbox .btn.danger{background:linear-gradient(135deg,var(--critical),var(--critical));color:#fff;border-color:transparent;box-shadow:0 2px 8px #dc262644;white-space:nowrap}
+.freshbox .btn.danger:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.dangerzone h2:before{background:linear-gradient(180deg,var(--critical),var(--critical))!important}
+.content{padding:24px 28px 60px;max-width:1180px}
+.view{display:none}.view.active{display:block;animation:vfade .3s ease}
+@keyframes vfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.section-title{font-size:11px;font-weight:500;color:var(--soft);letter-spacing:.02em;margin:26px 2px 12px}
+.sevdot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+.hmcell{width:17px;height:17px;border-radius:3px;display:inline-block}
+.hmrow{display:flex;gap:2px;align-items:center;margin-bottom:2px}
+.hmlab{width:34px;font-size:11px;color:var(--text-3);text-align:right;padding-right:6px}
+.arnode{font-size:12px;fill:var(--line-strong)}
+.repogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:16px}
+.repocard{background:#fff;border:1px solid var(--line,var(--info-border));border-radius:16px;padding:16px 16px 14px;
+  box-shadow:0 6px 20px rgba(27,31,42,.05);display:flex;flex-direction:column;min-height:300px}
+.repocard.hot{box-shadow:0 0 0 2px var(--critical-border),0 6px 20px rgba(220,38,38,.12)}
+.rc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.rc-ava{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;font-size:15px;flex:0 0 auto}
+.rc-name{font-weight:700;font-size:14px;color:var(--surface-3)}
+.rc-sub{font-size:11px;color:var(--text-3)}
+.rc-stats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.rc-stat{font-size:11px;color:var(--line-strong);background:var(--info-bg);border-radius:7px;padding:3px 8px}
+.rc-stat b{color:var(--surface-3)}
+.rc-coltitle{font-size:11px;font-weight:500;letter-spacing:.02em;color:var(--text-3);margin:8px 0 5px}
+.mritem{display:flex;align-items:center;gap:7px;font-size:12px;padding:5px 8px;border-radius:8px;
+  background:var(--accent-bg);border:1px solid var(--info-border);margin-bottom:5px;animation:popin .35s ease}
+.mritem .iid{font-family:ui-monospace,monospace;color:var(--accent-brand);font-weight:700}
+.mritem.anom{background:var(--critical-bg);border-color:var(--critical-border)}
+.rc-feed{display:flex;flex-direction:column;gap:4px;max-height:190px;overflow:hidden}
+.fchip{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:4px 8px;border-radius:7px;
+  background:var(--info-bg);animation:slidein .4s ease}
+.fchip .ic{width:16px;height:16px;border-radius:5px;flex:0 0 auto;display:flex;align-items:center;
+  justify-content:center;font-size:10px;color:#fff;font-weight:700}
+.fchip .txt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--line-strong)}
+.fchip .who{color:var(--text-3);font-size:10px}
+.fchip.anom{background:var(--critical-bg);outline:1px solid var(--critical-border)}
+.ic-push{background:var(--success)}.ic-open{background:var(--accent-brand)}.ic-merge{background:var(--accent-brand)}
+.ic-close{background:var(--critical)}.ic-branch{background:var(--info)}.ic-cmt{background:var(--info)}.ic-other{background:var(--info-bg);color:var(--info)}
+@keyframes slidein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes popin{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+.rc-tree{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.5;
+  max-height:170px;overflow:auto;background:var(--info-bg);border:1px solid var(--surface-3);border-radius:9px;padding:8px 10px}
+.tfolder{color:var(--text-3);margin-top:3px}
+.tfolder:first-child{margin-top:0}
+.tfile{color:var(--line-strong);padding-left:14px;display:flex;align-items:center;gap:6px}
+.tfile:before{content:'📄';font-size:10px}
+.tfile.new{color:var(--success);animation:popin .4s ease}
+.tfile.new:before{content:'🟢'}
+.tfile.del{color:var(--critical);text-decoration:line-through;opacity:.55;animation:fadedel 1s ease}
+.tfile.del:before{content:'🗑'}
+@keyframes fadedel{from{opacity:1;background:var(--critical-bg)}to{opacity:.55;background:transparent}}
+.tempty{color:var(--text-3)}
+/* cards */
+.clocks{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.clock{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);
+ transition:transform .18s ease,box-shadow .18s ease}
+.clock:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(16,24,40,.06),0 14px 34px rgba(91,91,214,.12)}
+.clock .lab{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:8px}
+.clock .lab .ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent)}
+.clock .val{font-size:24px;font-weight:800;margin-top:12px;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+.clock .sub{font-size:12px;color:var(--soft);margin-top:4px}
+.clock.sim{background:var(--info-bg);border:1px solid var(--info-border)}
+.clock.sim .lab{color:var(--muted)}.clock.sim .lab .ic{background:var(--accent-soft);color:var(--accent)}
+.clock.sim .val{color:var(--ink)}.clock.sim .sub{color:var(--soft)}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-top:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .n{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:11.5px;color:var(--muted);margin-top:3px;font-weight:600}
+.steps{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+.step{display:flex;gap:10px;align-items:flex-start}
+.obck{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--success);flex:0 0 auto;font-size:12px}
+.obck.on{background:var(--success-bg);border-color:var(--success)}
+.obh{font-size:11.5px;color:var(--muted);margin-top:2px}
+.step a{color:var(--accent);font-size:11.5px;text-decoration:none}
+.insL{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.insL .i{background:var(--accent-bg);border:1px solid var(--info-border);color:var(--info);border-radius:8px;padding:4px 10px;font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.panel>h2{font-size:15px;margin:0 0 3px;font-weight:700}
+.panel>.sub{font-size:12.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:11px 16px;font-size:13.5px}
+.kv b{color:var(--muted);font-weight:500}.kv span{text-align:right;font-weight:600}
+.members{display:flex;flex-direction:column;gap:9px}
+.member{display:flex;align-items:center;gap:12px;padding:9px 11px;border:1px solid var(--line);border-radius:11px}
+.avatar{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex:none}
+.m-name{font-weight:700}.m-role{font-size:12px;color:var(--muted)}
+.badge{margin-left:auto;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.badge.oc{background:var(--accent-bg);color:var(--accent-brand)}.badge.pt{background:var(--warning-bg);color:var(--warning)}
+.badge.wk{background:var(--success-bg);color:var(--success)}
+.acts{display:flex;flex-direction:column;gap:8px}
+.act{display:grid;grid-template-columns:1fr auto;gap:4px;font-size:13px}
+.act .bar{grid-column:1/3;height:6px;border-radius:6px;background:var(--surface-3);overflow:hidden}
+.act .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--info),var(--info));border-radius:6px}
+.banner{margin-top:16px;background:#fff;border:1px solid var(--line);border-left:3px solid var(--accent);
+ border-radius:12px;padding:14px 16px;font-size:13px;color:var(--line-strong);line-height:1.6;box-shadow:var(--shadow)}
+.banner code{background:var(--info-bg);padding:1px 6px;border-radius:5px;font-size:12px}
+/* config */
+.cfg-intro{font-size:13.5px;color:var(--muted);margin:2px 2px 18px;line-height:1.6;max-width:780px}
+.group{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.group>summary{list-style:none;cursor:pointer;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.group>summary::-webkit-details-marker{display:none}
+.group .g-ic{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}
+.group .g-tt{font-weight:700;font-size:15px}.group .g-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.group .g-chev{margin-left:auto;color:var(--soft);transition:.2s}.group[open] .g-chev{transform:rotate(180deg)}
+.group .body{padding:6px 20px 22px;border-top:1px solid var(--line)}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px 26px;margin-top:16px}
+.field{display:flex;flex-direction:column;gap:7px}
+.field .top{display:flex;justify-content:space-between;align-items:baseline}
+.field label{font-size:13px;font-weight:700;color:var(--ink)}
+.field .val{font-size:13px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;
+ background:var(--accent-soft);padding:1px 9px;border-radius:7px}
+.field .help{font-size:12px;color:var(--muted);line-height:1.5}
+input[type=range]{accent-color:var(--accent);width:100%;height:6px;cursor:pointer}
+.tin,select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--info-bg);font-size:13px;width:100%;color:var(--ink)}
+.tin:focus,select:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 4px #5b5bd61a}
+.switch-field{flex-direction:row;align-items:center;justify-content:space-between;gap:14px}
+.sw-txt label{display:block}.sw-txt .help{margin-top:3px}
+.switch{position:relative;width:46px;height:26px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.track{position:absolute;inset:0;background:var(--info-bg);border-radius:30px;transition:.2s}
+.track:before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.switch input:checked+.track{background:var(--accent)}
+.switch input:checked+.track:before{transform:translateX(20px)}
+.days{display:flex;gap:7px;flex-wrap:wrap}
+.day{padding:8px 13px;border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;user-select:none;color:var(--muted)}
+.day input{display:none}.day.act{background:var(--accent);border-color:var(--accent);color:#fff}
+.presets{display:flex;gap:9px;flex-wrap:wrap;margin:4px 0 4px}
+.chip{padding:8px 14px;border:1px solid var(--line);border-radius:20px;background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.tlinfo{background:var(--info-bg);border:1px dashed var(--info-border);border-radius:11px;padding:12px 14px;font-size:13px;color:var(--line-strong);margin:14px 0 4px}
+.savebar{position:sticky;bottom:0;display:flex;gap:14px;align-items:center;background:#f4f5fbf2;backdrop-filter:blur(6px);
+ border-top:1px solid var(--line);padding:14px 2px;margin-top:8px}
+.toast{color:var(--ok);font-size:13px;font-weight:600}
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px}
+.pcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.phead{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
+.phead:hover{background:var(--info-bg)}
+.pinfo{flex:1}.pinfo .m-name{font-weight:700}.pinfo .m-role{font-size:12px;color:var(--muted)}
+.pmeta{display:flex;gap:10px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pmeta b{color:var(--ink)}
+.pchev{color:var(--soft);transition:.2s}.pcard.open .pchev{transform:rotate(180deg)}
+.pbody{display:none;border-top:1px solid var(--line);padding:12px 16px;background:var(--info-bg)}
+.pcard.open .pbody{display:block}
+.pcur{font-size:13px;margin-bottom:10px;color:var(--line-strong)}
+.feed{display:flex;flex-direction:column;gap:3px;max-height:320px;overflow:auto;font-size:12px}
+.frow{display:grid;grid-template-columns:44px 92px 120px 1fr auto;gap:8px;align-items:center;padding:5px 8px;border-radius:7px;background:#fff;border:1px solid var(--line)}
+.frow.anom{background:var(--critical-bg);border-color:var(--critical-border)}.frow.look{background:var(--warning-bg);border-color:var(--warning-border)}
+.frow .mono{font-family:'JetBrains Mono',Consolas,monospace;color:var(--muted)}
+.frow .path{color:var(--info)}.frow .atag{font-size:10px;font-weight:700;color:var(--critical)}
+.pbadge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.pbadge.oc{background:var(--accent-bg);color:var(--accent-brand)}.pbadge.pt{background:var(--warning-bg);color:var(--warning)}
+.pbadge.wk{background:var(--success-bg);color:var(--success)}.pbadge.idle{background:var(--info-bg);color:var(--text-3)}
+.evtable{display:flex;flex-direction:column;gap:4px;max-height:420px;overflow:auto;margin-top:12px;font-size:12.5px}
+.evrow{display:grid;grid-template-columns:120px 92px 132px 1fr auto;gap:10px;align-items:center;padding:6px 10px;border-radius:8px;background:var(--info-bg);border:1px solid var(--line)}
+.evrow.anom{background:var(--critical-bg);border-color:var(--critical-border)}
+.evrow.look{background:var(--warning-bg);border-color:var(--warning-border)}
+.evrow .mono{font-family:'JetBrains Mono',Consolas,monospace;color:var(--muted)}
+.evrow .atag{font-size:11px;font-weight:700;color:var(--critical)}
+/* console */
+.console{background:var(--info);border:1px solid var(--line);border-radius:var(--radius);height:480px;overflow:auto;padding:14px 16px;
+ font-family:'JetBrains Mono','Cascadia Code',Consolas,monospace;font-size:12.5px;line-height:1.6}
+.console .line{white-space:pre-wrap;word-break:break-word}
+.lt{color:var(--text-1)}
+.l-INFO{color:var(--info)}.l-WARNING{color:var(--warning)}.l-ERROR{color:var(--critical)}.l-DEBUG{color:var(--text-1)}
+@media(max-width:1000px){.app{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap}.kpis{grid-template-columns:repeat(3,1fr)}.clocks,.grid2{grid-template-columns:1fr}}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--info-bg);border-radius:6px;border:2px solid var(--surface-3)}
+::-webkit-scrollbar-thumb:hover{background:var(--info-bg)}
+::-webkit-scrollbar-track{background:transparent}
+</style><link rel="stylesheet" href="/static/design-system.css"><script src="/static/i18n.js" defer></script><script src="/static/ui.js" defer></script><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🌐</text></svg>"></head><body>
+<div class=app>
+  <aside class=side>
+    <div class=brand><span class=brand-mark></span><span class=brand-text><b>Sentinel Env</b><span class=sub>Team &amp; GitLab</span></span></div>
+    <nav class=nav>
+      <a class=active data-view=overview><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><rect x=3 y=3 width=7 height=7 rx=1 /><rect x=14 y=3 width=7 height=7 rx=1 /><rect x=14 y=14 width=7 height=7 rx=1 /><rect x=3 y=14 width=7 height=7 rx=1 /></svg> Обзор</a>
+      <a data-view=config><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><line x1=4 y1=21 x2=4 y2=14 /><line x1=4 y1=10 x2=4 y2=3 /><line x1=12 y1=21 x2=12 y2=12 /><line x1=12 y1=8 x2=12 y2=3 /><line x1=20 y1=21 x2=20 y2=16 /><line x1=20 y1=12 x2=20 y2=3 /><line x1=1 y1=14 x2=7 y2=14 /><line x1=9 y1=8 x2=15 y2=8 /><line x1=17 y1=16 x2=23 y2=16 /></svg> Конфигурация</a>
+      <a data-view=logs><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><polyline points="4 17 10 11 4 5"/><line x1=12 y1=19 x2=20 y2=19 /></svg> Журнал событий</a>
+      <a data-view=data><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><ellipse cx=12 cy=5 rx=9 ry=3 /><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg> Данные · датасет</a>
+      <a data-view=repos><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><path d="M3 7h18M3 12h18M3 17h18"/><circle cx=6 cy=7 r=0.6 fill=currentColor/><circle cx=6 cy=12 r=0.6 fill=currentColor/><circle cx=6 cy=17 r=0.6 fill=currentColor/></svg> Репозитории</a>
+      <a data-view=insights><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><line x1=18 y1=20 x2=18 y2=10 /><line x1=12 y1=20 x2=12 y2=4 /><line x1=6 y1=20 x2=6 y2=14 /></svg> Аналитика</a>
+      <a data-view=people><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx=9 cy=7 r=4 /><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Сотрудники</a>
+    </nav>
+    <div class=side-foot>
+      <div class=st><span class="run-dot" id=runDot></span><span id=runText>остановлена</span></div>
+      <div>Вы вошли как <b style=color:#dfe1f5>admin</b></div>
+      <div style=margin-top:6px><a href="/logout">Выйти из панели →</a></div>
+    </div>
+  </aside>
+
+  <main class=main>
+    <div class=topbar>
+      <h1 id=pageTitle>Обзор</h1>
+      <span class=grow></span>
+      <span class="pill" id=hlGitlab title="Связь с GitLab"><span class=d></span><span>GitLab: <b id=hlGitlabT>—</b></span></span>
+      <span class="pill" id=hlWorld title="Движок мира"><span class=d></span><span>Мир: <b id=hlWorldT>—</b></span></span>
+      <span class="pill" id=hlEvents title="Событий в журнале и давность последнего"><span class=d></span><span>События: <b id=hlEventsT>—</b></span></span>
+      <span class="pill" id=hlOllama hidden title="LLM (Ollama) для триажа на :8788"><span class=d></span><span>Ollama: <b id=hlOllamaT>—</b></span></span>
+      <span class="pill rest" id=workPill><span class=d></span><span id=workTxt>—</span></span>
+      <button class="btn primary" id=btnStart>Запустить</button>
+      <button class="btn danger" id=btnStop>Остановить</button>
+    </div>
+
+    <div class=content>
+
+      <!-- ОБЗОР -->
+      <section class="view active" id=v-overview>
+        <div class=clocks>
+          <div class=clock><div class=lab><span class=ic>◷</span>Реальное время</div>
+            <div class=val id=realTime>—</div><div class=sub>часы этого компьютера</div></div>
+          <div class="clock sim"><div class=lab><span class=ic>⟳</span>Время симуляции</div>
+            <div class=val id=simTime>—</div><div class=sub id=simSub>внутреннее время отдела</div></div>
+          <div class=clock><div class=lab><span class=ic>⎇</span>Время GitLab-сервера</div>
+            <div class=val id=glTime>—</div><div class=sub>им проставляются коммиты</div></div>
+        </div>
+
+        <div class=kpis>
+          <div class=kpi><div class=n id=sSprint>—</div><div class=l>Спринт</div></div>
+          <div class=kpi><div class=n id=sRules>—</div><div class=l>Активных правил</div></div>
+          <div class=kpi><div class=n id=sRuns>—</div><div class=l>Действий</div></div>
+          <div class=kpi><div class=n id=sOk>—</div><div class=l>Успешно</div></div>
+          <div class=kpi><div class=n id=sFail>—</div><div class=l>С ошибкой</div></div>
+          <div class=kpi><div class=n id=sSkip>—</div><div class=l>Пропущено ночью</div></div>
+        </div>
+
+        <div class=grid2>
+          <div class=panel><h2>Состояние режима</h2>
+            <div class=kv>
+              <b>Статус дня</b><span id=dayStatus>—</span>
+              <b>Рабочие часы</b><span id=workHours>—</span>
+              <b title="Таймлапс: время симуляции идёт быстрее реального (например, рабочий день за 10 минут). Выключено — 1:1 с реальным.">Сжатие времени</b><span id=tl>—</span>
+              <b title="off-hours: поведение ночью/в выходные. oncall — дежурный работает; idle — простой. Ночная активность = сигнал для детектора.">Вне рабочих часов</b><span id=ohm>—</span>
+              <b>Даты в GitLab</b><span id=gld>—</span>
+              <b>Текущее действие</b><span id=lastAct>—</span>
+              <b>Время работы</b><span id=uptime>—</span>
+            </div>
+          </div>
+          <div class=panel><h2>Команда</h2>
+            <div class=members id=team></div>
+            <div class=kv style=margin-top:14px>
+              <b>Дежурный (on-call)</b><span id=oncall>—</span>
+              <b>В отпуске</b><span id=pto>—</span></div>
+          </div>
+        </div>
+
+        <div class=grid2>
+          <div class=panel><h2>Поток событий по типам</h2>
+            <div class=acts id=evActs style=margin-top:10px><div class=help style=color:#9aa0ad>пока пусто</div></div></div>
+          <div class=panel><h2>Запись в GitLab</h2>
+            <div style="margin-top:16px">
+              <div style="display:flex;align-items:baseline;gap:10px">
+                <div id=dPct style="font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1">—</div>
+                <div class=sub style=margin:0>успешных вызовов</div>
+              </div>
+              <div class=btrack style="margin-top:10px;height:10px"><i id=dBar style="display:block;height:100%;width:0%"></i></div>
+              <div style="display:flex;gap:22px;margin-top:14px;flex-wrap:wrap;font-size:13px">
+                <div><div class=sub style=margin:0>успешно</div><b id=dOk style="font-size:19px;font-variant-numeric:tabular-nums">—</b></div>
+                <div><div class=sub style=margin:0>с ошибкой</div><b id=dFail style="font-size:19px;font-variant-numeric:tabular-nums">—</b></div>
+                <div style="border-left:1px solid var(--line);padding-left:22px"><div class=sub style=margin:0>событий в журнале</div><b id=dTot style="font-size:19px;font-variant-numeric:tabular-nums">—</b></div>
+                <div><div class=sub style=margin:0>из них аномалий</div><b id=dAnom style="font-size:19px;font-variant-numeric:tabular-nums">—</b></div>
+              </div>
+            </div></div>
+        </div>
+
+        <div class=grid2>
+          <div class=panel><h2>Распределение действий</h2>
+            <div class=acts id=acts></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- КОНФИГУРАЦИЯ -->
+      <section class=view id=v-config>
+        <div class=cfg-intro>Параметры симуляции. Изменения сохраняются в файл
+          <code>web_config.json</code> и применяются немедленно — перезапуск не требуется.</div>
+        <div id=cfg></div>
+        <div class=savebar>
+          <button class="btn primary" id=btnSave>Сохранить изменения</button>
+          <span class=toast id=saveToast></span>
+          <span class=grow></span>
+          <button class="btn" id=btnReload>Сбросить форму к сохранённому</button>
+        </div>
+
+        <div class=panel style="margin-top:18px;border:1px solid #f2b8b3;background:#fef7f6">
+          <h2 style=color:#b42318>Сброс состояния репозиториев</h2>
+          <div class=sub>Откат к чистому проекту: закрываются все открытые MR, удаляются все
+            ветки кроме <code>main</code>, контент репозиториев очищается до <code>README</code>.
+            <b>Команда и сами репозитории сохраняются</b> — удаляется только наработанный контент.
+            Локальное состояние правил тоже обнуляется. Доступно только при остановленной симуляции;
+            при следующем старте репозитории будут засеяны заново.</div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+            <button class="btn danger" id=btnResetRepos>Очистить репозитории</button>
+            <span class=toast id=resetReposToast></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ЖУРНАЛ -->
+      <section class=view id=v-logs>
+        <div class=panel style=margin-bottom:16px>
+          <h2>Журнал событий</h2>
+          <div class=console id=console></div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+            <a class="btn" id=btnRunlog href="/api/runlog">Скачать полный лог прогона</a>
+            <button class="btn primary" id=btnTg>Отправить отчёт в Telegram</button>
+            <span class=toast id=tgToast></span>
+            <span class=grow></span>
+            <span class=sub id=logCounts style=margin:0></span>
+          </div>
+        </div>
+      </section>
+
+      <section class=view id=v-people>
+        <div class=cfg-intro>Нажмите на сотрудника, чтобы раскрыть живую ленту — что и куда он заливает в реальном времени.<br>
+          <span class=sub>Статистика у карточки: ↑ — пуши (коммиты) · MR — merge request'ы · ⚠ — подозрительные (аномальные) действия. Считается по событиям, которые актор сгенерил с начала прогона.</span></div>
+        <div class=people id=people></div>
+      </section>
+
+      <section class=view id=v-data>
+        <div class=kpis style=grid-template-columns:repeat(4,1fr)>
+          <div class=kpi><div class=n id=evTotal>—</div><div class=l>Событий записано</div></div>
+          <div class=kpi><div class=n id=evAnom>—</div><div class=l>Аномалий (метки)</div></div>
+          <div class=kpi><div class=n id=evRate>—</div><div class=l>Доля аномалий</div></div>
+          <div class=kpi><div class=n id=evTypes>—</div><div class=l>Типов аномалий</div></div>
+        </div>
+        <div class=grid2>
+          <div class=panel><h2>Аномалии по типам</h2>
+            <div class=acts id=evByType></div></div>
+          <div class=panel><h2>Датасет</h2>
+            <div class=kv><b>Файл</b><span id=evFile>—</span><b>Запуск</b><span id=evRun>—</span></div>
+            <div style=margin-top:14px><a class="btn primary" id=btnDataset href=/api/dataset>Скачать events.jsonl</a></div>
+            <div class=sub style=margin-top:12px>Файл накапливается между запусками (каждая строка помечена run_id).</div></div>
+        </div>
+        <div class=panel style=margin-top:16px><h2>Последние события</h2>
+          <div class=evtable id=evList></div></div>
+      </section>
+
+      <!-- РЕПОЗИТОРИИ (живая визуализация) -->
+      <section class=view id=v-repos>
+        <div class=cfg-intro>Живая карта репозиториев. Видно, как появляются файлы (пуши),
+          как merge request'ы открываются и затем мёржатся или закрываются — каждое событие
+          подписано автором и сообщением. Аномалии подсвечены красным.</div>
+        <div class=repogrid id=repogrid></div>
+      </section>
+
+      <!-- АНАЛИТИКА -->
+      <section class=view id=v-insights>
+        <div class=panel style=margin-bottom:16px>
+          <h2>Карта активности · часы × дни недели</h2>
+          <div id=heatmap style=margin-top:14px;overflow-x:auto></div>
+          <div style="display:flex;gap:14px;align-items:center;margin-top:10px;font-size:12px;color:#6b7180">
+            <span>меньше</span>
+            <span style="display:inline-flex;gap:3px">
+              <i style="width:14px;height:14px;border-radius:3px;background:#f1f4fa;border:1px solid #e3e8f0"></i>
+              <i style="width:14px;height:14px;border-radius:3px;background:#c7d2fe"></i>
+              <i style="width:14px;height:14px;border-radius:3px;background:#818cf8"></i>
+              <i style="width:14px;height:14px;border-radius:3px;background:#4f46e5"></i>
+              <i style="width:14px;height:14px;border-radius:3px;background:#3730a3"></i>
+            </span>
+            <span>больше</span>
+            <span style="margin-left:14px"><i style="width:14px;height:14px;border-radius:3px;border:2px solid #ef4444;display:inline-block;vertical-align:middle"></i> в этот час была аномалия (красная рамка на клетке)</span>
+          </div>
+        </div>
+
+        <div>
+          <div class=panel><h2>Таймлайн аномалий</h2>
+            <div id=anomTimeline style=margin-top:12px></div>
+            <div style="display:flex;gap:14px;margin-top:10px;font-size:12px;color:#6b7180;flex-wrap:wrap">
+              <span><i class=sevdot style=background:#dc2626></i> critical</span>
+              <span><i class=sevdot style=background:#f59e0b></i> high</span>
+              <span><i class=sevdot style=background:#eab308></i> medium</span>
+              <span><i class=sevdot style=background:#64748b></i> low</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+async function jget(u){const r=await fetch(u);return r.json();}
+async function jpost(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):null});return r.json();}
+function rid(k){return 'f_'+k.replace(/[^a-zA-Z0-9]/g,'_');}
+function fmtUptime(s){if(!s)return '—';const h=(s/3600|0),m=(s%3600/60|0),x=s%60;return h+'ч '+m+'м '+x+'с';}
+const PAL=['#5b5bd6','#0ea5a4','#e8590c','#7048e8','#1098ad','#d6336c'];
+function colorFor(n){let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%PAL.length;return PAL[h];}
+function initials(n){return n.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();}
+
+/* навигация */
+const TITLES={overview:'Обзор',config:'Конфигурация',logs:'Журнал событий',data:'Данные · датасет для ML',repos:'Репозитории · живая карта',insights:'Аналитика',people:'Сотрудники · слежение'};
+document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>{
+  document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));
+  a.classList.add('active');
+  const v=a.dataset.view;document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+  $('v-'+v).classList.add('active');$('pageTitle').textContent=TITLES[v];
+});
+
+/* ---- описания параметров ---- */
+const FEATURE_HELP={
+ issues:"Создавать тикеты (баги, задачи, threat intel) с метками и привязкой к спринту.",
+ ci_pipeline:"Имитировать CI: бот публикует статус сборки, при сбое автор досылает исправление.",
+ draft_mrs:"Часть запросов на слияние сначала помечается черновиком, затем переводится в готовые.",
+ emoji_reactions:"Реакции на комментарии и запросы слияния.",
+ approvals:"Полноценные подтверждения через GitLab API, а не текстом.",
+ releases:"По завершении спринта — тег, релиз и запись в CHANGELOG.",
+ peer_review:"Часть ревью выполняет инженер, а не только руководитель.",
+ campaigns:"Сюжетные цепочки реагирования: уязвимость → разведка → правило → плейбук.",
+ standup:"Ежедневный созвон команды отдельным тикетом.",
+ pto:"Сотрудники периодически отсутствуют (отпуск, больничный).",
+ change_freeze_friday:"В пятницу после 14:00 рискованные изменения в прод не выкатываются.",
+ lifecycle_state:"Выбирать цели по состоянию: донастраивать шумные правила, выводить мёртвые."
+};
+const PROB_HELP={
+ ci_fail:"Доля сборок, завершающихся ошибкой и требующих исправления.",
+ mr_abandoned:"Доля запросов слияния, закрытых без принятия.",
+ mr_draft_first:"Доля запросов, начинающихся со статуса «черновик».",
+ delayed_revert:"Доля откатов правил, выполняемых с задержкой.",
+ peer_review:"Доля ревью, выполняемых инженером вместо руководителя.",
+ emoji:"Частота реакций на события.",
+ promote:"Доля стабильных правил, продвигаемых в продакшен."
+};
+const ACT_HELP={
+ new_detection_rule:"Новое правило детектирования",fix_existing_rule:"Исправление правила",
+ tune_threshold:"Донастройка порогов",refactor_rule:"Рефакторинг",update_parser:"Обновление парсера",
+ update_playbook:"Обновление плейбука",add_test_sample:"Тестовый образец",threat_intel_update:"Threat intelligence",
+ update_dashboard:"Обновление метрик",triage_false_positive:"Разбор ложного срабатывания",revert_bad_rule:"Откат правила",
+ deprecate_rule:"Вывод правила из эксплуатации",recreate_fixed_rule:"Пересоздание правила",handle_incident:"Реагирование на инцидент",
+ bulk_maintenance:"Массовое обслуживание",open_issue:"Заведение тикета",campaign:"Сюжетная кампания"
+};
+
+/* ---- контролы ---- */
+function slider(k,label,help,min,max,step,unit,val){
+ const id=rid(k);if(val==null)val=0;
+ return '<div class=field><div class=top><label>'+label+'</label><span class=val id=o_'+id+'>'+val+unit+'</span></div>'+
+  '<input id='+id+' type=range data-k="'+k+'" data-t=num data-unit="'+unit+'" min='+min+' max='+max+' step='+step+' value="'+val+'" '+
+  'oninput="document.getElementById(\'o_'+id+'\').textContent=this.value+\''+unit+'\';recalc()">'+
+  '<div class=help>'+help+'</div></div>';
+}
+function sliderN(k,label,help,min,max,step,val){
+ const id=rid(k);const v=val||0;
+ return '<div class=field><div class=top><label>'+label+'</label><span class=val id=o_'+id+'>'+(v?('×'+v):'авто')+'</span></div>'+
+  '<input id='+id+' type=range data-k="'+k+'" data-t=numn min='+min+' max='+max+' step='+step+' value="'+v+'" '+
+  'oninput="document.getElementById(\'o_'+id+'\').textContent=(this.value>0?(\'×\'+this.value):\'авто\');recalc()">'+
+  '<div class=help>'+help+'</div></div>';
+}
+function toggle(k,label,help,val){
+ return '<div class="field switch-field"><div class=sw-txt><label>'+label+'</label><div class=help>'+help+'</div></div>'+
+  '<label class=switch><input type=checkbox data-k="'+k+'" data-t=bool '+(val?'checked':'')+' onchange=recalc()><span class=track></span></label></div>';
+}
+function sel(k,label,help,opts,val){
+ return '<div class=field><label>'+label+'</label><select data-k="'+k+'" data-t=str onchange=recalc()>'+
+  opts.map(o=>'<option '+(o===val?'selected':'')+'>'+o+'</option>').join('')+'</select><div class=help>'+help+'</div></div>';
+}
+function txt(k,label,help,val){
+ return '<div class=field><label>'+label+'</label><input class=tin data-k="'+k+'" data-t=str value="'+(val==null?'':val)+'"><div class=help>'+help+'</div></div>';
+}
+function group(ic,title,subtitle,inner,open){
+ return '<details class=group '+(open?'open':'')+'><summary><span class=g-ic>'+ic+'</span>'+
+  '<span><div class=g-tt>'+title+'</div><div class=g-sub>'+subtitle+'</div></span>'+
+  '<span class=g-chev>▾</span></summary><div class=body>'+inner+'</div></details>';
+}
+
+let CFG={};
+function renderCfg(c){
+ CFG=c;
+ const wn=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+ const days='<div class=field><label>Рабочие дни недели</label><div class=days>'+
+   wn.map((d,i)=>'<label class="day '+((c.WORK_DAYS||[]).includes(i)?'act':'')+'"><input type=checkbox data-day='+i+' '+((c.WORK_DAYS||[]).includes(i)?'checked':'')+' onchange="this.parentNode.classList.toggle(\'act\',this.checked)">'+d+'</label>').join('')+
+   '</div><div class=help>Дни, когда команда считается работающей.</div></div>';
+
+ const tl=group('⏱','Сжатие времени','Насколько быстро идёт время внутри симуляции относительно реального.',
+   '<div class=presets>'+
+     '<button class=chip onclick="preset(\'real\')">Реальное время</button>'+
+     '<button class=chip onclick="preset(\'wd60\')">Рабочий день = 1 час</button>'+
+     '<button class=chip onclick="preset(\'wd30\')">Рабочий день = 30 минут</button>'+
+     '<button class=chip onclick="preset(\'wd10\')">Ускоренный = 10 минут</button>'+
+     '<button class=chip onclick="preset(\'week\')">Неделя = 1 час</button></div>'+
+   '<div class=tlinfo id=tlInfo>—</div><div class=fields>'+
+   toggle('TIMELAPSE_ENABLED','Сжатие времени включено','Время симуляции идёт быстрее реального. Выключено — один к одному.',c.TIMELAPSE_ENABLED)+
+   slider('SIM_WORKDAY_REAL_MINUTES','Рабочий день за, минут','Сколько реального времени занимает один рабочий день симуляции (10:00–18:00). Меньше — быстрее.',5,480,5,' мин',c.SIM_WORKDAY_REAL_MINUTES)+
+   sliderN('TIME_SCALE_OVERRIDE','Точный масштаб','Секунд симуляции за одну реальную секунду. 0 — рассчитать автоматически. 24 — сутки за час, 168 — неделя за час.',0,300,1,c.TIME_SCALE_OVERRIDE)+
+   toggle('FAST_FORWARD_OFFHOURS','Пропускать ночи и выходные','Нерабочее время проматывается мгновенно; реальное время тратится только на рабочие часы.',c.FAST_FORWARD_OFFHOURS)+
+   txt('SIM_START','Начало отсчёта','Дата и время старта симуляции. Пусто — сегодня, 10:00. Формат: 2026-06-01 10:00.',c.SIM_START)+
+   '</div>',true);
+
+ const wd=group('🗓','Рабочий день и неделя','Когда команда активна.','<div class=fields>'+
+   slider('WORK_HOURS_START','Начало рабочего дня, час','Час, с которого начинается рабочий день.',0,23,1,' ч',c.WORK_HOURS_START)+
+   slider('WORK_HOURS_END','Конец рабочего дня, час','Час окончания рабочего дня. После — нерабочее время.',1,24,1,' ч',c.WORK_HOURS_END)+
+   days+
+   toggle('LUNCH_BREAK.enabled','Обеденный перерыв','Короткая пауза активности в середине дня.',c.LUNCH_BREAK&&c.LUNCH_BREAK.enabled)+
+   slider('LUNCH_BREAK.hour','Час начала обеда','Время начала обеденного перерыва.',10,17,1,' ч',c.LUNCH_BREAK&&c.LUNCH_BREAK.hour)+
+   slider('LUNCH_BREAK.duration_min','Длительность обеда, минут','Продолжительность перерыва во внутреннем времени.',0,120,5,' мин',c.LUNCH_BREAK&&c.LUNCH_BREAK.duration_min)+
+   '</div>');
+
+ const oh=group('🌙','Нерабочее время','Поведение ночью и в выходные.','<div class=fields>'+
+   sel('OFF_HOURS_MODE','Режим вне рабочих часов','«oncall» — дежурный изредка реагирует на инциденты. «idle» — полная тишина до следующего рабочего дня.',['oncall','idle'],c.OFF_HOURS_MODE)+
+   slider('OFF_HOURS_ACTIVITY_PROBABILITY','Вероятность ночной активности','Шанс, что дежурный что-то выполнит ночью (для режима oncall). 0 — никогда.',0,1,0.01,'',c.OFF_HOURS_ACTIVITY_PROBABILITY)+
+   slider('OFF_HOURS_POLL_SECONDS','Интервал проверки, секунд','Как часто проверять наступление рабочего дня (актуально без сжатия времени).',30,1800,30,' с',c.OFF_HOURS_POLL_SECONDS)+
+   '</div>');
+
+ const tempo=group('🏃','Темп работы','Частота и длительность действий.','<div class=fields>'+
+   slider('SCENARIO_INTERVAL.min','Пауза между действиями (мин), сек','Минимальная пауза во внутреннем времени. Реальная = делится на масштаб.',5,600,5,' с',c.SCENARIO_INTERVAL&&c.SCENARIO_INTERVAL.min)+
+   slider('SCENARIO_INTERVAL.max','Пауза между действиями (макс), сек','Максимальная пауза во внутреннем времени.',5,600,5,' с',c.SCENARIO_INTERVAL&&c.SCENARIO_INTERVAL.max)+
+   slider('SPEED_MULTIPLIER','Множитель длительности действий','Масштабирует внутренние паузы (ревью, обсуждения). 1.0 — стандарт.',0.1,5,0.1,'×',c.SPEED_MULTIPLIER)+
+   slider('MAX_OPEN_MRS','Лимит открытых запросов слияния','При достижении лимита команда сначала разбирает очередь, а не открывает новые.',1,20,1,'',c.MAX_OPEN_MRS)+
+   '</div>');
+
+ const rhythm=group('🔁','Долгосрочные циклы','Спринты и отсутствия сотрудников.','<div class=fields>'+
+   slider('SPRINT_DAYS','Длина спринта, дней','По завершении спринта формируется релиз.',1,30,1,' дн',c.SPRINT_DAYS)+
+   slider('PTO_PROBABILITY_PER_DAY','Вероятность отпуска в день','Шанс, что сотрудник отсутствует в конкретный день.',0,1,0.01,'',c.PTO_PROBABILITY_PER_DAY)+
+   '</div>');
+
+ const git=group('⎇','GitLab и время','Подключение и согласование дат.','<div class=fields>'+
+   txt('GITLAB_URL','Адрес GitLab','URL сервера GitLab.',c.GITLAB_URL)+
+   txt('ADMIN_TOKEN','Токен доступа','Personal access token со scope api.',c.ADMIN_TOKEN)+
+   sel('GITLAB_DATES','Даты, записываемые в GitLab','«real» — реальное время сервера, согласовано с коммитами (рекомендуется). «sim» — время симуляции; учитывается только для admin-токена и не для будущих дат. Отметки коммитов всегда ставит сам GitLab.',['real','sim'],c.GITLAB_DATES)+
+   '</div>');
+
+ const feat=group('🧩','Элементы поведения','Какие части рабочего процесса включены.','<div class=fields>'+
+   Object.keys(c.FEATURES||{}).map(k=>toggle('FEATURES:'+k,k,FEATURE_HELP[k]||'',c.FEATURES[k])).join('')+'</div>');
+
+ const probs=group('🎲','Частота нештатных ситуаций','Насколько часто возникают сбои и отклонения.','<div class=fields>'+
+   Object.keys(c.PROBS||{}).map(k=>slider('PROBS:'+k,k,PROB_HELP[k]||'',0,1,0.01,'',c.PROBS[k])).join('')+'</div>');
+
+ const weights=group('⚖','Частота типов действий','Относительная вероятность выбора каждого сценария.','<div class=fields>'+
+   Object.keys(c.ACTIVITY_WEIGHTS||{}).map(k=>slider('WEIGHT:'+k,(ACT_HELP[k]||k),'Внутренний ключ: '+k,0,0.4,0.01,'',c.ACTIVITY_WEIGHTS[k])).join('')+'</div>');
+
+ $('cfg').innerHTML=tl+wd+oh+tempo+rhythm+git+feat+probs+weights;
+ recalc();
+}
+function getv(k){const el=document.querySelector('[data-k="'+k+'"]');if(!el)return null;return el.dataset.t==='bool'?el.checked:el.value;}
+function setv(k,val){const el=document.querySelector('[data-k="'+k+'"]');if(!el)return;
+ if(el.dataset.t==='bool'){el.checked=!!val;}
+ else{el.value=val;const o=$('o_'+rid(k));if(o)o.textContent=(el.dataset.t==='numn')?(val>0?('×'+val):'авто'):(val+(el.dataset.unit||''));}}
+function preset(p){
+ setv('TIMELAPSE_ENABLED',p!=='real');
+ if(p==='wd60'){setv('SIM_WORKDAY_REAL_MINUTES',60);setv('TIME_SCALE_OVERRIDE',0);}
+ if(p==='wd30'){setv('SIM_WORKDAY_REAL_MINUTES',30);setv('TIME_SCALE_OVERRIDE',0);}
+ if(p==='wd10'){setv('SIM_WORKDAY_REAL_MINUTES',10);setv('TIME_SCALE_OVERRIDE',0);}
+ if(p==='week'){setv('TIME_SCALE_OVERRIDE',168);}
+ recalc();
+}
+function recalc(){
+ const en=getv('TIMELAPSE_ENABLED');
+ const wd=+getv('SIM_WORKDAY_REAL_MINUTES')||60;
+ const ov=+getv('TIME_SCALE_OVERRIDE')||0;
+ const hs=+getv('WORK_HOURS_START');const he=+getv('WORK_HOURS_END');
+ const wh=Math.max(1,(isNaN(he)?18:he)-(isNaN(hs)?10:hs));
+ let scale=!en?1:(ov>0?ov:(wh*3600)/(wd*60));
+ const dayMin=(wh*3600/scale)/60,weekMin=dayMin*5;
+ const el=$('tlInfo');if(el)el.textContent=en
+  ?'Масштаб ×'+scale.toFixed(1)+' · рабочий день ('+wh+' ч) проходит за '+dayMin.toFixed(0)+' мин реального времени · рабочая неделя — примерно '+weekMin.toFixed(0)+' мин (ночи и выходные мгновенно).'
+  :'Сжатие времени выключено — внутреннее время идёт один к одному с реальным.';
+}
+async function save(){
+ const upd={SCENARIO_INTERVAL:{},LUNCH_BREAK:{},FEATURES:{},PROBS:{},ACTIVITY_WEIGHTS:{}};
+ document.querySelectorAll('[data-k]').forEach(el=>{
+  const k=el.dataset.k,t=el.dataset.t;let v;
+  if(t==='bool')v=el.checked;else if(t==='num')v=Number(el.value);
+  else if(t==='numn')v=Number(el.value)>0?Number(el.value):null;else v=el.value;
+  if(k.startsWith('FEATURES:'))upd.FEATURES[k.slice(9)]=v;
+  else if(k.startsWith('PROBS:'))upd.PROBS[k.slice(6)]=v;
+  else if(k.startsWith('WEIGHT:'))upd.ACTIVITY_WEIGHTS[k.slice(7)]=v;
+  else if(k.indexOf('.')>0){const a=k.split('.');upd[a[0]][a[1]]=v;}
+  else upd[k]=v;
+ });
+ const days=[];document.querySelectorAll('[data-day]').forEach(el=>{if(el.checked)days.push(+el.dataset.day)});
+ upd.WORK_DAYS=days;
+ const r=await jpost('/api/config',upd);
+ $('saveToast').textContent=r.ok?'Сохранено и применено':'Ошибка сохранения';
+ setTimeout(()=>$('saveToast').textContent='',2600);
+ if(r.settings)CFG=r.settings;
+}
+
+async function tick(){
+ let s;try{s=await jget('/api/status');}catch(e){return;}
+ $('runDot').className='run-dot'+(s.running?' on':'');
+ $('runText').textContent=s.running?'работает':'остановлена';
+ $('workPill').className='pill '+(s.is_work?'work':'rest');
+ $('workTxt').textContent=s.is_work?'рабочее время':'нерабочее время';
+ $('realTime').textContent=s.real_time;$('simTime').textContent=s.sim_time;$('glTime').textContent=s.gitlab_time||'—';
+ $('dayStatus').textContent=s.is_work?'рабочий день':'нерабочее время';
+ $('workHours').textContent=s.work_hours;
+ $('tl').textContent=(s.time_mode||(s.timelapse?('×'+s.scale):'Реальное время 1:1'))+(s.ff_offhours?' · ⏩ промотка нерабочих часов':'')+(s.last_ff?(' · '+s.last_ff):'');
+ $('ohm').textContent=s.offhours_mode;
+ $('gld').textContent=s.gitlab_dates+(s.gitlab_dates==='real'?' (реальное)':' (симуляция)');
+ $('lastAct').textContent=s.last_activity?((ACT_HELP[s.last_activity]||s.last_activity)+' · '+(s.last_actor||'')):'—';
+ $('uptime').textContent=fmtUptime(s.uptime);
+ $('sSprint').textContent=s.sprint??'—';$('sRules').textContent=s.rules;
+ $('sRuns').textContent=s.total_runs;$('sOk').textContent=s.total_ok;
+ $('sFail').textContent=s.total_fail;$('sSkip').textContent=s.offhours_skipped;
+ if(s.runlog){const rl=s.runlog;const lc=$('logCounts');if(lc)lc.innerHTML='⚠️ warnings: <b>'+(rl.warnings||0)+'</b> · ❌ errors: <b>'+(rl.errors||0)+'</b> · TG: '+(s.telegram?'вкл':'выкл');}
+ $('oncall').textContent=s.oncall||'—';$('pto').textContent=s.pto||'никого';
+ $('team').innerHTML=s.team.map(m=>{const st=m.stats||{};const la=st.last_action?((ACT_HELP[st.last_action]||st.last_action)+(st.last_project?(' · '+st.last_project):'')):'нет активности';
+   return '<div class=member><div class=avatar style="background:'+colorFor(m.name)+'">'+initials(m.name)+'</div>'+
+   '<div style=flex:1><div class=m-name>'+m.name+'</div><div class=m-role>'+m.role+' · '+la+'</div></div>'+
+   (m.oncall?'<span class="badge oc">дежурный</span>':(m.pto?'<span class="badge pt">отпуск</span>':(m.working?'<span class="badge wk">на смене</span>':'')))+'</div>';}).join('');
+ renderPeople(s.team);
+ const a=s.activities||{},keys=Object.keys(a).sort((x,y)=>a[y]-a[x]);const mx=Math.max(1,...keys.map(k=>a[k]));
+ $('acts').innerHTML=keys.length?keys.map(k=>'<div class=act><span>'+(ACT_HELP[k]||k)+'</span><b>'+a[k]+'</b><div class=bar><i style=width:'+(a[k]/mx*100)+'%></i></div></div>').join(''):'<div class="help empty">пока нет данных — запустите симуляцию</div>';
+ // поток событий по типам (event-store)
+ const ev=(s.events&&s.events.by_action)||{};const ek=Object.keys(ev).sort((x,y)=>ev[y]-ev[x]).slice(0,10);
+ if(ek.length){const em=Math.max(1,...ek.map(k=>ev[k]));const EVN={push:'push (коммит файла)',mr_open:'открыт MR',mr_merge:'смёржен MR',mr_comment:'комментарий MR',mr_approve:'апрув MR',mr_close:'закрыт MR',branch_create:'создана ветка',issue_open:'открыт issue',issue_comment:'комментарий issue',issue_close:'закрыт issue',file_delete:'удалён файл',pipeline:'пайплайн CI',token_create:'создан токен',settings_change:'изменены настройки'};
+  $('evActs').innerHTML=ek.map(k=>'<div class=act><span>'+(EVN[k]||k)+'</span><b>'+ev[k]+'</b><div class=bar><i style=width:'+(ev[k]/em*100)+'%></i></div></div>').join('');}
+ // донат успешности GitLab-вызовов
+ const ok=s.total_ok||0,fail=s.total_fail||0,tot=ok+fail;
+ const pctOk=tot?Math.round(ok/tot*100):0;
+ const C=2*Math.PI*15.9155;
+ const pb=$('dPct');if(pb){pb.textContent=tot?(pctOk+'%'):'—';pb.style.color=tot?(pctOk>=90?'#15803d':pctOk>=60?'#b45309':'#b42318'):'#6b7789';}
+ const bb=$('dBar');if(bb)bb.style.width=(tot?pctOk:0)+'%';
+ $('dOk').textContent=ok;$('dFail').textContent=fail;
+ $('dAnom').textContent=(s.events&&s.events.anomalies)!=null?s.events.anomalies:'—';
+ $('dTot').textContent=(s.events&&s.events.total)!=null?s.events.total:'—';
+}
+
+function fmtAge(s){if(s==null)return'';if(s<60)return s+' с назад';if(s<3600)return Math.floor(s/60)+' мин назад';return Math.floor(s/3600)+' ч назад';}
+function setPill(id,cls,txt){const p=$(id);if(!p)return;p.className='pill '+cls;$(id+'T').textContent=txt;}
+async function pollHealth(){
+ let h;try{h=await jget('/api/health');}catch(e){return;}
+ const g=h.gitlab||{};
+ if(h.offline_mode)setPill('hlGitlab','warn','offline');
+ else if(g.state==='ok')setPill('hlGitlab','ok','на связи');
+ else if(g.state==='error')setPill('hlGitlab','bad','ошибка');
+ else setPill('hlGitlab','','—');
+ $('hlGitlab').title='GitLab: '+(g.msg||'—')+(g.errors?(' · ошибок вызовов: '+g.errors):'');
+ setPill('hlWorld',h.world.running?'ok':'',h.world.running?'работает':'остановлен');
+ const ev=h.events||{};
+ const fresh=ev.last_age_s!=null&&ev.last_age_s<180;
+ setPill('hlEvents',ev.total>0?(fresh?'ok':''):'bad',(ev.total||0)+(ev.last_age_s!=null?(' · '+fmtAge(ev.last_age_s)):''));
+ setPill('hlOllama',h.ollama?'ok':'warn',h.ollama?'готова':'нет');
+}
+/* ---------- профиль разработчика: риск-профиль в боковой панели ---------- */
+async function devProfile(u){
+ if(!window.dsDrawer)return;
+ dsDrawer('Профиль · @'+u,'<div class=ds-skeleton style="width:70%"></div>');
+ let d={};try{d=await jget('/api/actor?u='+encodeURIComponent(u)+'&n=60');}catch(e){}
+ const s=d.summary||{},feed=d.feed||[];
+ const anom=s.anomalies||0,total=s.total||0;
+ const share=total?Math.round(anom/total*100):0;
+ const lvl=anom>=5?'critical':(anom>=2?'high':(anom>=1?'medium':'low'));
+ const LVL={critical:'высокий',high:'повышенный',medium:'умеренный',low:'обычный'};
+ const M={critical:'b-crit',high:'b-high',medium:'b-med',low:'b-low'};
+ const row=(k,v)=>'<div class=ds-kv-row><span class=ds-kv-k>'+k+'</span><span class=ds-kv-v>'+v+'</span></div>';
+ const feedHtml=feed.length?feed.slice(0,25).map(function(e){
+   const bad=e.is_anomaly||e.anomaly_type;
+   return '<div class="ds-tl-item '+(bad?'critical':'info')+'">'+
+    '<div class=ds-tl-time>'+esc((e.ts_sim||'').replace('T',' '))+'</div>'+
+    '<div class=ds-tl-title>'+esc(e.action||'')+
+      (e.project?' <span class=ds-feed-repo>'+esc(e.project)+'</span>':'')+'</div>'+
+    (e.path?'<div class=ds-tl-desc><code>'+esc(e.path)+'</code></div>':'')+'</div>';}).join('')
+  :'<div class="ds-empty">Событий пока нет</div>';
+ dsDrawer('Профиль · @'+u,
+  '<div class=ds-kv>'+
+   row('Риск-профиль','<span class="badge '+M[lvl]+'">'+LVL[lvl]+'</span>')+
+   row('Всего действий','<b class=num>'+total+'</b>')+
+   row('Аномальных','<b class=num>'+anom+'</b> <span class=sub>('+share+'% от всех)</span>')+
+   row('Пушей / MR / merge','<span class=num>'+(s.pushes||0)+' / '+(s.mrs||0)+' / '+(s.merges||0)+'</span>')+
+   row('Открыто issue','<span class=num>'+(s.issues||0)+'</span>')+
+   row('Последнее действие',esc(s.last_action||'—')+(s.last_project?(' &middot; '+esc(s.last_project)):''))+
+   (s.last_path?row('Последний файл','<code>'+esc(s.last_path)+'</code>'):'')+
+   row('Когда',esc((s.last_ts||'').replace('T',' ')||'—'))+
+  '</div>'+
+  '<div class=ds-drawer-sec><div class=t-label>Лента действий</div>'+
+   '<div class=ds-timeline style=margin-top:10px>'+feedHtml+'</div></div>');}
+
+/* ---------- здоровье репозитория ---------- */
+function repoHealth(name,r){
+ if(!window.dsDrawer)return;
+ const anom=r.anomalies||0,ev=r.events||0;
+ const risk=anom>=3?'critical':(anom>=1?'high':'low');
+ const M={critical:'b-crit',high:'b-high',low:'b-low'};
+ const L={critical:'требует внимания',high:'есть подозрительное',low:'спокойно'};
+ const row=(k,v)=>'<div class=ds-kv-row><span class=ds-kv-k>'+k+'</span><span class=ds-kv-v>'+v+'</span></div>';
+ dsDrawer('Репозиторий · '+name,
+  '<div class=ds-kv>'+
+   row('Состояние','<span class="badge '+M[risk]+'">'+L[risk]+'</span>')+
+   row('Событий','<b class=num>'+ev+'</b>')+
+   row('Аномальных','<b class=num>'+anom+'</b>')+
+   row('Файлов в сессии','<span class=num>'+(r.files||0)+'</span>')+
+   row('Открытых MR','<span class=num>'+((r.open_mrs||[]).length)+'</span>')+
+   row('Удалено файлов','<span class=num>'+((r.deleted||[]).length)+'</span>')+
+  '</div>'+
+  '<div class=ds-drawer-sec><div class=t-label>Открытые merge request</div><div class=ds-ev-list>'+
+   (((r.open_mrs||[]).length)?(r.open_mrs||[]).map(function(m){
+     return '<div class=ds-ev-item><span>!'+esc(''+(m.iid||''))+' '+esc(m.title||'')+'</span>'+
+            '<span class=sub>@'+esc(m.author||'')+'</span></div>';}).join('')
+    :'<div class=sub>нет открытых MR</div>')+'</div></div>'+
+  '<div class=ds-drawer-sec><div class=t-label>Последние файлы</div><div class=ds-ev-list>'+
+   ((r.tree||[]).length?(r.tree||[]).slice(0,20).map(function(f){
+     return '<div class=ds-ev-item><code>'+esc(f)+'</code></div>';}).join('')
+    :'<div class=sub>файлов пока нет</div>')+'</div></div>');}
+
+function cssId(u){return 'p_'+u.replace(/[^a-zA-Z0-9]/g,'_');}
+const openUsers=new Set();let peopleSig='';
+function statusBadge(m){return m.oncall?'<span class="pbadge oc">дежурный</span>':(m.pto?'<span class="pbadge pt">отпуск</span>':(m.working?'<span class="pbadge wk">на смене</span>':'<span class="pbadge idle">не на смене</span>'));}
+function renderPeople(team){
+ const sig=team.map(m=>m.username).join(',');
+ if(sig!==peopleSig){peopleSig=sig;
+  document.getElementById('people').innerHTML=team.map(m=>{const id=cssId(m.username);
+   return '<div class="pcard" data-u="'+m.username+'" id="card_'+id+'">'+
+    '<div class=phead><div class=avatar style="background:'+colorFor(m.name)+'">'+initials(m.name)+'</div>'+
+    '<div class=pinfo><div class=m-name>'+m.name+'</div><div class=m-role>'+m.role+'</div></div>'+
+    '<div class=pmeta id="meta_'+id+'"></div><div id="bdg_'+id+'"></div>'+
+    '<button class="btn ghost ds-prof-btn" onclick="event.stopPropagation();devProfile(\''+escJs(m.username)+'\')">профиль</button>'+
+    '<span class=pchev>&#9662;</span></div>'+
+    '<div class=pbody id="body_'+id+'"></div></div>';}).join('');}
+ team.forEach(m=>{const id=cssId(m.username);const st=m.stats||{};
+  const meta=document.getElementById('meta_'+id);if(meta)meta.innerHTML='<span title="пуши/коммиты">&#8593; <b>'+(st.pushes||0)+'</b></span> &middot; <span title="merge request'ы">MR <b>'+(st.mrs||0)+'</b></span> &middot; <span title="подозрительные (аномальные) действия">&#9888; <b>'+(st.anomalies||0)+'</b></span>';
+  const bdg=document.getElementById('bdg_'+id);if(bdg)bdg.innerHTML=statusBadge(m);
+  const card=document.getElementById('card_'+id);if(card)card.classList.toggle('open',openUsers.has(m.username));});
+}
+function togglePerson(u){if(openUsers.has(u))openUsers.delete(u);else{openUsers.add(u);refreshActor(u);}
+ const card=document.querySelector('.pcard[data-u="'+u+'"]');if(card)card.classList.toggle('open',openUsers.has(u));}
+document.addEventListener('click',e=>{const h=e.target.closest?e.target.closest('.phead'):null;if(h){const c=h.closest('.pcard');if(c)togglePerson(c.dataset.u);}});
+async function refreshActor(u){try{const d=await jget('/api/actor?u='+encodeURIComponent(u)+'&n=60');const id=cssId(u);
+ const el=document.getElementById('body_'+id);if(!el)return;const s=d.summary||{};const feed=(d.feed||[]).slice().reverse();
+ el.innerHTML='<div class=pcur>'+(s.last_action?('сейчас: <b>'+(ACT_HELP[s.last_action]||s.last_action)+'</b>'+(s.last_project?(' &#8594; '+s.last_project):'')+(s.last_path?(' / '+s.last_path):'')):'нет активности')+'</div>'+
+  '<div class=feed>'+(feed.length?feed.map(e=>'<div class="frow '+(e.is_anomaly?'anom':(e.lookalike?'look':''))+'"><span class=mono>'+((e.ts_sim||'').slice(11,16))+'</span><span class=mono>'+(e.action||'')+'</span><span>'+(e.project||'')+'</span><span class="mono path">'+((e.path||e.message||'')+'').slice(0,46).replace(/</g,'&lt;')+'</span>'+(e.anomaly_type?'<span class=atag>'+e.anomaly_type+'</span>':'')+'</div>').join(''):'<div class=help style=color:#9aa0ad>пока нет событий</div>')+'</div>';
+ }catch(e){}}
+let lastLog=0;
+async function pollLogs(){
+ try{const d=await jget('/api/logs?since='+lastLog);
+  if(d.logs&&d.logs.length){const box=$('console');const atB=box.scrollHeight-box.scrollTop-box.clientHeight<60;
+   for(const e of d.logs){lastLog=e.id;const div=document.createElement('div');div.className='line l-'+e.level;
+    div.innerHTML='<span class=lt>'+e.t+'</span>  '+e.msg.replace(/</g,'&lt;');box.appendChild(div);}
+   while(box.childNodes.length>1500)box.removeChild(box.firstChild);if(atB)box.scrollTop=box.scrollHeight;}
+ }catch(e){}
+}
+$('btnStart').onclick=async()=>{await jpost('/api/start');setTimeout(tick,300);};
+$('btnStop').onclick=async()=>{await jpost('/api/stop');setTimeout(tick,300);};
+if($('btnResetRepos'))$('btnResetRepos').onclick=async()=>{
+ if(!confirm('Очистить контент всех репозиториев?\n\nБудут закрыты все MR, удалены ветки (кроме main) и стёрты файлы до README.\nКоманда и сами репозитории сохранятся. Действие необратимо.'))return;
+ const b=$('btnResetRepos');b.disabled=true;const t=$('resetReposToast');t.textContent='очищаю репозитории…';
+ const w=prompt('Это сотрёт весь наработанный контент репозиториев. Введите RESET:');if(w!=='RESET'){b.disabled=false;t.textContent='отменено';return;}
+ try{const r=await jpost('/api/reset_repos',{confirm:w});t.textContent=r.msg||'';}catch(e){t.textContent='ошибка';}
+ b.disabled=false;setTimeout(()=>{t.textContent='';},9000);};
+if($('btnTg'))$('btnTg').onclick=async()=>{$('tgToast').textContent='отправляю…';const r=await jpost('/api/tg_report');$('tgToast').textContent=r.msg||'';setTimeout(()=>$('tgToast').textContent='',4000);};
+$('btnSave').onclick=save;
+$('btnReload').onclick=()=>jget('/api/config').then(renderCfg);
+jget('/api/config').then(renderCfg);
+tick();setInterval(tick,1500);
+pollHealth();setInterval(pollHealth,5000);
+pollLogs();setInterval(pollLogs,1000);
+async function pollEvents(){try{const d=await jget('/api/events?n=120');const st=d.stats||{};
+ $('evTotal').textContent=st.total||0;$('evAnom').textContent=st.anomalies||0;
+ $('evRate').textContent=st.total?((st.anomalies/st.total*100).toFixed(1)+'%'):'0%';
+ const bt=st.by_anomaly||{};const bk=Object.keys(bt);$('evTypes').textContent=bk.length;
+ $('evFile').textContent=st.file||'—';$('evRun').textContent=st.run_id||'—';
+ const mx=Math.max(1,...bk.map(k=>bt[k]));
+ $('evByType').innerHTML=bk.length?bk.sort((a,b)=>bt[b]-bt[a]).map(k=>'<div class=act><span>'+k+'</span><b>'+bt[k]+'</b><div class=bar><i style="width:'+(bt[k]/mx*100)+'%;background:linear-gradient(90deg,#e8590c,#d6336c)"></i></div></div>').join(''):'<div class="help empty">аномалий пока нет</div>';
+ const items=(d.items||[]).slice().reverse();
+ $('evList').innerHTML=items.length?items.map(e=>{const cls=e.is_anomaly?'anom':(e.lookalike?'look':'');
+  return '<div class="evrow '+cls+'"><span class=mono>'+(e.ts_sim||'').replace('T',' ').slice(5)+'</span>'+
+   '<span>'+(e.actor||'')+'</span><span class=mono>'+(e.action||'')+'</span>'+
+   '<span class=mono>'+((e.path||e.project||'')+'').slice(0,60)+'</span>'+
+   '<span class=atag>'+(e.anomaly_type||(e.lookalike?'lookalike':''))+'</span></div>';}).join(''):'<div class=help style=color:#9aa0ad>событий пока нет — запустите симуляцию</div>';
+}catch(e){}}
+pollEvents();setInterval(pollEvents,2000);
+setInterval(()=>openUsers.forEach(refreshActor),2000);
+
+// ---------- Аналитика ----------
+const DOW=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const SEVCOL={critical:'#dc2626',high:'#f59e0b',medium:'#eab308',low:'#64748b'};
+function isDark(){return document.documentElement.getAttribute('data-theme')!=='light';}
+function heatColor(v,mx){const t=v/mx;
+ if(isDark()){ // на тёмном: пусто = фон панели, больше активности = ярче
+  if(!v)return '#18212e';
+  return t>0.75?'#93c5fd':t>0.5?'#60a5fa':t>0.25?'#3b82f6':'#1e40af';}
+ if(!v)return '#f1f4fa';
+ return t>0.75?'#3730a3':t>0.5?'#4f46e5':t>0.25?'#818cf8':'#c7d2fe';}
+function drawHeat(grid,agrid){const el=$('heatmap');if(!el)return;
+ let mx=1;grid.forEach(r=>r.forEach(v=>{if(v>mx)mx=v;}));
+ let h='<div class=hmrow><div class=hmlab></div>'+Array.from({length:24},(_,x)=>'<div style="width:17px;font-size:9px;color:#9aa0ad;text-align:center">'+(x%3===0?x:'')+'</div>').join('')+'</div>';
+ for(let d=0;d<7;d++){h+='<div class=hmrow><div class=hmlab>'+DOW[d]+'</div>';
+  for(let x=0;x<24;x++){const v=grid[d][x],a=agrid[d][x];
+   h+='<div class=hmcell title="'+DOW[d]+' '+x+':00 — '+v+' действий'+(a?(', '+a+' аномал.'):'')+'" style="background:'+heatColor(v,mx)+(a?';box-shadow:0 0 0 2px #ef4444 inset':'')+'"></div>';}
+  h+='</div>';}
+ el.innerHTML=h;}
+function drawAnomTimeline(items){const el=$('anomTimeline');if(!el)return;
+ if(!items||!items.length){el.innerHTML='<div class="help empty">аномалий пока нет</div>';return;}
+ // ВАЖНО: ts_sim это ISO ("2026-07-21T08:59:06") — парсим КАК ЕСТЬ.
+ // Раньше тут был .replace('T',' '), из-за чего Date.parse отдавал NaN и точки
+ // не рисовались: оставалась только пустая линия.
+ const ts=items.map(a=>{const v=Date.parse(a.ts_sim||'');return isNaN(v)?null:v;});
+ const good=ts.filter(v=>v!==null);
+ const mn=good.length?Math.min(...good):0, mx=good.length?Math.max(...good):1;
+ const span=Math.max(1,mx-mn);
+ const W=100,H=46;
+ let dots='';
+ items.forEach((a,i)=>{
+  // координаты — в единицах viewBox (не в процентах): проценты внутри
+  // растянутого viewBox вели себя непредсказуемо
+  const x=ts[i]===null?(items.length<2?W/2:2+(i/(items.length-1))*96)
+                      :2+((ts[i]-mn)/span)*96;
+  const cy=20+(i%3-1)*9;
+  const c=SEVCOL[a.severity]||'#eab308';
+  const tip=(a.ts_sim||'')+' · '+(a.anomaly_type||a.subtype||'')+' · '+(a.severity||'')+' · '+(a.actor||'');
+  dots+='<circle cx="'+x.toFixed(2)+'" cy="'+cy+'" r="2.6" fill="'+c+'" stroke="'+(isDark()?'#131a24':'#ffffff')+'" stroke-width="0.7"><title>'+tip+'</title></circle>';
+ });
+ el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:64px;overflow:visible">'+
+  '<line x1="2" y1="20" x2="98" y2="20" stroke="'+(isDark()?'#1f2a38':'#e3e8f0')+'" stroke-width="0.4"></line>'+dots+'</svg>'+
+  '<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7789"><span>'+
+  (items[0].ts_sim||'').replace('T',' ')+'</span><span>'+(items[items.length-1].ts_sim||'').replace('T',' ')+'</span></div>';}
+async function pollInsights(){try{const d=await jget('/api/insights');
+ drawHeat(d.heat||[],d.heat_anom||[]);drawAnomTimeline(d.anom_timeline||[]);
+}catch(e){}}
+pollInsights();setInterval(pollInsights,3000);
+
+// ---------- Репозитории (живая карта) ----------
+const ACT_ICON={push:['ic-push','+'],mr_open:['ic-open','MR'],mr_merge:['ic-merge','✓'],
+ mr_close:['ic-close','✕'],branch_create:['ic-branch','⎇'],mr_comment:['ic-cmt','💬'],
+ mr_approve:['ic-merge','👍'],issue_open:['ic-open','!'],issue_comment:['ic-cmt','💬'],issue_close:['ic-close','✕']};
+const ACT_WORD={push:'файл',mr_open:'MR открыт',mr_merge:'MR смержен',mr_close:'MR закрыт',
+ branch_create:'ветка',mr_comment:'коммент',mr_approve:'approve',issue_open:'issue',issue_comment:'коммент',issue_close:'issue закрыт'};
+/* Экранирование значений, попадающих в разметку. Закрываем не только
+   угловые скобки, но и кавычки с амперсандом: те же значения
+   подставляются в атрибуты (title, href, onclick), где одинарной
+   кавычки достаточно, чтобы разорвать разметку. Данные приходят из
+   журнала как обычный текст, поэтому двойного экранирования не будет. */
+const _ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function esc(x){return (x==null?'':(''+x)).replace(/[&<>"']/g,c=>_ESC[c]);}
+/* Значение внутри inline-обработчика. Браузер декодирует HTML-сущности
+   ДО того, как разберёт JS, поэтому одного esc() мало: сначала
+   экранируем как строку JS, потом как атрибут. */
+function escJs(x){return esc(String(x==null?'':x).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));}
+function repoCard(name,d){
+ const hot=(d.recent||[]).some(e=>e.is_anomaly);
+ const mrs=(d.open_mrs||[]).map(m=>'<div class="mritem'+(m.is_anomaly?' anom':'')+'"><span class=iid>!'+m.iid+'</span>'+
+   '<span class=txt style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.title||'merge request')+'</span>'+
+   '<span class=who style="color:#9aa0ad;font-size:10px">@'+esc(m.actor||'')+'</span></div>').join('')
+   || '<div class=rc-sub>нет открытых MR</div>';
+ const feed=(d.recent||[]).map(e=>{const ic=ACT_ICON[e.action]||['ic-other','•'];
+   const what=e.action==='push'?(e.path||'файл'):(e.message||ACT_WORD[e.action]||e.action);
+   return '<div class="fchip'+(e.is_anomaly?' anom':'')+'"><span class="ic '+ic[0]+'">'+ic[1]+'</span>'+
+    '<span class=txt>'+esc(what)+'</span><span class=who>@'+esc(e.actor||'')+' · '+((e.ts_sim||'').slice(11,16))+'</span></div>';}).join('')
+   || '<div class=rc-sub>пока тихо</div>';
+ return '<div class="repocard'+(hot?' hot':'')+'">'+
+   '<div class=rc-head><div class=rc-ava style="background:'+colorFor(name)+'">'+name.slice(0,1).toUpperCase()+'</div>'+
+     '<div><div class=rc-name>'+esc(name)+'</div><div class=rc-sub>'+(d.total||0)+' событий</div></div>'+
+     '<span class=grow></span>'+
+     '<button class="btn ghost ds-prof-btn" onclick="repoHealth(\''+escJs(name)+'\',_repoData[\''+escJs(name)+'\'])">здоровье</button>'+
+     '</div>'+
+   '<div class=rc-stats><span class=rc-stat>📄 <b>'+(d.files||0)+'</b> файлов</span>'+
+     '<span class=rc-stat>↑ <b>'+(d.pushes||0)+'</b> пушей</span>'+
+     '<span class=rc-stat>⇅ <b>'+(d.open_mrs||[]).length+'</b> откр. MR</span>'+
+     '<span class=rc-stat>✓ <b>'+(d.mr_merge||0)+'</b></span>'+
+     ((d.mr_close||0)?'<span class=rc-stat>✕ <b>'+d.mr_close+'</b></span>':'')+'</div>'+
+   '<div class=rc-coltitle>Дерево файлов <span style="color:#c5cad6">(в этой сессии)</span></div>'+repoTree(d)+
+   '<div class=rc-coltitle>Открытые merge request</div>'+mrs+
+   '<div class=rc-coltitle>Последние события</div><div class=rc-feed>'+feed+'</div>'+
+   '</div>';
+}
+function repoTree(d){
+ const tree=d.tree||[]; const del=d.deleted_recent||[];
+ const newset=new Set((d.recent||[]).filter(e=>e.action==='push'&&e.path).map(e=>e.path));
+ if(!tree.length && !del.length) return '<div class="rc-tree tempty">пока пусто — файлы появятся при пушах</div>';
+ const groups={};
+ tree.forEach(p=>{const i=p.lastIndexOf('/');const dir=i<0?'/':p.slice(0,i);const f=i<0?p:p.slice(i+1);
+   (groups[dir]=groups[dir]||[]).push([f,p]);});
+ let html='';
+ Object.keys(groups).sort().forEach(dir=>{
+   html+='<div class=tfolder>'+(dir==='/'?'(корень)':'📁 '+esc(dir))+'</div>';
+   groups[dir].forEach(([f,p])=>{ html+='<div class="tfile'+(newset.has(p)?' new':'')+'">'+esc(f)+'</div>'; });
+ });
+ del.forEach(x=>{ const p=x.path||''; const f=p.slice(p.lastIndexOf('/')+1);
+   html+='<div class="tfile del" title="удалил @'+esc(x.actor||'')+'">'+esc(f)+'</div>'; });
+ return '<div class=rc-tree>'+html+'</div>';
+}
+let repoSig='';
+let _repoData={};
+async function pollRepos(){try{const d=await jget('/api/repos');const r=d.repos||{};
+ _repoData=r;   // нужен кнопке «здоровье» в карточке репозитория
+ const names=Object.keys(r).filter(n=>r[n].total>0).sort((a,b)=>r[b].total-r[a].total);
+ const rest=Object.keys(r).filter(n=>!r[n].total).sort();
+ const order=names.concat(rest);
+ const grid=$('repogrid');if(!grid)return;
+ const sig=order.map(n=>n+':'+r[n].total+':'+(r[n].open_mrs||[]).length).join('|');
+ if(sig===repoSig)return; repoSig=sig;
+ grid.innerHTML=order.map(n=>repoCard(n,r[n])).join('')||'<div class=help style=color:#9aa0ad>запустите симуляцию — здесь появится живая карта</div>';
+}catch(e){}}
+pollRepos();setInterval(pollRepos,2500);
+</script></body></html>
