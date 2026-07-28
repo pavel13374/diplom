@@ -1,11 +1,16 @@
 {
   "id": "history-rewrite",
-  "title": "Переписывание истории и удаление следов",
   "technique": "T1070.004",
   "tactic": "Defense Evasion",
+  "title": "Переписана история защищённой ветки",
   "severity": "high",
-  "risk": 0.64,
+  "risk": 0.75,
+  "rationale": "Force-push после rebase своей ветки — рутина и не срабатывает. Признак заметания следов: защищённая ветка и потерянные коммиты.",
   "when": {
-    "action": "history_rewrite"
+    "action": "force_push",
+    "protected_branch": true,
+    "commits_dropped": {
+      ">=": 3
+    }
   }
 }

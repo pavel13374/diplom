@@ -13,10 +13,8 @@
 обращались к одному источнику времени через simclock.now()/today()/sleep().
 """
 import time as _time
-import random
 import logging
 from datetime import datetime, timedelta, date
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

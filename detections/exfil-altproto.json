@@ -1,11 +1,13 @@
 {
   "id": "exfil-altproto",
-  "title": "Вынос по альтернативному протоколу",
   "technique": "T1048",
   "tactic": "Exfiltration",
+  "title": "Выгрузка на внешний хост по альтернативному протоколу",
   "severity": "high",
-  "risk": 0.66,
+  "risk": 0.75,
+  "rationale": "У такого файла обычная энтропия, и по ней его не отличить — отличает структура содержимого: scp/dig/curl на внешний хост.",
   "when": {
-    "action": "exfil_altproto"
+    "action": "push",
+    "net_sink_signal": true
   }
 }

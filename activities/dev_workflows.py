@@ -76,7 +76,7 @@ class IterativeReviewActivity:
         body = (f"# {kind}: {topic}\n\n"
                 f"status: draft\nauthor: {self.author.name}\ndate: {date.today().isoformat()}\n"
                 f"detection:\n  selection:\n    image|endswith: '\\\\{topic}.exe'\n"
-                f"  condition: selection\nlevel: high\n")
+                "  condition: selection\nlevel: high\n")
         if not self.author.push_file(self.pid, path, body,
                                      f"feat({kind}): draft {topic}", branch):
             return False
@@ -142,8 +142,8 @@ class DependencyAuditActivity:
         # отчёт об аудите
         rep = (f"# Dependency Security Audit — {date.today().isoformat()}\n\n"
                f"Аудитор: {self.author.name}\nИнструмент: pip-audit / safety\n\n"
-               f"| Пакет | Текущая | Исправлено в | CVE | Severity | Описание |\n"
-               f"|---|---|---|---|---|---|\n")
+               "| Пакет | Текущая | Исправлено в | CVE | Severity | Описание |\n"
+               "|---|---|---|---|---|---|\n")
         for pkg, cur, fix, cve, sev, desc in picks:
             rep += f"| {pkg} | {cur} | {fix} | {cve} | {sev} | {desc} |\n"
         rep += "\n## Действия\n- Обновить пакеты до исправленных версий\n- Перепрогнать тесты\n"

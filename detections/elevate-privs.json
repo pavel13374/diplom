@@ -1,11 +1,16 @@
 {
   "id": "elevate-privs",
-  "title": "Повышение прав через обход контроля",
   "technique": "T1548",
   "tactic": "Privilege Escalation",
-  "severity": "high",
-  "risk": 0.66,
+  "title": "Актор поднял права сам себе до Owner",
+  "severity": "critical",
+  "risk": 0.85,
+  "rationale": "Штатная выдача прав — Reporter/Developer другому человеку. Самовыдача Owner/Maintainer не встречается в нормальном процессе.",
   "when": {
-    "action": "elevate_privs"
+    "action": "member_update",
+    "self_grant": true,
+    "access_level": {
+      ">=": 40
+    }
   }
 }

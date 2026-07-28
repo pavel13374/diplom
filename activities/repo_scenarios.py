@@ -118,16 +118,16 @@ class HuntQueryActivity(_MixinCycle):
     def _query(self, lang, tech):
         if lang == "kql":
             return (f"// Hunt for {tech}\nDeviceProcessEvents\n"
-                    f"| where Timestamp > ago(7d)\n"
-                    f"| where InitiatingProcessFileName in~ ('winword.exe','excel.exe','outlook.exe')\n"
-                    f"| where FileName in~ ('cmd.exe','powershell.exe','wscript.exe')\n"
-                    f"| summarize count() by DeviceName, AccountName, bin(Timestamp, 1h)\n"
+                    "| where Timestamp > ago(7d)\n"
+                    "| where InitiatingProcessFileName in~ ('winword.exe','excel.exe','outlook.exe')\n"
+                    "| where FileName in~ ('cmd.exe','powershell.exe','wscript.exe')\n"
+                    "| summarize count() by DeviceName, AccountName, bin(Timestamp, 1h)\n"
                     f"| where count_ > {random.randint(3,9)}\n")
         if lang == "spl":
             return (f"`comment(\"Hunt {tech}\")`\nindex=edr sourcetype=process\n"
-                    f"| stats count values(process) as procs by host, user\n"
+                    "| stats count values(process) as procs by host, user\n"
                     f"| where count > {random.randint(5,15)}\n"
-                    f"| sort - count\n")
+                    "| sort - count\n")
         if lang == "eql":
             return ("process where parent.name in (\"winword.exe\",\"excel.exe\") and\n"
                     "  process.name in (\"cmd.exe\",\"powershell.exe\")\n")
@@ -143,10 +143,10 @@ class HuntQueryActivity(_MixinCycle):
                   f"**MITRE:** {tech}\n**Дата:** {date.today().isoformat()}\n"
                   f"**Аналитик:** {self.author.name}\n**Язык:** {lang.upper()}\n\n"
                   f"## Гипотеза\n{desc_h}\n\n"
-                  f"## Источники данных\nEDR process telemetry, Windows Security, DNS logs\n\n"
-                  f"## Шаги\n1. Базлайн за 30 дней.\n2. Выделить отклонения.\n"
-                  f"3. Триаж кандидатов, эскалация TP в IR.\n\n"
-                  f"## Результат\n- [ ] Найдены аномалии\n- [ ] Создано детект-правило\n")
+                  "## Источники данных\nEDR process telemetry, Windows Security, DNS logs\n\n"
+                  "## Шаги\n1. Базлайн за 30 дней.\n2. Выделить отклонения.\n"
+                  "3. Триаж кандидатов, эскалация TP в IR.\n\n"
+                  "## Результат\n- [ ] Найдены аномалии\n- [ ] Создано детект-правило\n")
         files = [
             (f"hunts/{date.today().strftime('%Y%m')}_{slug}.md", hyp_md,
              f"hunt: hypothesis for {title_h} ({tech})"),
@@ -241,17 +241,17 @@ class CloudDetectionActivity(_MixinCycle):
         level = random.choice(["medium", "high", "critical"])
         rule = (f"title: {title_c}\n"
                 f"id: {slug}\n"
-                f"status: experimental\n"
+                "status: experimental\n"
                 f"description: {desc_c}\n"
                 f"author: {self.author.name}\n"
                 f"date: {date.today().isoformat()}\n"
                 f"logsource:\n  product: {cloud}\n  service: {source.lower()}\n"
                 f"detection:\n  selection:\n    eventSource: {cloud}\n"
                 f"    eventName: '{title_c.split()[0]}*'\n"
-                f"  condition: selection\n"
+                "  condition: selection\n"
                 f"level: {level}\n"
                 f"tags:\n  - attack.{tech.lower()}\n  - cloud.{cloud}\n"
-                f"falsepositives:\n  - Authorized administrative change\n")
+                "falsepositives:\n  - Authorized administrative change\n")
         files = [(f"rules/{cloud}/{slug}.yml", rule,
                   f"detect({cloud}): {title_c} [{tech}]")]
         return self._do(
@@ -310,11 +310,11 @@ class SiemContentActivity(_MixinCycle):
                 f"severity: {sev}\n"
                 f"schedule: '*/{random.choice([5,10,15])} * * * *'\n"
                 f"window_minutes: {window}\n"
-                f"logic:\n"
-                f"  - source: windows_security\n    where: EventID in [4625,4624]\n"
-                f"  - group_by: [src_ip, target_user]\n"
+                "logic:\n"
+                "  - source: windows_security\n    where: EventID in [4625,4624]\n"
+                "  - group_by: [src_ip, target_user]\n"
                 f"  - having: failed_count >= {thr} AND success_count >= 1\n"
-                f"actions:\n  - create_alert\n  - notify: soc-oncall\n")
+                "actions:\n  - create_alert\n  - notify: soc-oncall\n")
         dashboard = json.dumps({
             "title": f"{name} — overview",
             "panels": [
@@ -384,7 +384,7 @@ class EdrRuleActivity(_MixinCycle):
         rule = (f"title: {title_e}\n"
                 f"id: {slug}\n"
                 f"vendor: {vendor}\n"
-                f"type: custom_ioa\n"
+                "type: custom_ioa\n"
                 f"description: {pattern}\n"
                 f"author: {self.author.name}\n"
                 f"date: {date.today().isoformat()}\n"
@@ -451,22 +451,22 @@ class AutomationActivity(_MixinCycle):
         slug = _slug(name)
         func = name.replace("-", "_")
         script = (f'"""SOAR action: {name} ({kind})\n{desc_a}\n'
-                  f'Секреты берутся из переменных окружения раннера (masked).\n"""\n'
-                  f"import os\nimport requests\n\n"
-                  f"API = os.environ.get(\"SOAR_API_URL\", \"\")\n"
-                  f"TOKEN = os.environ.get(\"SOAR_TOKEN\", \"\")  # masked CI variable\n\n"
+                  'Секреты берутся из переменных окружения раннера (masked).\n"""\n'
+                  "import os\nimport requests\n\n"
+                  "API = os.environ.get(\"SOAR_API_URL\", \"\")\n"
+                  "TOKEN = os.environ.get(\"SOAR_TOKEN\", \"\")  # masked CI variable\n\n"
                   f"def {func}(entity: str) -> dict:\n"
                   f"    headers = {{\"Authorization\": f\"Bearer {{TOKEN}}\"}}\n"
                   f"    resp = requests.post(f\"{{API}}/{kind}/{slug}\",\n"
                   f"                         json={{\"entity\": entity}}, headers=headers, timeout=30)\n"
-                  f"    resp.raise_for_status()\n"
-                  f"    return resp.json()\n\n\n"
-                  f"if __name__ == \"__main__\":\n"
+                  "    resp.raise_for_status()\n"
+                  "    return resp.json()\n\n\n"
+                  "if __name__ == \"__main__\":\n"
                   f"    import sys\n    print({func}(sys.argv[1] if len(sys.argv) > 1 else \"test\"))\n")
         play = (f"name: {name}\nkind: {kind}\ndescription: {desc_a}\n"
                 f"trigger: alert.type == '{kind}'\n"
                 f"steps:\n  - run: automations/{slug}.py\n  - on_success: notify_oncall\n"
-                f"  - on_failure: escalate\n"
+                "  - on_failure: escalate\n"
                 f"owner: {self.author.name}\n")
         files = [
             (f"automations/{slug}.py", script, f"automation: {name} ({kind})"),
@@ -476,7 +476,7 @@ class AutomationActivity(_MixinCycle):
             f"auto/{slug[:24]}", files,
             f"automation({kind}): {name}",
             f"## SOAR-автоматизация `{name}`\n\n**Тип:** {kind}\n\n{desc_a}\n\n"
-            f"Секреты — только из masked CI-переменных, не в коде.",
+            "Секреты — только из masked CI-переменных, не в коде.",
             "Логика и обработка ошибок ок, секреты в env. Approve.", emoji="robot")
 
 
@@ -526,10 +526,10 @@ class IrRunbookActivity(_MixinCycle):
                     f"## Краткое описание\nИнцидент класса «{title_i}» (MITRE {tech}).\n\n"
                     f"## Таймлайн\n- T0 обнаружение\n- T+{random.randint(5,40)}m сдерживание\n"
                     f"- T+{random.randint(1,8)}h устранение\n\n"
-                    f"## Причина\nНедостаточное покрытие детектами на раннем этапе.\n\n"
-                    f"## Что сделали\n" + "".join(f"- {s}\n" for s in steps) +
-                    f"\n## Уроки и действия\n- [ ] Новое детект-правило\n"
-                    f"- [ ] Обновить runbook\n- [ ] Тренинг команды\n")
+                    "## Причина\nНедостаточное покрытие детектами на раннем этапе.\n\n"
+                    "## Что сделали\n" + "".join(f"- {s}\n" for s in steps) +
+                    "\n## Уроки и действия\n- [ ] Новое детект-правило\n"
+                    "- [ ] Обновить runbook\n- [ ] Тренинг команды\n")
             path = f"postmortems/{date.today().isoformat()}_{slug}.md"
             commit = f"postmortem: {title_i} ({tech})"
             ttl = f"postmortem: {title_i}"
@@ -538,10 +538,10 @@ class IrRunbookActivity(_MixinCycle):
             body = (f"# Runbook: {title_i}\n\n**MITRE:** {tech}\n"
                     f"**Владелец:** {self.author.name} · {date.today().isoformat()}\n\n"
                     f"## Когда применять\nПри подтверждённом инциденте «{title_i}».\n\n"
-                    f"## Шаги реагирования\n" +
+                    "## Шаги реагирования\n" +
                     "".join(f"{i+1}. {s}\n" for i, s in enumerate(steps)) +
-                    f"\n## Эскалация\nSEV1/2 → IR-lead + менеджмент.\n\n"
-                    f"## Контакты\n- Дежурный SOC\n- IR-команда\n- Юристы (при утечке ПДн)\n")
+                    "\n## Эскалация\nSEV1/2 → IR-lead + менеджмент.\n\n"
+                    "## Контакты\n- Дежурный SOC\n- IR-команда\n- Юристы (при утечке ПДн)\n")
             path = f"runbooks/{slug}.md"
             commit = f"runbook: {title_i} ({tech})"
             ttl = f"runbook: {title_i}"

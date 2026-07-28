@@ -14,12 +14,12 @@ def _rule_yml(title, mitre, product, service, level="medium"):
     sid = "".join(c if c.isalnum() else "-" for c in title.lower()).strip("-")[:40]
     return (f"title: {title}\n"
             f"id: {sid}\n"
-            f"status: stable\n"
+            "status: stable\n"
             f"description: Detects {title.lower()}\n"
             f"date: {date.today().isoformat()}\n"
             f"logsource:\n  product: {product}\n  service: {service}\n"
             f"detection:\n  selection:\n    EventID: {random.randint(1,5000)}\n"
-            f"  condition: selection\n"
+            "  condition: selection\n"
             f"level: {level}\n"
             f"tags:\n  - attack.{mitre.lower()}\n")
 
@@ -27,25 +27,25 @@ def _rule_yml(title, mitre, product, service, level="medium"):
 def _hunt_md(title, mitre, lang):
     return (f"# Hunt: {title}\n\n**MITRE:** {mitre}\n**Язык:** {lang.upper()}\n\n"
             f"## Гипотеза\nИщем признаки техники {mitre} в телеметрии EDR/SIEM.\n\n"
-            f"## Шаги\n1. Базлайн 30 дней.\n2. Отклонения.\n3. Триаж и эскалация.\n")
+            "## Шаги\n1. Базлайн 30 дней.\n2. Отклонения.\n3. Триаж и эскалация.\n")
 
 
 def _runbook_md(title, mitre, steps):
     return (f"# Runbook: {title}\n\n**MITRE:** {mitre} · {date.today().isoformat()}\n\n"
-            f"## Шаги реагирования\n" + "".join(f"{i+1}. {s}\n" for i, s in enumerate(steps)) +
-            f"\n## Эскалация\nSEV1/2 → IR-lead + менеджмент.\n")
+            "## Шаги реагирования\n" + "".join(f"{i+1}. {s}\n" for i, s in enumerate(steps)) +
+            "\n## Эскалация\nSEV1/2 → IR-lead + менеджмент.\n")
 
 
 def _automation_py(name, kind):
     fn = name.replace("-", "_")
     return (f'"""SOAR action: {name} ({kind}). Секреты — из masked env раннера."""\n'
-            f"import os, requests\n\n"
-            f"API = os.environ.get('SOAR_API_URL', '')\n"
-            f"TOKEN = os.environ.get('SOAR_TOKEN', '')\n\n"
+            "import os, requests\n\n"
+            "API = os.environ.get('SOAR_API_URL', '')\n"
+            "TOKEN = os.environ.get('SOAR_TOKEN', '')\n\n"
             f"def {fn}(entity):\n"
             f"    r = requests.post(f'{{API}}/{kind}/{name}', json={{'entity': entity}},\n"
             f"                      headers={{'Authorization': f'Bearer {{TOKEN}}'}}, timeout=30)\n"
-            f"    r.raise_for_status()\n    return r.json()\n")
+            "    r.raise_for_status()\n    return r.json()\n")
 
 
 # repo -> (key_dir_для_проверки_пустоты, [(path, content), ...])

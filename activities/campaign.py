@@ -49,8 +49,8 @@ class CampaignActivity:
             f"[Campaign #{camp_id}] {actor} — {cve}",
             f"## Координация реагирования\n\n**Группировка:** {actor}\n"
             f"**Уязвимость:** {cve}\n**Ключевая техника:** {tech['title']} ({tech['id']})\n\n"
-            f"### План\n- [ ] Threat intel: IOC\n- [ ] Правило детекта\n"
-            f"- [ ] Плейбук реагирования\n- [ ] Дашборд/постмортем",
+            "### План\n- [ ] Threat intel: IOC\n- [ ] Правило детекта\n"
+            "- [ ] Плейбук реагирования\n- [ ] Дашборд/постмортем",
             labels=["type::campaign", f"severity::{random.choice(['high','critical'])}"])
         if not issue_iid:
             return False

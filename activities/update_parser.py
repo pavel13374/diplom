@@ -217,7 +217,7 @@ class UpdateParserActivity:
 
     def _changelog_entry(self, source: str, what: str) -> str:
         from datetime import date
-        return f"""# Changelog: {source} parser
+        return """# Changelog: {source} parser
 
 ## {date.today().isoformat()}
 
@@ -232,7 +232,7 @@ class UpdateParserActivity:
 """
 
     def _mr_desc(self, source: str, what: str) -> str:
-        return f"""## Обновление парсера `{source}`
+        return """## Обновление парсера `{source}`
 
 ### Изменения
 - Добавлена поддержка: **{what}**

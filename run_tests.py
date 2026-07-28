@@ -5,8 +5,12 @@ RUN TESTS — единый прогон проверок платформы.
 
 Запускает по очереди:
   • компиляцию всех .py;
+  • test_detector.py (правила, окна, вероятностный UEBA, слияние рисков);
   • selftest.py   (полный конвейер: store→detector→correlator→triage→commands→export→baseline→metrics);
-  • test_antileak.py (защита не видит разметку мира).
+  • test_antileak.py (защита не видит ПОЛЕЙ разметки мира);
+  • test_leakage.py  (ни одно ЗНАЧЕНИЕ наблюдаемого признака не определяет
+    метку — проверка на «метки-двойники» вроде эксклюзивных имён действий);
+  • test_stats.py    (корректность статистического аппарата оценки).
 
 Печатает сводку и возвращает 0, если всё зелёное.
 
@@ -55,6 +59,8 @@ def main():
     results.append(("unit-detector", run([sys.executable, "tests/test_detector.py"], "tests/test_detector.py")))
     results.append(("selftest", run([sys.executable, "tests/selftest.py"], "tests/selftest.py")))
     results.append(("antileak", run([sys.executable, "tests/test_antileak.py"], "tests/test_antileak.py")))
+    results.append(("leakage", run([sys.executable, "tests/test_leakage.py"], "tests/test_leakage.py")))
+    results.append(("stats", run([sys.executable, "tests/test_stats.py"], "tests/test_stats.py")))
     results.append(("realmon", run([sys.executable, "tests/test_realmon.py"], "tests/test_realmon.py")))
     results.append(("llm-fallback", run([sys.executable, "tests/test_llm.py"], "tests/test_llm.py")))
     results.append(("contrast", run([sys.executable, "tests/test_contrast.py"], "tests/test_contrast.py")))

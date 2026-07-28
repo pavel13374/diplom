@@ -704,7 +704,7 @@ def api_reset_repos():
             os.remove(sp)
         runner.logger.info(f"Сброс репозиториев: MR {mr_n}, веток {br_n}, файлов {fl_n}")
         return jsonify({"ok": True, "msg": f"очищено: MR {mr_n}, веток {br_n}, файлов {fl_n}. "
-                        f"Команда и репозитории сохранены."})
+                        "Команда и репозитории сохранены."})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)})
 
@@ -1466,8 +1466,8 @@ function recalc(){
  const wh=Math.max(1,(isNaN(he)?18:he)-(isNaN(hs)?10:hs));
  let scale=!en?1:(ov>0?ov:(wh*3600)/(wd*60));
  const dayMin=(wh*3600/scale)/60,weekMin=dayMin*5;
- const el=$('tlInfo');if(el)el.innerHTML=en
-  ?'Масштаб <b>×'+scale.toFixed(1)+'</b> · рабочий день ('+wh+' ч) проходит за <b>'+dayMin.toFixed(0)+' мин</b> реального времени · рабочая неделя — примерно <b>'+weekMin.toFixed(0)+' мин</b> (ночи и выходные мгновенно).'
+ const el=$('tlInfo');if(el)el.textContent=en
+  ?'Масштаб ×'+scale.toFixed(1)+' · рабочий день ('+wh+' ч) проходит за '+dayMin.toFixed(0)+' мин реального времени · рабочая неделя — примерно '+weekMin.toFixed(0)+' мин (ночи и выходные мгновенно).'
   :'Сжатие времени выключено — внутреннее время идёт один к одному с реальным.';
 }
 async function save(){

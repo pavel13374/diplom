@@ -148,13 +148,21 @@ class RedTeamEngine:
         return [{"key": k, "title": v["title"], "steps": len(v["steps"])}
                 for k, v in CAMPAIGNS.items()]
 
+    # Темп РЕАЛЬНОГО времени между шагами кампании (сек). Влияет только на то,
+    # как быстро аналитик видит поступление детектов, а не на sim-метки событий.
+    TEMPO_REAL_GAP = {"fast": 0, "realistic": 14, "slow": 40}
+
     def run_campaign(self, key=None, evasion="noisy", actor=None, avoid_techniques=None,
-                     dwell_days=0, persona=None, motive=None):
+                     dwell_days=0, persona=None, motive=None, tempo="fast"):
         """Исполнить кампанию по шагам одним актором. Возвращает summary.
         avoid_techniques — для adaptive: техники, которые blue уже ловил, противник
-        пропускает (co-evolution: атакующий адаптируется под защиту)."""
+        пропускает (co-evolution: атакующий адаптируется под защиту).
+        tempo — темп РЕАЛЬНОГО времени: fast (мгновенно), realistic, slow —
+        добавляет реальную паузу между шагами, чтобы атаку было видно поэтапно."""
         import random
+        import time as _rt
         from activities.anomaly import AnomalyActivity
+        _real_gap = self.TEMPO_REAL_GAP.get(tempo, 0)
 
         if key is None:
             key = random.choice(list(CAMPAIGNS))
@@ -218,6 +226,10 @@ class RedTeamEngine:
             logger.warning(f"[RED]   шаг {idx+1}/{len(camp['steps'])} {tactic}/{tech} "
                            f"({method}) -> {'ok' if ok else 'fail'}")
             self._between_steps(evasion)
+            # Реальная пауза между шагами (кроме последнего): атака «разворачивается»
+            # во времени, аналитик видит детекты поэтапно, а не все сразу.
+            if _real_gap and idx < len(camp["steps"]) - 1:
+                _rt.sleep(_real_gap)
 
         simclock.now = _orig_now  # вернуть нормальные часы после dwell-спреда
         logger.warning(f"[RED] КАМПАНИЯ '{key}' завершена: {ok_steps}/{len(camp['steps'])} шагов"

@@ -99,7 +99,7 @@ class RecreateRuleActivity:
         return ok
 
     def _mr_desc(self, technique: dict, slug: str) -> str:
-        return f"""## Пересоздание правила (v2): {technique['title']}
+        return """## Пересоздание правила (v2): {technique['title']}
 
 Правило ранее выводилось из эксплуатации из-за шума/проблем.
 Возвращаем детекцию техники **{technique['id']}** с учётом post-mortem.

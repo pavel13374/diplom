@@ -1,14 +1,16 @@
 {
   "id": "data-repo-collection",
-  "title": "Сбор данных из репозитория (vault export)",
   "technique": "T1213",
   "tactic": "Collection",
+  "title": "Обращение к хранилищу секретов в коде",
   "severity": "high",
-  "risk": 0.62,
+  "risk": 0.65,
+  "rationale": "Путь ведёт в vault/секрет-хранилище.",
   "when": {
     "action": "push",
     "path": {
       "contains": "vault"
-    }
+    },
+    "placeholder_signal": false
   }
 }

@@ -142,7 +142,7 @@ def main():
     print("=" * 68)
     print(f"аномальных эпизодов: {n_anom} | benign-сессий: {n_benign}")
     print(f"LLM доступна: {'ДА' if lc.available() else 'НЕТ (LLM-колонка = фолбэк)'}")
-    print(f"анти-лик: пройден (метки в инцидент не попали)")
+    print("анти-лик: пройден (метки в инцидент не попали)")
     print("-" * 68)
 
     runs = [("fallback", lc._fallback_triage)]

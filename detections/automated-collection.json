@@ -1,11 +1,16 @@
 {
   "id": "automated-collection",
-  "title": "Автоматический сбор данных из репозиториев",
   "technique": "T1119",
   "tactic": "Collection",
+  "title": "Автоматизированная выгрузка репозиториев",
   "severity": "high",
-  "risk": 0.6,
+  "risk": 0.68,
+  "rationale": "Серия скачиваний архивов репозиториев за короткое окно — признак харвестера, а не ручной работы.",
   "when": {
-    "action": "automated_collection"
+    "action": "api_read",
+    "api_path": "/repository/archive",
+    "burst_api_read_15m": {
+      ">=": 3
+    }
   }
 }

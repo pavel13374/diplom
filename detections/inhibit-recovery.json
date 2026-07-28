@@ -1,11 +1,16 @@
 {
   "id": "inhibit-recovery",
-  "title": "Удаление резервных веток и тегов",
   "technique": "T1490",
   "tactic": "Impact",
+  "title": "Удаление резервных веток и тегов",
   "severity": "high",
-  "risk": 0.7,
+  "risk": 0.72,
+  "rationale": "Удаление слитых feature-веток — рутина. Признак: серия удалений защищённых/резервных веток.",
   "when": {
-    "action": "inhibit_recovery"
+    "action": "branch_delete",
+    "protected_branch": true,
+    "burst_branch_delete_30m": {
+      ">=": 2
+    }
   }
 }

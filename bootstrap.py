@@ -35,7 +35,7 @@ def ensure_environment(gl):
                 logger.info(f"Создана группа: {config.PROJECT_NAMESPACE} (id {gid})")
             elif not gid:
                 logger.warning(f"Не удалось найти/создать группу {config.PROJECT_NAMESPACE} "
-                               f"— нужны права на создание групп у токена")
+                               "— нужны права на создание групп у токена")
         except Exception as e:
             logger.warning(f"ensure_group failed: {e}")
         # ВСЕ репозитории: базовые (config.PROJECTS) + тематические (NEW_REPOS).

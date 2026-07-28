@@ -1,11 +1,17 @@
 {
   "id": "cloud-account-create",
-  "title": "Создан облачный служебный аккаунт",
   "technique": "T1136.003",
   "tactic": "Persistence",
+  "title": "Новый служебный аккаунт с широкими правами",
   "severity": "high",
-  "risk": 0.62,
+  "risk": 0.65,
+  "rationale": "Новый участник сразу с уровнем Maintainer и выше.",
   "when": {
-    "action": "cloud_account_create"
+    "action": "member_update",
+    "new_member": true,
+    "access_level": {
+      ">=": 40
+    },
+    "self_grant": false
   }
 }

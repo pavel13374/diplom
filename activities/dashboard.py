@@ -78,7 +78,7 @@ class DashboardActivity:
             f"| {t.replace('_',' ').title():22} | {c:3} |"
             for t, c in sorted(tactics.items(), key=lambda x: -x[1])
         ) or "| (нет данных) | 0 |"
-        return f"""# ATT&CK Coverage Matrix
+        return """# ATT&CK Coverage Matrix
 
 **Обновлено:** {date.today().isoformat()}
 **Всего правил:** {total}
@@ -98,7 +98,7 @@ class DashboardActivity:
             f"{random.choice(['↓','↑','→'])} |"
             for s in sample
         ) or "| (нет правил) | 0 | → |"
-        return f"""# Weekly False-Positive Report
+        return """# Weekly False-Positive Report
 
 **Неделя:** {date.today().strftime('%Y-W%W')}
 **Автор:** {self.author.name}
@@ -113,7 +113,7 @@ class DashboardActivity:
 """
 
     def _mttr_doc(self) -> str:
-        return f"""# MTTR / MTTD Dashboard
+        return """# MTTR / MTTD Dashboard
 
 **Обновлено:** {date.today().isoformat()}
 

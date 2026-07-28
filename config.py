@@ -146,6 +146,21 @@ ACTIVITY_WEIGHTS = {
     "iterative_review":       0.06,
     "dependency_audit":       0.05,
     "sprint_retro":           0.03,
+    # ШТАТНАЯ АДМИНИСТРАТИВНАЯ РАБОТА (activities/ops_admin.py).
+    # Эти действия обязаны быть у нормальной команды: без них token_create,
+    # deploy_key_add, hook_create, schedule_create, pipeline_run,
+    # member_update, force_push и api_read встречались бы ТОЛЬКО у атакующего,
+    # и имя действия работало бы меткой вместо признака (см. taxonomy.py).
+    "api_browsing":           0.10,
+    "pipeline_run":           0.06,
+    "token_rotation":         0.04,
+    "branch_cleanup":         0.04,
+    "rebase_force_push":      0.03,
+    "nightly_schedule":       0.02,
+    "webhook_setup":          0.02,
+    "deploy_key_rotation":    0.02,
+    "membership_change":      0.02,
+    "production_deploy":      0.02,
 }
 
 

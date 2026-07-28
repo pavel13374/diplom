@@ -53,7 +53,7 @@ class StandupActivity:
         self.lead.comment_issue(
             self.pid, iid,
             f"**{self.lead.name}:** Спасибо. Приоритет дня — разгрести FP-баги "
-            f"из спринта и закрыть review-очередь. "
+            "из спринта и закрыть review-очередь. "
             + (f"@{oncall} на дежурстве." if oncall else ""))
         # Стендап закрываем к концу дня
         self.lead.close_issue(self.pid, iid)

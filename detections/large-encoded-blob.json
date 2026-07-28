@@ -1,18 +1,20 @@
 {
   "id": "large-encoded-blob",
-  "title": "Крупный закодированный архив (эксфильтрация)",
   "technique": "T1567",
   "tactic": "Exfiltration",
+  "title": "Крупный закодированный блоб в коммите",
   "severity": "high",
-  "risk": 0.62,
+  "risk": 0.7,
+  "rationale": "Большой файл с высокой энтропией там, где генерация не ожидается.",
   "when": {
     "action": "push",
     "bytes": {
       ">=": 1500
     },
     "shannon_entropy": {
-      ">=": 4.0
+      ">=": 4.5
     },
+    "generated_signal": false,
     "placeholder_signal": false
   }
 }

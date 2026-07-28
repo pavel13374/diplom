@@ -3,6 +3,9 @@
 Реалистичные комментарии между членами SOC-команды.
 """
 import random
+import logging
+
+logger = logging.getLogger("content.comments")
 
 # -----------------------------------------------------------------------
 # Комментарии Lead'а при review новых правил
@@ -157,9 +160,16 @@ except Exception:                                    # pragma: no cover
 
 
 def _say(kind, fallback):
+    """Реплика через LLM-болтовню, с откатом на банк фраз.
+
+    Раньше здесь стоял вызов несуществующего `__say`, который на каждом
+    обращении бросал NameError и молча гасился `except` — в результате
+    `chatter.py` не вызывался НИ РАЗУ. Теперь зовём модуль напрямую.
+    """
     try:
-        return __say(kind, fallback)
+        return _chatter.line(kind, fallback)
     except Exception:
+        logger.debug("chatter недоступен для %s — банк фраз", kind, exc_info=True)
         return fallback()
 
 

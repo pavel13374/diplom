@@ -10,9 +10,11 @@
 import time
 import random
 import logging
+import itertools
 from typing import Optional
 from gitlab_client import GitLabClient
 from config import DELAYS, USERS
+import config
 import simclock
 import events
 
@@ -91,18 +93,23 @@ class BaseAgent:
 
     # ------------------------------------------------------------------
     def push_file(self, project_id: int, path: str, content: str,
-                  message: str, branch: str = "main") -> bool:
+                  message: str, branch: str = "main", extra: dict = None) -> bool:
+        """`extra` — дополнительные НАБЛЮДАЕМЫЕ атрибуты события (например,
+        dependency_added для правки манифеста зависимостей). Метки мира сюда
+        класть нельзя: они срезаются анти-ликом и в детектор не попадут."""
         res, ok, err = self._call("push_file", project_id, path, content, message, branch)
         ext = path.rsplit(".", 1)[-1] if "." in path else ""
-        extra = {"lines": content.count(chr(10)) + 1, "bytes": len(content), "ext": ext}
+        feats = {"lines": content.count(chr(10)) + 1, "bytes": len(content), "ext": ext}
         try:
             import content_features
-            extra.update(content_features.analyze(content, path))
+            feats.update(content_features.analyze(content, path))
         except Exception:
             logger.error("не удалось посчитать признаки содержимого для %s — "
                          "детектор недосчитается сигналов", path, exc_info=True)
+        if extra:
+            feats.update(extra)
         self._emit("push", gitlab_ok=ok, gitlab_error=err, project_id=project_id,
-                   path=path, branch=branch, message=message, extra=extra)
+                   path=path, branch=branch, message=message, extra=feats)
         (logger.info if ok else logger.warning)(
             f"[{self.username}] push {path} -> {message[:50]}" + ("" if ok else f"  ✗ {err}"))
         return ok
@@ -169,6 +176,13 @@ class BaseAgent:
                 _ac = len(_mr.get("approved_by") or []) if _mr.get("approved_by") is not None else None
             if _ac is not None:
                 _meta["approvals_count"] = int(_ac)
+            # Целевая ветка защищена? Правила self-merged-mr и
+            # merge-without-approval требуют именно этого контекста: merge
+            # своей мелкой правки в feature-ветку инцидентом не является.
+            _tgt = _mr.get("target_branch") or "main"
+            _meta["target_branch"] = _tgt
+            _meta["protected_branch"] = _tgt in getattr(config, "PROTECTED_BRANCHES",
+                                                        ["main", "master"])
         except Exception:
             # без этих полей не сработают правила self-merged-mr и
             # merge-without-approval — обход ревью останется незамеченным
@@ -288,10 +302,16 @@ class BaseAgent:
     def review_pause(self):
         simclock.sleep(DELAYS["review_wait"] * random.uniform(0.7, 1.5))
 
+    #: Счётчик веток на процесс. Раньше суффикс брался из int(time.time()),
+    #: и при быстром офлайн-прогоне все ветки одной кампании получали ОДИН И
+    #: ТОТ ЖЕ номер: имя ветки становилось устойчивым признаком атаки
+    #: (ловится tests/test_leakage.py). Плюс ветки конфликтовали между собой.
+    _branch_seq = itertools.count(int(time.time()) % 100000)
+
     def unique_branch(self, prefix: str, suffix: str = "") -> str:
-        ts = int(time.time()) % 100000
-        s  = f"-{suffix}" if suffix else ""
-        return f"{prefix}{s}-{ts}"
+        n = next(BaseAgent._branch_seq) % 100000
+        s = f"-{suffix}" if suffix else ""
+        return f"{prefix}{s}-{n}"
 
     def log(self, msg: str):
         logger.info(f"[{self.username}] {msg}")

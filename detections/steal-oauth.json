@@ -1,11 +1,15 @@
 {
   "id": "steal-oauth",
-  "title": "Кража OAuth/приложенческого токена",
   "technique": "T1528",
   "tactic": "Credential Access",
+  "title": "Чтение списка OAuth-токенов приложения",
   "severity": "high",
-  "risk": 0.66,
+  "risk": 0.7,
+  "rationale": "Обращение к /oauth/tokens в рабочем процессе SOC-команды не встречается: токены выдаёт администратор через UI.",
   "when": {
-    "action": "steal_oauth"
+    "action": "api_read",
+    "api_path": {
+      "contains": "/oauth"
+    }
   }
 }

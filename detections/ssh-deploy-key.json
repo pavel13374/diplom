@@ -1,11 +1,14 @@
 {
   "id": "ssh-deploy-key",
-  "title": "Добавлен внешний SSH deploy-ключ",
   "technique": "T1021.004",
   "tactic": "Lateral Movement",
-  "severity": "medium",
-  "risk": 0.55,
+  "title": "Внешний deploy-ключ с правом записи",
+  "severity": "high",
+  "risk": 0.7,
+  "rationale": "Норма — read-only ключ на внутренний раннер. Подозрителен ключ на запись, указывающий наружу.",
   "when": {
-    "action": "deploy_key_add"
+    "action": "deploy_key_add",
+    "key_write_access": true,
+    "external_host": true
   }
 }

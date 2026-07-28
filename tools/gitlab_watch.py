@@ -208,7 +208,7 @@ def main():
             _save_state(st)
             if n:
                 print(f"[{datetime.now():%H:%M:%S}] новых событий из GitLab: {n} "
-                      f"(смотри :8788)")
+                      "(смотри :8788)")
         except KeyboardInterrupt:
             break
         except Exception as e:

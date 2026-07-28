@@ -1,10 +1,11 @@
 {
   "id": "ci-debug-token-leak",
-  "title": "CI печатает токены/env в лог",
   "technique": "T1552.004",
   "tactic": "Credential Access",
-  "severity": "critical",
-  "risk": 0.85,
+  "title": "Отладочный вывод CI светит токены",
+  "severity": "high",
+  "risk": 0.72,
+  "rationale": "Правка CI, печатающая переменные окружения в лог джобы.",
   "when": {
     "action": "push",
     "path": {

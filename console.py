@@ -26,7 +26,7 @@ try:
 except Exception:
     pass
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session, redirect, url_for
 import config
 import eventstore
 import run_defense
@@ -40,7 +40,126 @@ import logging as _logging
 _flog = _logging.getLogger("console")
 
 app = Flask(__name__)
+app.secret_key = config.WEB_SECRET
 CURSOR = "console"
+
+# =======================================================================
+#  АУТЕНТИФИКАЦИЯ
+# =======================================================================
+# Раньше консоль защиты была открыта полностью: 35 маршрутов без единой
+# проверки, включая POST /api/red/launch (запуск атакующей кампании),
+# POST /api/incident/<id>/respond (действия реагирования) и маршруты,
+# запускающие подпроцессы. Консоль среды (webapp.py :8787) при этом логин
+# требовала — то есть защищённой была витрина, а не пульт управления.
+#
+# Учётные данные общие с консолью среды (config.WEB_ADMIN_USER/PASS), чтобы
+# аналитик не держал два пароля.
+_LOGIN_FAILS = {"n": 0, "until": 0.0}
+
+#: Маршруты, доступные без сессии.
+_PUBLIC_PATHS = {"/login", "/logout", "/healthz"}
+
+
+@app.before_request
+def _require_auth():
+    """Единая точка контроля доступа.
+
+    Реализовано через before_request, а не декоратором на каждом маршруте:
+    декоратор легко забыть на новом маршруте, и дыра появится незаметно.
+    Здесь же закрыто всё по умолчанию — новый маршрут защищён автоматически.
+    """
+    p = request.path or "/"
+    if p in _PUBLIC_PATHS or p.startswith("/static/"):
+        return None
+    if session.get("user"):
+        return None
+    if p.startswith("/api/"):
+        return jsonify({"error": "auth", "detail": "требуется вход"}), 401
+    return redirect(url_for("login"))
+
+
+@app.after_request
+def _security_headers(resp):
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("Referrer-Policy", "no-referrer")
+    resp.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+        "connect-src 'self'")
+    return resp
+
+
+@app.route("/healthz")
+def healthz():
+    return jsonify({"ok": True})
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    import hmac
+    error = ""
+    if request.method == "POST":
+        now = time.time()
+        if now < _LOGIN_FAILS["until"]:
+            error = "Слишком много попыток — подождите немного"
+        else:
+            u_ok = hmac.compare_digest(request.form.get("username", ""),
+                                       config.WEB_ADMIN_USER)
+            p_ok = hmac.compare_digest(request.form.get("password", ""),
+                                       config.WEB_ADMIN_PASS)
+            if u_ok and p_ok:
+                _LOGIN_FAILS["n"] = 0
+                session["user"] = config.WEB_ADMIN_USER
+                session.permanent = True
+                return redirect(url_for("index"))
+            _LOGIN_FAILS["n"] += 1
+            if _LOGIN_FAILS["n"] >= 5:
+                _LOGIN_FAILS["until"] = now + 15
+                _LOGIN_FAILS["n"] = 0
+            time.sleep(0.5)
+            error = "Неверный логин или пароль"
+    return _LOGIN_HTML.replace("{{ERROR}}", error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+_LOGIN_HTML = """<!doctype html><html lang=ru><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Вход · Консоль защиты</title>
+<link rel=stylesheet href="/static/design-system.css">
+<style>
+ body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+ form{background:var(--surface-1,#161a21);padding:32px;border-radius:12px;
+      border:1px solid var(--border,#2a3038);min-width:320px}
+ h1{font-size:18px;margin:0 0 4px}
+ p.sub{margin:0 0 20px;color:var(--text-muted,#8b95a5);font-size:13px}
+ label{display:block;font-size:12px;margin:14px 0 4px;color:var(--text-muted,#8b95a5)}
+ input{width:100%;padding:9px 11px;border-radius:7px;box-sizing:border-box;
+       border:1px solid var(--border,#2a3038);background:var(--surface-2,#1d222a);
+       color:var(--text,#e6e9ef);font-size:14px}
+ button{width:100%;margin-top:20px;padding:10px;border-radius:7px;border:0;
+        background:var(--accent,#3b82f6);color:#fff;font-size:14px;cursor:pointer}
+ .err{color:var(--danger,#f87171);font-size:13px;margin-top:14px;min-height:18px}
+ .hint{color:var(--text-muted,#8b95a5);font-size:11px;margin-top:14px}
+</style></head><body>
+<form method=post>
+  <h1>Консоль защиты</h1>
+  <p class=sub>Рабочее место аналитика SOC</p>
+  <label for=u>Логин</label>
+  <input id=u name=username autocomplete=username autofocus>
+  <label for=p>Пароль</label>
+  <input id=p name=password type=password autocomplete=current-password>
+  <button type=submit>Войти</button>
+  <div class=err>{{ERROR}}</div>
+  <div class=hint>пароль печатается в консоли при старте
+    (или задан через SOC_ADMIN_PASS)</div>
+</form></body></html>"""
 
 
 @app.errorhandler(Exception)
@@ -117,55 +236,9 @@ _STATE = {
 # Техники, принципиально ненаблюдаемые в этом контуре (фишинг,
 # эндпоинт, сеть), сюда намеренно не включены: их отсутствие — это
 # граница системы, а не пробел в правилах.
-ATTACK = [
-    ("Reconnaissance",      [("T1087", "Account/Repo Discovery"),
-                             ("T1593.003", "Search Code Repositories")]),
-    ("Initial Access",      [("T1078", "Valid Accounts"),
-                             ("T1195.002", "Supply Chain"),
-                             ("T1195.001", "Compromise Software Dependencies"),
-                             ("T1199", "Trusted Relationship")]),
-    ("Execution",           [("T1059", "Command/Script Interpreter"),
-                             ("T1072", "Software Deployment Tools"),
-                             ("T1053", "Scheduled Task/Job")]),
-    ("Persistence",         [("T1098.001", "Additional Cloud Credentials"),
-                             ("T1098", "Account Manipulation"),
-                             ("T1136.003", "Create Cloud Account"),
-                             ("T1505", "Server Software Component")]),
-    ("Privilege Escalation",[("T1098", "Account Manipulation"),
-                             ("T1548", "Abuse Elevation Control"),
-                             ("T1078.004", "Valid Accounts: Cloud")]),
-    ("Defense Evasion",     [("T1562", "Impair Defenses"),
-                             ("T1562.001", "Disable/Modify Tools"),
-                             ("T1556", "Modify Auth Process"),
-                             ("T1070.004", "Indicator Removal: File Deletion"),
-                             ("T1027", "Obfuscated Files or Information"),
-                             ("T1550.001", "Application Access Token")]),
-    ("Credential Access",   [("T1552.001", "Credentials In Files"),
-                             ("T1552", "Unsecured Credentials"),
-                             ("T1552.004", "Private Keys"),
-                             ("T1552.007", "Container API Credentials"),
-                             ("T1528", "Steal Application Access Token"),
-                             ("T1555", "Credentials from Password Stores")]),
-    ("Discovery",           [("T1069", "Permission Groups Discovery"),
-                             ("T1526", "Cloud Service Discovery"),
-                             ("T1518", "Software Discovery"),
-                             ("T1613", "Container and Resource Discovery")]),
-    ("Lateral Movement",    [("T1021.004", "Remote Services: SSH"),
-                             ("T1080", "Taint Shared Content")]),
-    ("Collection",          [("T1213", "Data from Repositories"),
-                             ("T1114.003", "Email Forwarding Rule"),
-                             ("T1119", "Automated Collection"),
-                             ("T1074", "Data Staged")]),
-    ("Command and Control", [("T1102", "Web Service"),
-                             ("T1071.001", "Web Protocols")]),
-    ("Exfiltration",        [("T1567", "Exfil Over Web Service"),
-                             ("T1537", "Transfer to Cloud Account"),
-                             ("T1048", "Exfil Over Alternative Protocol"),
-                             ("T1030", "Data Transfer Size Limits")]),
-    ("Impact",              [("T1485", "Data Destruction"),
-                             ("T1565.001", "Stored Data Manipulation"),
-                             ("T1490", "Inhibit System Recovery")]),
-]
+# Матрица вынесена в attack_matrix.py, чтобы дашборд и metrics.py считали
+# покрытие по одному честному знаменателю (вся матрица, а не атакованное).
+from attack_matrix import ATTACK  # noqa: E402
 
 
 def _repo(v):
@@ -792,10 +865,53 @@ def api_red():
 def api_red_launch():
     body = request.get_json(force=True, silent=True) or {}
     key = body.get("key"); evasion = body.get("evasion", "noisy")
+    tempo = body.get("tempo", "fast")
+    if tempo not in ("fast", "realistic", "slow"):
+        tempo = "fast"
     if key not in red_team.CAMPAIGNS:
         return jsonify({"ok": False, "msg": "unknown campaign"}), 400
-    cid = eventstore.enqueue_command("campaign", {"key": key, "evasion": evasion})
-    return jsonify({"ok": True, "msg": f"кампания '{key}' поставлена в очередь (cmd #{cid})"})
+    cid = eventstore.enqueue_command("campaign", {"key": key, "evasion": evasion, "tempo": tempo})
+    camp = red_team.CAMPAIGNS[key]
+    return jsonify({"ok": True, "cmd": cid, "launched_at": time.time(),
+                    "key": key, "title": camp["title"], "steps": len(camp["steps"]),
+                    "msg": f"кампания '{key}' поставлена в очередь (cmd #{cid})"})
+
+
+@app.route("/api/red/result")
+def api_red_result():
+    """Результат запущенной кампании: статус команды + инциденты, впервые
+    увиденные после запуска (по seen_real), со временем появления. Даёт
+    аналитику обратную связь: детект действительно сработал."""
+    try:
+        ts = float(request.args.get("ts", "0"))
+    except Exception:
+        ts = 0.0
+    cid = request.args.get("cmd", "")
+    cmd_status = None; cmd_result = None
+    try:
+        for c in eventstore.list_commands(30):
+            if str(c.get("id")) == str(cid):
+                cmd_status = c.get("status"); cmd_result = c.get("result"); break
+    except Exception:
+        pass
+    incs = []
+    for i in _COR.list(200):
+        if (i.get("seen_real") or 0) >= ts - 1:
+            incs.append({
+                "id": i["id"], "actor": i.get("actor"),
+                "risk": round(i.get("max_risk", 0), 2),
+                "severity": i.get("severity"),
+                "techniques": i.get("techniques", [])[:8],
+                "tactics": i.get("tactics", [])[:8],
+                "n_alerts": len(i.get("alerts", [])),
+                "is_campaign": bool(i.get("is_campaign")),
+                "seen_real": i.get("seen_real"),
+                "start_ts": i.get("start_ts"),
+            })
+    incs.sort(key=lambda x: -(x["seen_real"] or 0))
+    return jsonify({"cmd_status": cmd_status, "cmd_result": cmd_result,
+                    "detections": sum(x["n_alerts"] for x in incs),
+                    "incidents": incs})
 
 
 def _ask_filter(q):
@@ -1159,12 +1275,12 @@ def _incident_report_html(iid, i):
     owner = esc(_wf.get("owner") or "—")
     note = esc(_wf.get("reason") or "заметка не заполнена")
     analyst_block = (
-        f"<h2>2. Заключение аналитика</h2>"
+        "<h2>2. Заключение аналитика</h2>"
         f"<table><tr><th scope=row>Вердикт</th><td><b>{verdict}</b></td></tr>"
         f"<tr><th scope=row>Статус</th><td>{status}</td></tr>"
         f"<tr><th scope=row>Аналитик</th><td>{owner}</td></tr></table>"
         f"<p style='margin-top:10px;white-space:pre-wrap'>{note}</p>")
-    return f"""<!doctype html><html lang=ru><head><meta charset=utf-8>
+    return """<!doctype html><html lang=ru><head><meta charset=utf-8>
 <title>Инцидент #{iid}</title><style>
 body{{font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:900px;margin:24px auto;color:var(--info);padding:0 16px}}
 h1{{font-size:22px}} h2{{font-size:15px;margin-top:26px;border-bottom:2px solid var(--info-border);padding-bottom:5px}}
@@ -1861,7 +1977,7 @@ body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
     </section>
 
     <section class=view id=v-trends>
-      <div class=ctx style=margin-top:0>История метрик во времени (снапшоты раз в 5 мин + по кнопке). Вертикальные метки — события «добавлено правило / запущена кампания».
+      <div class=ctx style=margin-top:0>История метрик во времени (снапшоты раз в 5 мин + по кнопке). Вертикальные метки — события «добавлено правило / запущена кампания». Покрытие — по всей матрице ATT&CK (не по атакованным техникам), доля ложных — по действенным инцидентам (подкреплённым правилом или риском ≥ 0.6) после корреляции, а не по каждому сырому детекту.
         <a onclick=snapNow() style=color:#6d28d9;font-weight:700;cursor:pointer>снять снапшот сейчас</a> ·
         <a href="/api/trends.csv" style=color:#6d28d9;font-weight:700>скачать CSV</a></div>
       <div class=grid2 id=trendGrid></div>
@@ -1870,10 +1986,14 @@ body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
 
     <section class=view id=v-red>
       <div class=card><h2>Сценарии атак</h2>
-        <div style=display:flex;gap:10px;align-items:center;margin-bottom:14px>
+        <div style=display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap>
           <select class=sel id=evasion aria-label="Профиль скрытности атаки" title="Профиль скрытности атаки"><option value=noisy>noisy (быстро, явно)</option>
             <option value=stealthy>stealthy (low-and-slow)</option></select>
+          <select class=sel id=tempo aria-label="Скорость атаки" title="Как быстро аналитик увидит поступление детектов"><option value=fast>темп: быстро</option>
+            <option value=realistic>темп: реалистично</option>
+            <option value=slow>темп: медленно</option></select>
           <span class=toast id=redToast></span></div>
+        <div id=redResult></div>
         <div id=camps></div>
         <h2 style=margin-top:18px>Очередь команд</h2><div id=cmds class=sub></div>
       </div>
@@ -2762,7 +2882,7 @@ let _trDone=false;
 async function pollTrends(){let d;try{d=await jget('/api/trends');}catch(e){return;}
  const H=d.history||[];
  if(!H.length){$('trendGrid').innerHTML='<div class="help empty">Снапшотов пока нет. Нажмите «снять снапшот сейчас» в подсказке над карточками — метрики посчитаются по текущему прогону.</div>';return;}
- const defs=[['detection_rate','Доля обнаруженных атак',cssv('--accent-brand','#6366F1'),1],['coverage','Покрытие ATT&CK',cssv('--info','#3B82F6'),1],['fp_rate','Доля ложных срабатываний',cssv('--critical','#DC2626'),1],['mttd','Время до обнаружения, мин',cssv('--success','#10B981'),0]];
+ const defs=[['detection_rate','Доля обнаруженных атак',cssv('--accent-brand','#6366F1'),1],['coverage','Покрытие ATT&CK',cssv('--info','#3B82F6'),1],['fp_rate','Доля ложных инцидентов',cssv('--critical','#DC2626'),1],['mttd','Время до обнаружения, мин',cssv('--success','#10B981'),0]];
  $('trendGrid').innerHTML=defs.map(df=>{
   const vals=H.map(h=>h[df[0]]).filter(v=>v!=null);if(!vals.length)return '';
   const isPct=df[3], W=100,Ht=34,p=3,n=vals.length;
@@ -2828,11 +2948,53 @@ async function pollRed(){const d=await jget('/api/red');
    return '<div class=row><span class=mono>#'+c.id+'</span> <span>'+
      esc(CMD_T[c.type]||c.type||'')+'</span><span class=grow></span><b>'+st+
      (tail?(' · '+tail):'')+'</b></div>';}).join('')||'<div class="help empty">команд нет</div>';}
-async function launch(key){const ev=$('evasion').value;$('redToast').textContent='ставлю в очередь…';
- const r=await jpost('/api/red/launch',{key:key,evasion:ev});$('redToast').textContent=r.msg||'';
- if(window.toast){if(r.ok)toast('Кампания запущена ('+ev+') — детекты появятся через ~30 с','success',4500);
-  else toast('Не удалось запустить: '+(r.msg||'ошибка'),'error');}
- setTimeout(()=>{$('redToast').textContent='';pollRed();},4000);}
+let _redPoll=null;
+const _TEMPO_RU={fast:'быстро',realistic:'реалистично',slow:'медленно'};
+const _CMDST_RU={done:'выполнено',queued:'в очереди',running:'выполняется',pending:'ожидает',failed:'ошибка',error:'ошибка'};
+function _hhmm(sec){return sec?new Date(sec*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';}
+function gotoInc(id){goView('incidents');setTimeout(()=>{if(window.openInc)openInc(id);},260);}
+function renderRedResult(title,ev,tp,nsteps,d){
+ const incs=d.incidents||[], dets=d.detections||0;
+ const st=_CMDST_RU[d.cmd_status]||(d.cmd_status||'в очереди');
+ const first=incs.length?_hhmm(Math.min.apply(null,incs.map(i=>i.seen_real||1e18))):'';
+ let h='<div class=card style="border-left:3px solid var(--accent-brand);margin-bottom:14px">'+
+   '<h2 style=margin-bottom:6px>Результат кампании: <span>'+esc(title)+'</span></h2>'+
+   '<div class=sub>статус: <b>'+esc(st)+'</b> · профиль <b>'+esc(ev)+'</b> · темп <b>'+(_TEMPO_RU[tp]||tp)+'</b> · шагов <b>'+nsteps+'</b></div>'+
+   '<div class=sub style=margin-top:4px>детектов: <b>'+dets+'</b> · инцидентов: <b>'+incs.length+'</b>'+(first?(' · первый в <b>'+first+'</b>'):'')+'</div>';
+ if(!incs.length){h+='<div class="help empty" style=margin-top:10px>ждём детекты… (атака разворачивается)</div>';}
+ else{h+='<div style=margin-top:10px>'+incs.map(i=>{
+   const tm=_hhmm(i.seen_real), tech=(i.techniques||[]).slice(0,5).join(', ');
+   return '<div class=row style=align-items:center;gap:8px>'+
+     '<span class=mono>#'+i.id+'</span> <span>'+esc(i.actor||'')+'</span>'+
+     '<span class="badge '+esc(i.severity||'')+'">риск '+i.risk+'</span>'+
+     (i.is_campaign?'<span class="badge campaign">многошаговая</span>':'')+
+     '<span class=grow></span>'+
+     '<span class=sub>'+esc(tech)+' · '+i.n_alerts+' детект.'+(tm?(' · '+tm):'')+'</span> '+
+     '<a onclick="gotoInc('+i.id+')" style=cursor:pointer;color:var(--accent-brand);font-weight:700>→ открыть</a></div>';}).join('')+'</div>';}
+ h+='</div>';
+ $('redResult').innerHTML=h;
+}
+async function launch(key){
+ const ev=$('evasion').value, tp=$('tempo').value;
+ $('redToast').textContent='ставлю в очередь…';
+ const r=await jpost('/api/red/launch',{key:key,evasion:ev,tempo:tp});
+ $('redToast').textContent=r.msg||'';
+ if(!r.ok){if(window.toast)toast('Не удалось запустить: '+(r.msg||'ошибка'),'error');return;}
+ if(window.toast)toast('Кампания запущена — результат ниже','success',4000);
+ const started=r.launched_at||(Date.now()/1000), cid=r.cmd, title=r.title||key, nsteps=r.steps||0;
+ if(_redPoll){clearInterval(_redPoll);_redPoll=null;}
+ const t0=Date.now();
+ renderRedResult(title,ev,tp,nsteps,{cmd_status:'queued',incidents:[],detections:0});
+ async function tick(){
+   let d={}; try{d=await jget('/api/red/result?cmd='+encodeURIComponent(cid)+'&ts='+started);}catch(e){}
+   renderRedResult(title,ev,tp,nsteps,d); pollRed();
+   const done=(d.cmd_status==='done'||d.cmd_status==='failed'||d.cmd_status==='error');
+   if((done && (d.incidents||[]).length && Date.now()-t0>6000) || Date.now()-t0>150000){
+     clearInterval(_redPoll);_redPoll=null;}
+ }
+ tick(); _redPoll=setInterval(tick,3000);
+ setTimeout(()=>{$('redToast').textContent='';},4000);
+}
 /* Состояние служебных подсистем. Раньше Ollama висела в верхней панели
    рядом с рабочими показателями — это шум: аналитику не нужно знать про
    конкретный сервис, ему нужен поток событий и детекты. Инфраструктура
@@ -3708,6 +3870,8 @@ def main():
     print("========================================================")
     print("  PURPLE TEAM CONSOLE (защита)")
     print(f"  Открой: http://127.0.0.1:{port}")
+    print(f"  Вход: {config.WEB_ADMIN_USER} / {config.WEB_ADMIN_PASS}")
+    print("  (задайте свой: переменная окружения SOC_ADMIN_PASS)")
     print("========================================================")
     app.run(host="127.0.0.1", port=port, threaded=True, debug=False, use_reloader=False)
 

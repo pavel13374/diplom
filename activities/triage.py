@@ -90,7 +90,7 @@ class TriageFalsePositiveActivity:
     def _triage_note(self, slug: str, verdict: str) -> str:
         host = f"WORKSTATION-{random.randint(1,40):02d}"
         user = random.choice(["jsmith", "alee", "mwilson", "kdavis", "svc-backup", "svc-sccm"])
-        return f"""# Alert Triage: {slug}
+        return """# Alert Triage: {slug}
 
 **Время:** {datetime.now().strftime('%Y-%m-%d %H:%M')}
 **Аналитик:** {self.author.name}

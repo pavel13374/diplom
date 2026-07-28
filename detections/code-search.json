@@ -1,11 +1,19 @@
 {
   "id": "code-search",
-  "title": "Поиск по коду в поисках секретов",
   "technique": "T1593.003",
   "tactic": "Reconnaissance",
+  "title": "Серия поисковых запросов по коду (охота за секретами)",
   "severity": "medium",
-  "risk": 0.42,
+  "risk": 0.5,
+  "rationale": "Поиск по коду делают все. Признак охоты за секретами — серия запросов подряд с широкой выдачей. Пороги подняты с 3/25 по результатам замера точности.",
   "when": {
-    "action": "code_search"
+    "action": "api_read",
+    "api_path": "/search",
+    "burst_api_read_15m": {
+      ">=": 5
+    },
+    "items_returned": {
+      ">=": 40
+    }
   }
 }

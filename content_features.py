@@ -37,6 +37,33 @@ _PLACEHOLDER_RE = re.compile(
     r"example|changeme|change_me|placeholder|dummy|your[-_]|<[^>\n]{1,40}>|"
     r"x{4,}|todo|редактируй|замени", re.IGNORECASE)
 
+# Файлы, высокая энтропия которых ОЖИДАЕМА и секретом не является:
+# lock-файлы (хэши зависимостей), минифицированный JS, встроенные base64-иконки,
+# собранные артефакты. Без этого признака правило «высокая энтропия» ловило
+# package-lock.json и *.min.js — это была основная статья ложных срабатываний.
+_GENERATED_RE = re.compile(
+    r"(?:^|/)(?:dist|build|vendor|node_modules)/|"
+    r"[-.]lock(?:\.json|\.yaml|\.yml)?$|"
+    r"\.min\.(?:js|css)$|\.map$|\.svg$|package-lock\.json$|yarn\.lock$|"
+    r"poetry\.lock$|Cargo\.lock$|go\.sum$", re.IGNORECASE)
+
+# Признак «канала наружу» в содержимом: выгрузка на внешний хост по scp/dns/curl.
+# Нужен для T1048 (Exfiltration Over Alternative Protocol): у такого файла
+# энтропия обычная, и по ней его не отличить — отличает именно структура.
+_NET_SINK_RE = re.compile(
+    r"(?:scp|rsync|sftp)\s+[^\s]+\s+[\w.-]+@[\w.-]+:|"
+    r"dig\s+(?:\+\w+\s+)*[^\s]*\$\(|"
+    r"nslookup\s+[^\s]*\$\(|"
+    r"curl\s+(?:-[a-zA-Z]+\s+)*(?:https?://)?[\w.-]*(?:attacker|exfil|webhook\.site|"
+    r"requestbin|ngrok|pastebin)|"
+    r"(?:https?://|@)[\w.-]*(?:attacker|exfil|ngrok|pastebin)[\w.-]*",
+    re.IGNORECASE)
+
+# Манифесты зависимостей — для T1195.001 (подмена зависимости)
+_DEPS_RE = re.compile(
+    r"(?:^|/)(?:requirements[\w.-]*\.txt|package\.json|go\.mod|pom\.xml|"
+    r"Gemfile|build\.gradle|Cargo\.toml)$", re.IGNORECASE)
+
 
 def shannon_entropy(s: str) -> float:
     """Энтропия Шеннона строки (бит/символ)."""
@@ -77,4 +104,10 @@ def analyze(content, path="") -> dict:
         "n_regex_hits":           len(hits),
         "filename_signal":        bool(_FILENAME_RE.search(path)),
         "placeholder_signal":     bool(_PLACEHOLDER_RE.search(content)),
+        # энтропия ожидаема по типу файла (lock/минификация/base64-иконка)
+        "generated_signal":       bool(_GENERATED_RE.search(path)),
+        # в содержимом есть выгрузка на внешний хост (scp/dns/curl)
+        "net_sink_signal":        bool(_NET_SINK_RE.search(content)),
+        # файл является манифестом зависимостей
+        "deps_manifest":          bool(_DEPS_RE.search(path)),
     }

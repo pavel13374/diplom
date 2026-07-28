@@ -56,10 +56,10 @@ class BulkMaintenanceActivity:
             self.pid, branch, title,
             f"## Массовое обслуживание\n\n**Тип:** {change}\n"
             f"**Затронуто файлов:** ~{affected}\n\n"
-            f"Большой технический MR. Прошу внимательный review — "
-            f"меняется поведение для всего набора правил.\n\n"
-            f"- [x] CI зелёный\n- [ ] Прогон sigma check на всём наборе\n"
-            f"- [ ] Бэкап ветки сделан",
+            "Большой технический MR. Прошу внимательный review — "
+            "меняется поведение для всего набора правил.\n\n"
+            "- [x] CI зелёный\n- [ ] Прогон sigma check на всём наборе\n"
+            "- [ ] Бэкап ветки сделан",
             lead_id,
         )
         if not mr_iid:
@@ -106,7 +106,7 @@ deploy-staging:
 """
 
     def _migration_doc(self, change: str) -> str:
-        return f"""# Migration: {change}
+        return """# Migration: {change}
 
 **Дата:** {date.today().isoformat()}
 **Автор:** {self.author.name}

@@ -1,11 +1,22 @@
 {
   "id": "container-api-creds",
-  "title": "Учётные данные контейнерного реестра в манифесте",
   "technique": "T1552.007",
   "tactic": "Credential Access",
+  "title": "Учётные данные реестра контейнеров в манифесте",
   "severity": "high",
-  "risk": 0.66,
+  "risk": 0.7,
+  "rationale": "Манифест k8s/registry с длинным высокоэнтропийным токеном.",
   "when": {
-    "action": "container_creds"
+    "action": "push",
+    "path": {
+      "contains_any": [
+        "k8s/",
+        "kubernetes/",
+        "registry",
+        "imagepull"
+      ]
+    },
+    "has_high_entropy_token": true,
+    "placeholder_signal": false
   }
 }

@@ -1,11 +1,14 @@
 {
   "id": "ci-scheduled-job",
-  "title": "Плановое CI-задание с полезной нагрузкой",
   "technique": "T1053",
   "tactic": "Execution",
+  "title": "Расписание пайплайна на защищённой ветке в production",
   "severity": "high",
-  "risk": 0.6,
+  "risk": 0.66,
+  "rationale": "Ночные сборки — обычная практика, поэтому один лишь ночной cron не срабатывает. Признак закрепления: расписание на защищённой ветке с выкладкой в production.",
   "when": {
-    "action": "ci_schedule"
+    "action": "schedule_create",
+    "protected_branch": true,
+    "target_env": "production"
   }
 }

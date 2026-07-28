@@ -33,3 +33,11 @@ data/
 results/
 reports/
 demo/out/
+
+# временные файлы Word/PowerPoint
+~$*
+# обученная модель слоя L2 (воспроизводится: research/train_runtime_model.py)
+models/*.json
+# выгрузки экспериментов
+results/*.csv
+simulator.log*

@@ -1,15 +1,14 @@
 {
   "id": "supply-chain-dep",
-  "title": "Подозрительный бамп зависимости (supply-chain)",
   "technique": "T1195.002",
   "tactic": "Initial Access",
-  "severity": "medium",
-  "risk": 0.4,
+  "title": "Секрет в манифесте зависимостей",
+  "severity": "high",
+  "risk": 0.7,
+  "rationale": "Сигнатура секрета внутри requirements/package.json.",
   "when": {
     "action": "push",
-    "path": {
-      "contains": "requirements"
-    },
+    "deps_manifest": true,
     "n_regex_hits": {
       ">=": 1
     }

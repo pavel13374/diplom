@@ -8,8 +8,6 @@ from agents.base import BaseAgent
 from content import comments, commit_messages
 from config import PROJECTS, DELAYS
 from activities import flow
-import simclock
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +118,7 @@ class LeadAgent(BaseAgent):
             new_content = "\n".join(new_lines)
         else:
             new_content = content.replace(
-                f"date: ", f"date: "
+                "date: ", "date: "
             )
             # Вставляем modified после date:
             lines = content.split("\n")
@@ -177,7 +175,7 @@ class LeadAgent(BaseAgent):
 
     def _runner_config(self) -> str:
         concurrent = random.choice([4, 6, 8])
-        return f"""concurrent = {concurrent}
+        return """concurrent = {concurrent}
 check_interval = 0
 shutdown_timeout = 0
 
@@ -210,7 +208,7 @@ shutdown_timeout = 0
 
     def _onboarding_doc(self) -> str:
         from datetime import date
-        return f"""# SOC Team Onboarding Guide
+        return """# SOC Team Onboarding Guide
 
 **Обновлено:** {date.today().isoformat()}
 **Автор:** {self.name}

@@ -576,21 +576,21 @@ def generate_sigma_rule(technique: dict, author: str,
         parent_block = ""
         if parent:
             parent_str = "\n".join(f'            - "{p}"' for p in parent)
-            parent_block = f"""    selection_parent:
+            parent_block = """    selection_parent:
         ParentImage|endswith:
 {parent_str}
 """
         filter_str = ""
         if extra_filters:
             for i, f in enumerate(extra_filters):
-                filter_str += f"""    filter_{i}:
+                filter_str += """    filter_{i}:
         {f}
 """
         filter_cond = " and not " + " and not ".join(
             f"filter_{i}" for i in range(len(extra_filters))
         ) if extra_filters else ""
 
-        detection = f"""detection:
+        detection = """detection:
     selection_tools:
         Image|endswith:
 {tools_str}
@@ -601,7 +601,7 @@ def generate_sigma_rule(technique: dict, author: str,
 
     elif cat == "security":
         eid = technique.get("eventid", "4624")
-        detection = f"""detection:
+        detection = """detection:
     selection:
         EventID: {eid}
         LogonType: 3
@@ -622,7 +622,7 @@ def generate_sigma_rule(technique: dict, author: str,
     elif cat in ("cloudtrail", "proxy", "webserver"):
         patterns = technique.get("patterns", technique.get("ua", ["suspicious"]))
         patterns_str = "\n".join(f'            - "{p}"' for p in patterns[:5])
-        detection = f"""detection:
+        detection = """detection:
     selection:
         RequestString|contains:
 {patterns_str}
@@ -631,7 +631,7 @@ def generate_sigma_rule(technique: dict, author: str,
     elif cat == "registry_set":
         keys = technique.get("keys", ["HKLM\\\\SOFTWARE\\\\suspicious"])
         keys_str = "\n".join(f'            - "{k}"' for k in keys)
-        detection = f"""detection:
+        detection = """detection:
     selection:
         TargetObject|startswith:
 {keys_str}
@@ -649,7 +649,7 @@ def generate_sigma_rule(technique: dict, author: str,
     elif status == "production":
         extra_note = "\n# Validated: 30 days production, 0 false positives"
 
-    return f"""title: {technique['title']}
+    return """title: {technique['title']}
 id: {rule_id}
 status: {status}
 author: {author}
@@ -694,7 +694,7 @@ def generate_rule_update(original_content: str, change_type: str,
             continue
         if change_type == "add_reference" and line.startswith("references:"):
             result.append(line)
-            result.append(f"    - https://www.elastic.co/guide/en/siem/guide/current/index.html")
+            result.append("    - https://www.elastic.co/guide/en/siem/guide/current/index.html")
             continue
         if change_type == "tighten_level" and line.startswith("level: medium"):
             result.append("level: high")

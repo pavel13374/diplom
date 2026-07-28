@@ -46,90 +46,65 @@ NICE = {
 }
 
 
-class FakeGL:
-    import random as _r
-    def __getattr__(self, n):
-        def f(*a, **k):
-            if n in ("create_mr", "create_issue"): return FakeGL._r.randint(100, 9999)
-            if n in ("get_open_mrs", "list_files"): return []
-            if n == "get_mr": return {}
-            if n in ("get_or_create_user_token",): return "t"
-            return True
-        return f
+from workload import build_workload
 
 
 def generate():
-    import config, simclock, events, eventstore
-    config.OFFLINE_MODE = True
-    config.TELEGRAM = {"enabled": False}
-    config.seed_all()
-    tmp = tempfile.mkdtemp()
-    config.EVENT_LOG = {"enabled": True, "file": os.path.join(tmp, "e.jsonl")}
-    config.EVENT_STORE = {"enabled": True, "path": os.path.join(tmp, "e.db")}
-    simclock.init(simclock.SimClock(start_sim=datetime(2026, 6, 1, 10, 0, 0), scale=1.0,
-                  work_start=10, work_end=18, work_days=[0, 1, 2, 3, 4], fast_forward_offhours=False))
-    simclock.sleep = lambda *a, **k: None
-    events.init()
+    """Нагрузка из общего генератора research/workload.py.
 
-    import random
-    rnd = random.Random(42)
-    actors = ["maria.ivanova", "dmitry.kozlov", "anna.smirnova", "sergey.volkov"]
-    bt = datetime(2026, 6, 1, 10, 0, 0)
-    # нормальный фон
-    for d in range(10):
-        for h in range(14):
-            simclock.now = lambda t=bt + timedelta(days=d, hours=h % 8, minutes=rnd.randint(0, 55)): t
-            a = rnd.choice(actors)
-            repo = rnd.choice(["detection-rules", "threat-hunting", "normalization-rules", "playbooks"])
-            path = rnd.choice(["rules/win/a.yml", "config/.env.example", "src/util.py", "docs/n.md"])
-            ph = path.endswith(".env.example")
-            events.emit("push", actor=a, role="detection_engineer", project=repo, path=path,
-                        extra={"shannon_entropy": 3.2 if ph else 2.4, "regex_hits": [], "n_regex_hits": 0,
-                               "filename_signal": ph, "placeholder_signal": ph, "bytes": 200, "ext": "yml"})
-
-    from agents.base import BaseAgent
-    from agents.lead import LeadAgent
-    from red_team import RedTeamEngine
-    agents = {u: (LeadAgent(u, FakeGL()) if i.get("role") == "lead" else BaseAgent(u, FakeGL()))
-              for u, i in config.USERS.items()}
-    red = RedTeamEngine(agents, state=None)
-    # каждую из 4 кампаний прогоняем несколько раз, растянув по времени
-    day = 3
-    for rep in range(5):
-        for key in CAMPAIGNS:
-            day += 1
-            simclock.now = lambda t=datetime(2026, 6, 1 + day, 19, 0, 0): t
-            red.run_campaign(key, evasion="noisy")
-    events.close()
-    return eventstore.read_since(0, limit=10_000_000)
+    Раньше здесь был свой фон: четыре фиксированных пути и ДВА значения
+    энтропии (3.2 / 2.4). На таком фоне модель показывала 44/44 эпизодов и
+    0.0% ложных срабатываний — это был артефакт генератора, а не свойство
+    модели. Общий генератор даёт распределения, benign-двойники секретов
+    (SHA-40, UUID, base64-иконки, lock-файлы) и рабочие сессии, поэтому
+    цифры ниже честные и заметно скромнее.
+    """
+    return build_workload(evasion="noisy", seed=42, days=14, per_day=300,
+                          campaigns=CAMPAIGNS)
 
 
 def main():
-    import train_model as tm
-    rows = [r for r in generate() if not r.get("meta")]
-    rows.sort(key=lambda r: r.get("ts_sim") or "")
+    import detector, run_defense, ml_features, stats
+    from train_runtime_model import LogReg, thr_for_fp
+
+    raw = [r for r in generate() if not r.get("meta")]
+    # Признаки считаем ТЕМ ЖЕ конвейером, что и бой: анти-лик + оконные
+    # агрегаты. Иначе обучение и применение видят разные векторы.
+    enr = detector.Enricher()
+    rows = []
+    for r in raw:
+        obs = enr.enrich(run_defense.observed(r))
+        rows.append({"x": ml_features.featurize(obs),
+                     "y": 1 if r.get("is_anomaly") else 0,
+                     "episode_id": r.get("episode_id"),
+                     "campaign_name": r.get("campaign_name"),
+                     "ts": r.get("ts_sim") or ""})
+    rows.sort(key=lambda r: r["ts"])
     cut = int(len(rows) * 0.7)
     train, test = rows[:cut], rows[cut:]
 
-    Xtr = [tm.feat(r) for r in train]; ytr = [1 if r.get("is_anomaly") else 0 for r in train]
-    name, score = tm.make_model(Xtr, ytr)
-    neg = [score(tm.feat(r)) for r in train if not r.get("is_anomaly")]
-    thr = tm.thr_for_fp(neg, 0.02)
+    m = LogReg(dim=len(ml_features.FEATURES))
+    m.fit([r["x"] for r in train], [r["y"] for r in train])
+    name = "LogReg (боевые признаки ml_features)"
+    score = lambda x: m.raw(x)
+    neg = [score(r["x"]) for r in train if r["y"] == 0]
+    thr = thr_for_fp(neg, 0.02)
 
     # эпизоды теста по кампаниям
     eps = {}
     for r in test:
-        if r.get("is_anomaly") and r.get("episode_id"):
-            e = eps.setdefault(r["episode_id"], {"camp": r.get("campaign_name") or "—", "max": 0.0})
-            e["max"] = max(e["max"], score(tm.feat(r)))
+        if r["y"] == 1 and r["episode_id"]:
+            e = eps.setdefault(r["episode_id"],
+                               {"camp": r["campaign_name"] or "—", "max": 0.0})
+            e["max"] = max(e["max"], score(r["x"]))
     by = collections.defaultdict(lambda: [0, 0])
     for e in eps.values():
         by[e["camp"]][1] += 1
         if e["max"] >= thr:
             by[e["camp"]][0] += 1
     caught = sum(v[0] for v in by.values()); total = sum(v[1] for v in by.values())
-    fp = sum(score(tm.feat(r)) >= thr for r in test if not r.get("is_anomaly"))
-    negn = sum(1 for r in test if not r.get("is_anomaly"))
+    fp = sum(score(r["x"]) >= thr for r in test if r["y"] == 0)
+    negn = sum(1 for r in test if r["y"] == 0)
 
     print("=" * 66)
     print("  ПРОВЕРКА: ЛОВИТ ЛИ ML АТАКИ (на отложенных данных)")
@@ -144,11 +119,20 @@ def main():
         mark = "✅" if (t and c == t) else ("⚠️" if c else "❌")
         print(f"  {mark} {NICE[key][:37]:37} | {t:>7}  | {c}/{t}")
     print("-" * 66)
+    lo, hi = stats.wilson(caught, max(1, total))
     print(f"  ИТОГ на отложенных: поймано {caught}/{total} эпизодов атак "
-          f"({round(caught/max(1,total)*100)}%)  при FP {round(fp/max(1,negn)*100,1)}% на норме")
+          f"({round(caught/max(1,total)*100)}%, 95% ДИ {lo*100:.0f}–{hi*100:.0f}%) "
+          f"при FP {round(fp/max(1,negn)*100,1)}% на норме")
+    pos_s = [score(r["x"]) for r in test if r["y"] == 1]
+    neg_s = [score(r["x"]) for r in test if r["y"] == 0]
+    print(f"  PR-AUC {stats.pr_auc(pos_s, neg_s):.3f} "
+          f"(база {stats.baseline_pr(len(pos_s), len(neg_s)):.4f}) | "
+          f"ROC-AUC {stats.roc_auc(pos_s, neg_s):.3f}")
     print("=" * 66)
-    print("  Вывод: ML обучен только на прошлом, а ловит атаки в БУДУЩЕМ (test),")
-    print("  которого не видел — значит он выучил ПРИЗНАКИ атак, а не запомнил их.")
+    print("  Вывод: ML обучен только на ПРОШЛОМ, а ловит атаки в БУДУЩЕМ (test),")
+    print("  которого не видел — значит он выучил признаки, а не запомнил примеры.")
+    print("  Цифры даны с доверительным интервалом: точечная оценка на нескольких")
+    print("  десятках эпизодов без интервала создаёт ложную точность.")
     print()
     print("  Как повторить это вживую на своём GitLab (:8788 → Red Launcher):")
     for i, key in enumerate(CAMPAIGNS, 1):

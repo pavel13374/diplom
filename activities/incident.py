@@ -46,7 +46,7 @@ class IncidentActivity:
             self.pid, branch,
             f"docs(ir): {inc_id} — {title[:50]} [{sev}]",
             f"## {inc_id}: {title}\n\n**Severity:** {sev}\n\n"
-            f"Отчёт по инциденту, отработанному дежурным.\n\n"
+            "Отчёт по инциденту, отработанному дежурным.\n\n"
             f"{comments.incident_status_note()}",
             lead_id,
         )
@@ -73,7 +73,7 @@ class IncidentActivity:
 
     def _incident_report(self, inc_id: str, title: str, sev: str) -> str:
         host = f"WORKSTATION-{random.randint(1,40):02d}"
-        return f"""# Incident Report {inc_id}
+        return """# Incident Report {inc_id}
 
 **Заголовок:** {title}
 **Severity:** {sev}

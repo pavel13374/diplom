@@ -1,16 +1,19 @@
 {
   "id": "high-entropy-push",
-  "title": "Высокоэнтропийный секрет (без сигнатуры)",
   "technique": "T1552",
   "tactic": "Credential Access",
+  "title": "Высокоэнтропийный секрет без известной сигнатуры",
   "severity": "high",
-  "risk": 0.6,
+  "risk": 0.62,
+  "rationale": "Ключевое правило против НОВЫХ форматов токенов. Исключены файлы, где высокая энтропия ожидаема (lock-файлы, минифицированный JS, base64-иконки) — раньше именно они давали основную массу ложных срабатываний.",
   "when": {
     "action": "push",
     "shannon_entropy": {
-      ">=": 4.5
+      ">=": 5.0
     },
+    "has_high_entropy_token": true,
     "placeholder_signal": false,
+    "generated_signal": false,
     "n_regex_hits": 0
   }
 }

@@ -111,7 +111,7 @@ class UpdatePlaybookActivity:
             self.author.think(DELAYS["between_commits"])
             updated = content + self._forensics_appendix()
             self.author.push_file(self.pid, pb["path"], updated,
-                                   f"docs(playbooks): add forensics commands section", branch)
+                                   "docs(playbooks): add forensics commands section", branch)
             self.author.commit_pause()
 
         self.lead.comment_mr(self.pid, mr_iid, "LGTM. Merge.")
@@ -156,7 +156,7 @@ class UpdatePlaybookActivity:
     def _generate_playbook(self, pb: dict) -> str:
         from datetime import date
         severity = random.choice(["High", "Critical", "Medium"])
-        return f"""# Playbook: {pb['title']}
+        return """# Playbook: {pb['title']}
 
 **Severity:** {severity}
 **MITRE ATT&CK:** {pb['mitre']}

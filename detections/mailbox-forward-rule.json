@@ -1,14 +1,21 @@
 {
   "id": "mailbox-forward-rule",
-  "title": "Скрытое правило пересылки почты",
   "technique": "T1114.003",
   "tactic": "Collection",
-  "severity": "high",
-  "risk": 0.6,
+  "title": "Настроена пересылка почты",
+  "severity": "medium",
+  "risk": 0.5,
+  "rationale": "Раньше правило ловило любой путь со словом forward (12 ложных срабатываний). Теперь нужен именно почтовый контекст.",
   "when": {
     "action": "push",
     "path": {
-      "contains": "forward"
+      "contains": "forward",
+      "contains_any": [
+        "mail",
+        "smtp",
+        "imap",
+        "inbox"
+      ]
     }
   }
 }

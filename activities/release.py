@@ -63,5 +63,5 @@ class ReleaseActivity:
     def _changelog(self, version, sprint_no, rule_count, date) -> str:
         return (f"## {version} — {date} (Sprint {sprint_no})\n\n"
                 f"- Активных детект-правил: {rule_count}\n"
-                f"- Добавлены новые правила, тюнинг порогов, обновления плейбуков\n"
-                f"- Threat intel: свежие IOC интегрированы\n")
+                "- Добавлены новые правила, тюнинг порогов, обновления плейбуков\n"
+                "- Threat intel: свежие IOC интегрированы\n")

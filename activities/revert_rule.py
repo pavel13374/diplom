@@ -100,7 +100,7 @@ class RevertRuleActivity:
     def _revert_note(self, title: str, sha: str,
                      reason: str, followup: str) -> str:
         from datetime import datetime
-        return f"""# Revert Note: {title[:60]}
+        return """# Revert Note: {title[:60]}
 
 **Commit SHA:** `{sha[:12]}`
 **Date:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}

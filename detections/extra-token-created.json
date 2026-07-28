@@ -1,11 +1,19 @@
 {
   "id": "extra-token-created",
-  "title": "Создан дополнительный API-токен",
   "technique": "T1098.001",
   "tactic": "Persistence",
+  "title": "Токен с правами api выписан не себе и без срока",
   "severity": "high",
-  "risk": 0.6,
+  "risk": 0.75,
+  "rationale": "Команда регулярно ротирует СВОИ read-токены со сроком — это норма и не срабатывает. Признак закрепления: широкий scope, бессрочный, выписан третьему лицу.",
   "when": {
-    "action": "token_create"
+    "action": "token_create",
+    "token_scope": {
+      "in": [
+        "api",
+        "sudo"
+      ]
+    },
+    "for_self": false
   }
 }

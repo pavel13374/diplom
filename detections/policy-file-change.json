@@ -1,10 +1,11 @@
 {
   "id": "policy-file-change",
-  "title": "Правка policy-файла (права/протекции)",
   "technique": "T1556",
   "tactic": "Defense Evasion",
-  "severity": "high",
-  "risk": 0.6,
+  "title": "Изменён файл политики доступа",
+  "severity": "medium",
+  "risk": 0.55,
+  "rationale": "Правка в каталоге policy/.",
   "when": {
     "action": "push",
     "path": {

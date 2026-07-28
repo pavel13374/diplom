@@ -1,11 +1,20 @@
 {
   "id": "obfuscated-payload",
-  "title": "Обфусцированный код в коммите",
   "technique": "T1027",
   "tactic": "Defense Evasion",
-  "severity": "medium",
-  "risk": 0.55,
+  "title": "Обфусцированное содержимое в коммите",
+  "severity": "high",
+  "risk": 0.66,
+  "rationale": "Крупный высокоэнтропийный блоб в файле, для которого минификация не ожидается (generated_signal=false).",
   "when": {
-    "action": "obfuscated_payload"
+    "action": "push",
+    "shannon_entropy": {
+      ">=": 5.2
+    },
+    "bytes": {
+      ">=": 800
+    },
+    "generated_signal": false,
+    "placeholder_signal": false
   }
 }

@@ -54,7 +54,7 @@ def run_ci(pid: int, mr_iid: int, branch: str, author) -> bool:
         reason = random.choice(CI_FAIL_REASONS)
         bot.comment_mr(pid, mr_iid,
                        f"🔴 **Pipeline #{pipeline_id} failed**\n\n`{reason}`\n\n"
-                       f"Джоба `validate` упала. Требуется фикс.")
+                       "Джоба `validate` упала. Требуется фикс.")
         author.think(config.DELAYS["agent_think"])
         # автор пушит fixup-коммит в ветку
         author.push_file(
@@ -71,7 +71,7 @@ def run_ci(pid: int, mr_iid: int, branch: str, author) -> bool:
     else:
         bot.comment_mr(pid, mr_iid,
                        f"✅ **Pipeline #{pipeline_id} passed** "
-                       f"(sigma-lint, rule-tests, ecs-validate).")
+                       "(sigma-lint, rule-tests, ecs-validate).")
         return True
 
 

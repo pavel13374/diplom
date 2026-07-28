@@ -1,10 +1,11 @@
 {
   "id": "ci-scanner-disabled",
-  "title": "Отключение сканеров в CI",
   "technique": "T1562.001",
   "tactic": "Defense Evasion",
+  "title": "В CI отключён сканер безопасности",
   "severity": "high",
   "risk": 0.72,
+  "rationale": "Правка .gitlab-ci.yml с отключением проверки.",
   "when": {
     "action": "push",
     "path": {

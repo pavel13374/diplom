@@ -42,7 +42,7 @@ def gcp_key():
             f'  "project_id": "soc-prod-{_hex(6)}",',
             f'  "private_key_id": "{_hex(40)}",',
             f'  "private_key": "{pk}",',
-            f'  "client_email": "svc-deploy@soc-prod.iam.gserviceaccount.com"',
+            '  "client_email": "svc-deploy@soc-prod.iam.gserviceaccount.com"',
             '}',
         ],
     }

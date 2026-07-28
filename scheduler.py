@@ -400,9 +400,11 @@ class Scheduler:
                 from red_team import RedTeamEngine
                 key = payload.get("key")
                 evasion = payload.get("evasion", "noisy")
+                tempo = payload.get("tempo", "fast")
                 self.stats["campaign"] = self.stats.get("campaign", 0) + 1
                 self.last_activity = "red_campaign(cmd)"
-                res = RedTeamEngine(self.agents, self.state).run_campaign(key=key, evasion=evasion)
+                res = RedTeamEngine(self.agents, self.state).run_campaign(
+                    key=key, evasion=evasion, tempo=tempo)
                 eventstore.set_command_result(cmd["id"],
                     f"{res.get('key')}: {res.get('ok_steps')}/{res.get('steps')} steps" if res else "failed")
                 self.stats["total_ok"] += 1
@@ -448,14 +450,14 @@ class Scheduler:
             tactics = ", ".join(payload.get("tactics", []) or [])
             repos = ", ".join(payload.get("repos", []) or [])
             title = f"[IR] Инцидент по @{actor} ({sev})"
-            body = (f"## Автоматический инцидент (Purple Team)\n\n"
+            body = ("## Автоматический инцидент (Purple Team)\n\n"
                     f"**Подозреваемый:** @{actor}\n**Severity:** {sev}\n"
                     f"**ATT&CK-цепочка:** {tactics}\n**Затронутые репозитории:** {repos}\n\n"
-                    f"### Рекомендованные действия\n"
-                    f"- [ ] Отозвать токены/секреты подозреваемого\n"
-                    f"- [ ] Заморозить ветки/доступ до разбора\n"
-                    f"- [ ] Проверить kill-chain, собрать таймлайн\n\n"
-                    f"_Заведено автоматически детектором по кнопке «Реагировать»._")
+                    "### Рекомендованные действия\n"
+                    "- [ ] Отозвать токены/секреты подозреваемого\n"
+                    "- [ ] Заморозить ветки/доступ до разбора\n"
+                    "- [ ] Проверить kill-chain, собрать таймлайн\n\n"
+                    "_Заведено автоматически детектором по кнопке «Реагировать»._")
             iid = lead.create_issue(pid, title, body, labels=["type::incident", "auto::ir"])
             if iid:
                 logger.warning(f"[RESPONSE] заведён IR-issue #{iid} в репо id={pid} по @{actor} (sev={sev})")
@@ -492,6 +494,7 @@ class Scheduler:
             SiemContentActivity, EdrRuleActivity, AutomationActivity, IrRunbookActivity)
         from activities.dev_workflows    import (IterativeReviewActivity,
             DependencyAuditActivity, SprintRetroActivity)
+        from activities.ops_admin        import BENIGN_ADMIN
 
         lead   = self._lead()
         author = (self._agent_or_lead(forced_actor) if forced_actor
@@ -586,6 +589,11 @@ class Scheduler:
                 return IrRunbookActivity(eng, lead).run()
             elif activity == "benign_quirk":
                 return BenignQuirk(author, lead, state=st).run()
+            elif activity in BENIGN_ADMIN:
+                # Штатная админ-работа (токены, ключи, вебхуки, расписания,
+                # права, force-push). Нужна, чтобы эти действия не были
+                # эксклюзивом атакующего — иначе имя действия = метка.
+                return BENIGN_ADMIN[activity](author, lead, state=st).run()
             else:
                 logger.warning(f"Unknown activity: {activity}")
                 return False

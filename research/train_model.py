@@ -213,7 +213,7 @@ def main():
     print(f"  Эпизодный recall:  {caught}/{len(eps)} = {rec*100:.0f}%   при FP на норме {fp*100:.1f}%")
     print("-" * 64)
     print(f"  Сигнатурный baseline (regex):  recall {b_rec*100:.0f}%   FP {b_fp*100:.1f}%")
-    print(f"  -> ML ловит больше атак при сопоставимом бюджете ложных срабатываний"
+    print("  -> ML ловит больше атак при сопоставимом бюджете ложных срабатываний"
           if rec >= b_rec else "  -> baseline точечнее на этом срезе")
     print("-" * 64)
     print("  Эпизодный recall по семействам:")

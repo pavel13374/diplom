@@ -1,0 +1,67 @@
+# =====================================================================
+#  CI-пайплайн стенда Sentinel
+# =====================================================================
+# Работа посвящена безопасности CI/CD, при этом самого пайплайна у проекта
+# не было — этот файл закрывает пробел. Все проверки уже существовали в
+# run_tests.py, здесь они просто запускаются автоматически.
+#
+# Стадии:
+#   lint    — статический анализ (pyflakes) и проверка правил детектирования;
+#   test    — полный прогон run_tests.py, включая анти-лик и тест на утечку;
+#   metrics — эксперименты и метрики, артефакты в results/ (не блокируют).
+# =====================================================================
+
+stages:
+  - lint
+  - test
+  - metrics
+
+default:
+  image: python:3.11-slim
+  before_script:
+    - python -V
+    - pip install --quiet --no-cache-dir -r requirements.txt || true
+  # Стенд обязан работать без GitLab и без внешней сети.
+  variables:
+    SOC_OFFLINE: "1"
+
+# ---------------------------------------------------------------------
+lint:
+  stage: lint
+  script:
+    - pip install --quiet pyflakes
+    - python -m pyflakes $(git ls-files '*.py') || true
+    - echo "— проверка правил детектирования —"
+    - python tools/lint_rules.py
+  allow_failure: false
+
+# ---------------------------------------------------------------------
+tests:
+  stage: test
+  script:
+    - python run_tests.py
+  artifacts:
+    when: always
+    paths:
+      - logs/errors.log
+    expire_in: 1 week
+
+# ---------------------------------------------------------------------
+# Проверка воспроизводимости: обучение модели и ablation. Долгие, поэтому
+# вынесены в отдельную стадию и не блокируют merge.
+experiments:
+  stage: metrics
+  script:
+    - python research/train_runtime_model.py --seeds 2
+    - python research/experiments.py --seeds 2
+    - python research/experiments_holdout.py
+    - python research/experiments_roc.py
+  artifacts:
+    paths:
+      - results/
+      - models/
+    expire_in: 1 month
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH == "main"

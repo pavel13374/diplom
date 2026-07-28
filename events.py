@@ -16,7 +16,6 @@
 """
 import os
 import json
-import time
 import threading
 from collections import deque, Counter, defaultdict
 from datetime import datetime

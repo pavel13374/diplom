@@ -114,7 +114,7 @@ class FixRuleActivity:
             "Computer":        f"WORKSTATION-{random.randint(1,20):02d}",
             "SubjectUserName": random.choice(["jsmith", "kdavis", "mwilson"]),
             "NewProcessName":  f"C:\\Windows\\Temp\\tool_{slug[:10]}.exe",
-            "CommandLine":     f"--scan --output C:\\temp\\out.txt",
+            "CommandLine":     "--scan --output C:\\temp\\out.txt",
             "expected_match":  True,
             "rule":            slug,
             "note":            "Updated after false positive fix",
@@ -123,7 +123,7 @@ class FixRuleActivity:
     def _mr_desc(self, slug: str, fix_type: str,
                  fix_what: str, is_hotfix: bool) -> str:
         urgency = "🔥 **HOTFIX — требует срочного merge**\n\n" if is_hotfix else ""
-        return f"""{urgency}## Фикс правила `{slug}`
+        return """{urgency}## Фикс правила `{slug}`
 
 **Тип изменения:** {fix_type.replace('_', ' ')}
 **Причина:** {fix_what} вызывают ложные срабатывания в prod

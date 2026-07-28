@@ -1,11 +1,13 @@
 {
   "id": "webhook-c2",
-  "title": "Управление через внешний веб-сервис",
   "technique": "T1102",
   "tactic": "Command and Control",
+  "title": "Вебхук на внешний хост",
   "severity": "high",
-  "risk": 0.6,
+  "risk": 0.7,
+  "rationale": "Команда заводит вебхуки на внутренние сервисы (SIEM, чат) — это норма. Наружу — канал управления.",
   "when": {
-    "action": "webhook_c2"
+    "action": "hook_create",
+    "external_host": true
   }
 }

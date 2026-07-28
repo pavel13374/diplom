@@ -62,9 +62,9 @@ class DeprecateRuleActivity:
             self.pid, branch,
             f"chore({slug}): deprecate and remove rule",
             f"## Депрекейт правила `{slug}`\n\n**Причина:** {reason}\n\n"
-            f"Правило удалено из `rules/`, заметка перенесена в `archive/`.\n\n"
-            f"- [x] Подтверждено отсутствие активных алертов\n"
-            f"- [ ] Запись добавлена в CHANGELOG",
+            "Правило удалено из `rules/`, заметка перенесена в `archive/`.\n\n"
+            "- [x] Подтверждено отсутствие активных алертов\n"
+            "- [ ] Запись добавлена в CHANGELOG",
             lead_id,
         )
         if not mr_iid:
@@ -81,7 +81,7 @@ class DeprecateRuleActivity:
         return ok
 
     def _archive_note(self, slug: str, path: str, reason: str) -> str:
-        return f"""# DEPRECATED: {slug}
+        return """# DEPRECATED: {slug}
 
 **Удалено:** {date.today().isoformat()}
 **Автор депрекейта:** {self.author.name}

@@ -1,12 +1,14 @@
 {
   "id": "merge-without-approval",
-  "title": "MR смёржен без единого апрува",
   "technique": "T1562",
   "tactic": "Defense Evasion",
+  "title": "Merge в защищённую ветку без единого апрува",
   "severity": "medium",
-  "risk": 0.45,
+  "risk": 0.55,
+  "rationale": "Обязательное ревью обойдено на защищённой ветке.",
   "when": {
     "action": "mr_merge",
-    "approvals_count": 0
+    "approvals_count": 0,
+    "protected_branch": true
   }
 }

@@ -1,11 +1,15 @@
 {
   "id": "deploy-tool-abuse",
-  "title": "Злоупотребление средством развёртывания",
   "technique": "T1072",
   "tactic": "Execution",
+  "title": "Ручной прогон в production вне рабочего времени",
   "severity": "high",
-  "risk": 0.6,
+  "risk": 0.64,
+  "rationale": "Релизы вручную бывают и в норме, поэтому одного признака мало. Срабатывает сочетание: ручной запуск + production + ночь.",
   "when": {
-    "action": "deploy_tool_abuse"
+    "action": "pipeline_run",
+    "manual_trigger": true,
+    "target_env": "production",
+    "is_night": true
   }
 }

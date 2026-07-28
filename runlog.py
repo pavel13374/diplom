@@ -6,7 +6,6 @@
 прислать на разбор. Параллельно считаются warning/error для отчёта.
 """
 import os
-import time
 import logging
 from collections import Counter, deque
 from datetime import datetime

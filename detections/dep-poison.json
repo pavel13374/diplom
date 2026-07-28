@@ -1,11 +1,14 @@
 {
   "id": "dep-poison",
-  "title": "Подмена зависимости (supply-chain)",
   "technique": "T1195.001",
   "tactic": "Initial Access",
-  "severity": "high",
-  "risk": 0.62,
+  "title": "В манифест добавлена новая закреплённая зависимость",
+  "severity": "medium",
+  "risk": 0.55,
+  "rationale": "Признак typo-squat: новая зависимость, закреплённая точной версией. Обычный бамп версии существующей зависимости не срабатывает.",
   "when": {
-    "action": "dep_poison"
+    "action": "push",
+    "deps_manifest": true,
+    "dependency_pinned_new": true
   }
 }

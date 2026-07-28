@@ -34,11 +34,30 @@ log = logging.getLogger("ingest")
 CURSOR = "defense"
 
 # поля, которые защите видеть НЕЛЬЗЯ (разметка мира) — анти-лик
-LEAK = {"is_anomaly", "anomaly_type", "family", "is_decisive", "severity",
-        "episode_id", "campaign_id", "campaign_name", "step_idx",
-        "technique_id", "tactic", "evasion_profile",
-        "secret_type", "anomaly_subtype", "detail",
-        "persona", "motive", "dwell_days"}
+#
+# Список расширен по результатам tests/test_leakage.py: помимо явных меток
+# сюда попали поля, которые метку не называют, но однозначно её выдают.
+LEAK = {
+    # --- явные метки мира ---
+    "is_anomaly", "anomaly_type", "family", "is_decisive", "severity",
+    "episode_id", "campaign_id", "campaign_name", "step_idx",
+    "technique_id", "tactic", "evasion_profile",
+    "secret_type", "anomaly_subtype", "detail",
+    "persona", "motive", "dwell_days",
+    # --- метки-двойники, найденные тестом на взаимную информацию ---
+    # actor_session: идентификатор «рабочей сессии» актора, который симулятор
+    # нарезает по паузам. У шагов кампании он общий и уникальный, поэтому поле
+    # снимало 100% неопределённости метки — то есть было меткой.
+    "actor_session", "session_id", "run_id", "seq",
+    # repo/grantee/for_user/token_scope-детали проставляются через events.tag
+    # ТОЛЬКО в аномальных сценариях: само наличие поля выдавало атаку.
+    "repo", "grantee", "for_user", "deleted_count", "quirk", "lookalike",
+    # gitlab_ok/gitlab_error — телеметрия обращения к API самого стенда,
+    # а не наблюдаемое свойство события в GitLab.
+    "gitlab_ok", "gitlab_error", "project_id",
+    # служебное
+    "labels", "activity", "executed",
+}
 
 _ENGINE = detector.DetectionEngine()
 _SUPPRESS = detector.Suppressor()

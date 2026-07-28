@@ -190,7 +190,7 @@ def render(inc):
         md.append(f"- [ ] {r}")
     md.append("")
     md.append(f"_Сгенерировано автоматически {datetime.now().strftime('%Y-%m-%d %H:%M')} · "
-              f"Purple Team Console · анти-лик (только наблюдаемые данные)._")
+              "Purple Team Console · анти-лик (только наблюдаемые данные)._")
     return "\n".join(md)
 
 
