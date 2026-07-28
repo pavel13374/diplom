@@ -5,11 +5,12 @@
   "title": "Ослаблена защита ветки",
   "severity": "high",
   "risk": 0.72,
-  "rationale": "Правка политики branch-protection.",
+  "rationale": "Правка политики branch-protection.\n\nИсключён собственный контент SOC-команды (security_content): правила, гипотезы для охоты, плейбуки и документация ОПИСЫВАЮТ атакующие техники и потому содержат их приметы. Без этого условия правило срабатывало на рабочем продукте аналитика — например на rules/persistence/registry_run_key_modification.yml или hunts/mailbox-forwarding-rule.md.",
   "when": {
     "action": "push",
     "path": {
       "contains": "branch-protection"
-    }
+    },
+    "security_content": false
   }
 }

@@ -35,7 +35,7 @@ FEATURES = [
     "high_entropy_tok", "has_content", "bytes_log",
     # путь
     "path_env", "path_secretdir", "path_ci", "path_deps",
-    "obfuscation_sig", "net_sink_sig", "generated_sig",
+    "obfuscation_sig", "net_sink_sig", "generated_sig", "security_content",
     # проект
     "proj_secrets",
     # взаимодействия
@@ -111,6 +111,7 @@ def featurize(r):
         _flag(r, "obfuscation_signal"),
         _flag(r, "net_sink_signal"),
         _flag(r, "generated_signal"),
+        _flag(r, "security_content"),
 
         1.0 if r.get("project") == "soc-secrets" else 0.0,
 

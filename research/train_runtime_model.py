@@ -56,7 +56,18 @@ from workload import build_workload
 from stats import pr_auc, roc_auc, wilson
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TARGET_FP = 0.01          # бюджет ложных срабатываний слоя L2 на норме
+# БЮДЖЕТ ТРЕВОГ СЛОЯ L2 — в долях нормальных событий.
+#
+# Раньше стояло 1%, и это было ошибкой масштаба. На живом стенде атака
+# составляет порядка 0.06% событий: 1% ложных от 12 тысяч событий — это 120
+# ложных тревог против 7 атакующих. При такой пропорции точность не может быть
+# приличной ни при каком качестве модели, и слой заливал очередь: 65 ложных
+# срабатываний на 3 верных.
+#
+# Осмысленное для SOC ограничение — не «доля», а ЧИСЛО тревог в день. 0.05%
+# при обычной интенсивности стенда даёт единицы алертов от модели за прогон,
+# то есть ровно ту нагрузку, которую аналитик способен разобрать.
+TARGET_FP = 0.0005
 
 
 # ----------------------------------------------------------------------
@@ -175,6 +186,71 @@ def brier(scores, labels):
 
 
 # ----------------------------------------------------------------------
+def collect_live(path=os.path.join("data", "events.jsonl")):
+    """События РЕАЛЬНОГО стенда из общего журнала.
+
+    Зачем отдельный источник. Модель, обученная на синтетическом генераторе,
+    в бою видит ДРУГОЕ распределение: живой мир иначе расставляет события во
+    времени, иначе чередует активности и накапливает журнал между запусками.
+    Это классическое расхождение train/serve, и проявилось оно ровно так, как
+    и должно: на стенде модель срабатывала почти на каждом событии, 93%
+    инцидентов оказались ложными и все пришли от одного слоя.
+
+    Журнал копится между прогонами, и каждый прогон начинает симулированное
+    время заново. Поэтому события разбиваются на СЕГМЕНТЫ по откату времени
+    назад: внутри сегмента поток монотонный, и оконные признаки считаются
+    корректно.
+    """
+    if not os.path.exists(path):
+        return []
+    raw = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except Exception:
+                continue
+            if not r.get("meta"):
+                raw.append(r)
+
+    import datetime as _dt
+
+    def _ts(r):
+        try:
+            return _dt.datetime.strptime(r.get("ts_sim") or "", "%Y-%m-%dT%H:%M:%S")
+        except Exception:
+            return None
+
+    segments, cur, prev = [], [], None
+    for r in raw:
+        t = _ts(r)
+        if t is None:
+            continue
+        if prev and (prev - t).total_seconds() > 6 * 3600:
+            if cur:
+                segments.append(cur)
+            cur, prev = [], None
+        cur.append(r)
+        prev = t if prev is None else max(prev, t)
+    if cur:
+        segments.append(cur)
+
+    rows = []
+    for si, seg in enumerate(segments):
+        enr = detector.Enricher()
+        for r in seg:
+            obs = enr.enrich(run_defense.observed(r))
+            rows.append({"x": ml_features.featurize(obs),
+                         "y": 1 if r.get("is_anomaly") else 0,
+                         "episode": r.get("episode_id"),
+                         "ts": r.get("ts_sim") or "",
+                         "run": f"live{si}"})
+    return rows
+
+
 def collect(seeds, evasions=("noisy", "stealthy", "adaptive")):
     """Собрать события, обогатив их РОВНО ТАК ЖЕ, как это делает бой."""
     rows = []
@@ -229,6 +305,9 @@ def episode_recall(rows, scores, thr):
 def main():
     ap = argparse.ArgumentParser(description="Обучение боевой модели слоя L2")
     ap.add_argument("--seeds", type=int, default=3)
+    ap.add_argument("--source", default="both", choices=["synthetic", "live", "both"],
+                    help="на чём учить: синтетический генератор, журнал живого "
+                         "стенда или и то и другое (по умолчанию)")
     ap.add_argument("--out", default=os.path.join("models", "runtime_model.json"))
     args = ap.parse_args()
 
@@ -236,8 +315,21 @@ def main():
     print("  ОБУЧЕНИЕ БОЕВОЙ МОДЕЛИ (слой L2 детектора)")
     print("=" * 74)
     seeds = [42 + i * 17 for i in range(args.seeds)]
-    print(f"  сиды: {seeds} | профили уклонения: noisy/stealthy/adaptive")
-    rows = collect(seeds)
+    rows = []
+    if args.source in ("synthetic", "both"):
+        print(f"  синтетика: сиды {seeds}, профили noisy/stealthy/adaptive")
+        rows += collect(seeds)
+    if args.source in ("live", "both"):
+        live = collect_live()
+        if live:
+            n_att = sum(r["y"] for r in live)
+            print(f"  живой журнал: {len(live)} событий, из них атак {n_att} "
+                  f"({n_att / max(1, len(live)) * 100:.2f}%)")
+            rows += live
+        else:
+            print("  живой журнал пуст (data/events.jsonl) — учимся только на синтетике")
+    if not rows:
+        print("[!] Нет данных для обучения."); sys.exit(1)
     train, val, test = split_by_time(rows)
     print(f"  событий: {len(rows)}  (train {len(train)} / val {len(val)} / test {len(test)})")
     print(f"  доля атак в train: {sum(r['y'] for r in train) / max(1, len(train)) * 100:.2f}%")

@@ -5,7 +5,7 @@
   "title": "Учётные данные реестра контейнеров в манифесте",
   "severity": "high",
   "risk": 0.7,
-  "rationale": "Манифест k8s/registry с длинным высокоэнтропийным токеном.",
+  "rationale": "Манифест k8s/registry с длинным высокоэнтропийным токеном.\n\nИсключён собственный контент SOC-команды (security_content): правила, гипотезы для охоты, плейбуки и документация ОПИСЫВАЮТ атакующие техники и потому содержат их приметы. Без этого условия правило срабатывало на рабочем продукте аналитика — например на rules/persistence/registry_run_key_modification.yml или hunts/mailbox-forwarding-rule.md.",
   "when": {
     "action": "push",
     "path": {
@@ -17,6 +17,7 @@
       ]
     },
     "has_high_entropy_token": true,
-    "placeholder_signal": false
+    "placeholder_signal": false,
+    "security_content": false
   }
 }

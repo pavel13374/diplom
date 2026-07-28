@@ -42,10 +42,15 @@ _PLACEHOLDER_RE = re.compile(
 # собранные артефакты. Без этого признака правило «высокая энтропия» ловило
 # package-lock.json и *.min.js — это была основная статья ложных срабатываний.
 _GENERATED_RE = re.compile(
-    r"(?:^|/)(?:dist|build|vendor|node_modules)/|"
+    r"(?:^|/)(?:dist|build|vendor|node_modules|assets|static|public|img|images|fonts)/|"
     r"[-.]lock(?:\.json|\.yaml|\.yml)?$|"
     r"\.min\.(?:js|css)$|\.map$|\.svg$|package-lock\.json$|yarn\.lock$|"
-    r"poetry\.lock$|Cargo\.lock$|go\.sum$", re.IGNORECASE)
+    r"poetry\.lock$|Cargo\.lock$|go\.sum$|"
+    # бинарные ресурсы. Имя вида *_b64 намеренно НЕ учитывается: атака
+    # выгружает данные в export/dump_b64.txt, и по одному лишь суффиксу
+    # выгрузка стала бы неотличима от иконки. Решает каталог, а не имя.
+    r"\.(?:png|jpe?g|gif|ico|woff2?|ttf|pdf)$",
+    re.IGNORECASE)
 
 # Признак «канала наружу» в содержимом: выгрузка на внешний хост по scp/dns/curl.
 # Нужен для T1048 (Exfiltration Over Alternative Protocol): у такого файла
@@ -74,6 +79,24 @@ _OBFUSCATION_RE = re.compile(
     r"\|\s*base64\s+-d\s*\|\s*(?:sh|bash)|"
     r"IEX\s*\(\s*\[System\.Text\.Encoding\]",
     re.IGNORECASE)
+
+# СОБСТВЕННЫЙ КОНТЕНТ SOC-КОМАНДЫ.
+#
+# Специфика именно этого контура: команда пишет ПРАВИЛА ДЕТЕКТИРОВАНИЯ, гипотезы
+# для охоты и плейбуки — то есть тексты, которые ОПИСЫВАЮТ атакующие техники и
+# потому набиты их приметами. Правило про «реестр контейнеров» срабатывало на
+# файле rules/persistence/registry_run_key_modification.yml, а правило про
+# пересылку почты — на hunts/mailbox-forwarding-rule.md. Формально в пути есть
+# нужное слово; по сути это рабочий продукт аналитика.
+#
+# Признак нужен, чтобы правила по ключевым словам в пути не ловили описание
+# техники вместо самой техники. Это известная беда репозиториев detection
+# engineering: они полны строк, на которые реагируют сканеры.
+_SECURITY_CONTENT_RE = re.compile(
+    r"(?:^|/)(?:rules|detections|sigma|hunts|hunting|playbooks|runbooks|"
+    r"docs|wiki|research|threat[-_]intel)/|"
+    r"\.(?:md|rst|adoc)$|"
+    r"(?:^|/)tests?/fixtures?/", re.IGNORECASE)
 
 # Манифесты зависимостей — для T1195.001 (подмена зависимости)
 _DEPS_RE = re.compile(
@@ -128,4 +151,7 @@ def analyze(content, path="") -> dict:
         "deps_manifest":          bool(_DEPS_RE.search(path)),
         # в содержимом есть исполнение закодированной строки (обфускация)
         "obfuscation_signal":     bool(_OBFUSCATION_RE.search(content)),
+        # файл — рабочий продукт SOC-команды (правило, гипотеза, плейбук, доки),
+        # где упоминание техники ОЖИДАЕМО и само по себе не является угрозой
+        "security_content":       bool(_SECURITY_CONTENT_RE.search(path)),
     }

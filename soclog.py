@@ -29,6 +29,19 @@ from collections import Counter, deque
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
+
+def _process_tag():
+    """Короткое имя процесса для имени лог-файла: console, webapp, metrics…
+
+    Нужно, чтобы одновременно запущенные процессы не делили один файл: на
+    Windows ротация чужого открытого файла невозможна в принципе.
+    """
+    import sys as _sys
+    name = os.path.basename(getattr(_sys.modules.get("__main__"), "__file__", "") or "")
+    name = os.path.splitext(name)[0] or "app"
+    safe = "".join(ch if (ch.isalnum() or ch in "-_") else "-" for ch in name)
+    return safe[:24] or "app"
+
 _LOCK = threading.RLock()
 _STATE = {"installed": False, "paths": {}}
 _RING = deque(maxlen=500)          # последние структурные записи (для /api/diag)
@@ -104,16 +117,34 @@ def install(base_dir=None):
         if root.level > logging.DEBUG:
             root.setLevel(logging.DEBUG)
 
-        jsonl = os.path.join(logdir, "debug.jsonl")
+        # ЛОГ-ФАЙЛ У КАЖДОГО ПРОЦЕССА СВОЙ.
+        #
+        # Мир (webapp.py) и защита (console.py) запускаются одновременно и
+        # раньше писали в один и тот же logs/debug.jsonl. На Windows файл,
+        # открытый одним процессом, нельзя переименовать из другого, поэтому
+        # при достижении 10 МБ ротация падала:
+        #
+        #   PermissionError: [WinError 32] файл занят другим процессом
+        #   'logs\\debug.jsonl' -> 'logs\\debug.jsonl.1'
+        #
+        # И падала не один раз, а на КАЖДОЙ записи в лог — консоль заливало
+        # трейсбеками, за которыми не видно настоящих сообщений. На Linux это
+        # не проявлялось: там переименование открытого файла разрешено, но
+        # записи двух процессов всё равно перемешивались.
+        #
+        # Имя процесса берётся из имени запущенного скрипта, поэтому файлы
+        # получаются понятные: debug-console.jsonl, debug-webapp.jsonl.
+        who = _process_tag()
+        jsonl = os.path.join(logdir, f"debug-{who}.jsonl")
         jh = RotatingFileHandler(jsonl, maxBytes=10 * 1024 * 1024,
-                                 backupCount=5, encoding="utf-8")
+                                 backupCount=5, encoding="utf-8", delay=True)
         jh.setLevel(logging.DEBUG)
         jh.setFormatter(_JsonFormatter())
         jh._soclog = True
 
-        errlog = os.path.join(logdir, "errors.log")
+        errlog = os.path.join(logdir, f"errors-{who}.log")
         eh = RotatingFileHandler(errlog, maxBytes=5 * 1024 * 1024,
-                                 backupCount=3, encoding="utf-8")
+                                 backupCount=3, encoding="utf-8", delay=True)
         eh.setLevel(logging.ERROR)
         eh.setFormatter(logging.Formatter(
             "%(asctime)s %(levelname)s %(name)s: %(message)s"))

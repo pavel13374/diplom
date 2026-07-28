@@ -61,6 +61,16 @@ body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
 .inc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:9px;cursor:pointer;
  box-shadow:var(--shadow);transition:all .18s ease}
 .inc:hover{border-color:var(--accent-border);transform:translateY(-1px);box-shadow:var(--shadow-lift)}
+/* ВЫБРАННЫЙ инцидент. Раньше клик открывал карточку сбоку, но в списке
+   ничего не менялось: после пары кликов было непонятно, что именно открыто.
+   Подсветка идёт тремя независимыми признаками — цветом рамки, фоном и
+   полосой слева, — чтобы состояние читалось и при цветовой слепоте,
+   и в высококонтрастной теме. */
+.inc.sel{border-color:var(--accent);background:var(--surface-3);
+  box-shadow:inset 3px 0 0 0 var(--accent),var(--shadow-lift)}
+.inc.sel .a{color:var(--accent)}
+.ds-q-item.sel{border-color:var(--accent);background:var(--surface-3);
+  box-shadow:inset 3px 0 0 0 var(--accent)}
 .inc .h{display:flex;align-items:center;gap:8px}.inc .a{font-weight:700}
 .badge{border-radius:6px;padding:2px 8px;font-size:10.5px;font-weight:700;letter-spacing:.02em}
 .b-crit{background:var(--critical-bg);color:var(--critical)}.b-high{background:var(--warning-bg);color:var(--warning)}.b-med{background:var(--info-bg);color:var(--info)}.b-low{background:var(--info-bg);color:var(--text-3)}
@@ -848,7 +858,7 @@ function renderIncQueue(items){
  const box=$('incQueue');if(!box)return;
  if(!items||!items.length){box.innerHTML='<div class="ds-empty">Очередь пуста</div>';return;}
  box.innerHTML=items.slice(0,6).map(x=>
-  '<div class=ds-q-item onclick="goView(\'incidents\');setTimeout(function(){openInc('+x.id+');},150)">'+
+  '<div class="ds-q-item'+(String(x.id)===String(_incSel)?' sel':'')+'" data-inc="'+x.id+'" onclick="goView(\'incidents\');setTimeout(function(){openInc('+x.id+');},150)">'+
    sevBadge(x.severity)+'<div class=ds-q-main>'+
    '<div class=ds-q-who>@'+esc(x.actor)+(x.is_campaign?' <span class="badge b-camp">campaign</span>':'')+'</div>'+
    '<div class=ds-q-meta>'+nAlerts(x.alerts)+' · '+nTac((x.tactics||[]).length)+' · риск '+x.max_risk+'</div></div>'+
@@ -1050,14 +1060,15 @@ async function pollAlerts(){
  if(!_alLoaded&&$('alBody')&&!$('alBody').innerHTML)$('alBody').innerHTML=skeletonRows(8,6);
  const d=await jget('/api/alerts');_alRows=d.alerts||[];_alLoaded=true;renderAlerts();}
 async function pollIncidents(){const d=await jget('/api/incidents');
- $('incList').innerHTML=(d.incidents||[]).map(i=>'<div class=inc onclick="openInc('+i.id+')"><div class=h>'+
+ $('incList').innerHTML=(d.incidents||[]).map(i=>'<div class="inc'+(String(i.id)===String(_incSel)?' sel':'')+'" data-inc="'+i.id+'" tabindex=0 role=button aria-current="'+(String(i.id)===String(_incSel)?'true':'false')+'" onclick="openInc('+i.id+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openInc('+i.id+')}"><div class=h>'+
    '<span class=a>@'+esc(i.actor)+'</span>'+sevBadge(i.severity)+(i.is_campaign?'<span class="badge b-camp">CAMPAIGN</span>':'')+(i.triage?'<span class="badge b-camp">LLM: '+esc(i.triage)+'</span>':'')+
    (i.verdict?'<span class="vpill '+esc(i.verdict)+'" title="ваш вердикт">'+(i.verdict==='tp'?'✔ TP':'✘ FP')+'</span>':'')+
    (i.status&&i.status!=='new'?'<span class="stpill '+esc(i.status)+'">'+esc(i.status)+'</span>':'')+
    '<span class=grow></span><span class=sub>риск '+i.max_risk+'</span></div>'+
    '<div class=sub style=margin-top:5px>'+i.alerts+' алертов · '+esc((i.repos||[]).join(', '))+'</div>'+
    '<div class=chain>'+(i.tactics||[]).map(t=>'<span class=chip>'+esc(t)+'</span>').join('')+'</div></div>').join('')
-   ||'<div class="help empty">инцидентов пока нет — запусти атаку в Red Launcher</div>';}
+   ||'<div class="help empty">инцидентов пока нет — запусти атаку в Red Launcher</div>';
+ markIncSel();}
 let _incTab='timeline', _incData=null;
 
 function incTabs(){
@@ -1151,7 +1162,18 @@ function renderIncBody(){
  else if(_incTab==='actions'){box.innerHTML=incActions(i);}
  else if(_incTab==='ai'){box.innerHTML='<div id=triageBox></div><div id=llmBox></div>';showTriage(i.triage);}}
 
-async function openInc(id){const i=await jget('/api/incident/'+id);if(i.error)return;
+/* id открытого инцидента — чтобы подсветка переживала автообновление списка
+   (список перерисовывается каждые 2.5 с) */
+var _incSel=null;
+function markIncSel(){
+  document.querySelectorAll('.inc[data-inc],.ds-q-item[data-inc]').forEach(function(el){
+    var on = String(el.getAttribute('data-inc'))===String(_incSel);
+    el.classList.toggle('sel', on);
+    el.setAttribute('aria-current', on ? 'true' : 'false');
+  });
+}
+async function openInc(id){_incSel=id;markIncSel();
+ const i=await jget('/api/incident/'+id);if(i.error)return;
  _incData=i;_openId=i.id;
  $('incTtl').textContent='Инцидент #'+i.id+' · @'+i.actor;
  $('incDetail').innerHTML=

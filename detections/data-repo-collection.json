@@ -5,12 +5,13 @@
   "title": "Обращение к хранилищу секретов в коде",
   "severity": "high",
   "risk": 0.65,
-  "rationale": "Путь ведёт в vault/секрет-хранилище.",
+  "rationale": "Путь ведёт в vault/секрет-хранилище.\n\nИсключён собственный контент SOC-команды (security_content): правила, гипотезы для охоты, плейбуки и документация ОПИСЫВАЮТ атакующие техники и потому содержат их приметы. Без этого условия правило срабатывало на рабочем продукте аналитика — например на rules/persistence/registry_run_key_modification.yml или hunts/mailbox-forwarding-rule.md.",
   "when": {
     "action": "push",
     "path": {
       "contains": "vault"
     },
-    "placeholder_signal": false
+    "placeholder_signal": false,
+    "security_content": false
   }
 }

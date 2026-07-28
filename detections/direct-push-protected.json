@@ -1,0 +1,19 @@
+{
+  "id": "direct-push-protected",
+  "title": "Прямой push в защищённую ветку в обход MR",
+  "technique": "T1078",
+  "tactic": "Initial Access",
+  "severity": "high",
+  "risk": 0.68,
+  "rationale": "Изменение внесено прямо в защищённую ветку, минуя merge request и ревью. В нормальном процессе это невозможно: защита ветки на то и стоит. Правило добавлено по результатам трассируемости — техника T1078 исполнялась кампанией review_bypass_push и не ловилась ничем, кроме ночного правила по репозиторию секретов.",
+  "when": {
+    "action": "push",
+    "branch": {
+      "in": [
+        "main",
+        "master"
+      ]
+    },
+    "protected_branch": true
+  }
+}

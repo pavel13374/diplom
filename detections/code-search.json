@@ -10,7 +10,7 @@
     "action": "api_read",
     "api_path": "/search",
     "burst_api_read_15m": {
-      ">=": 5
+      ">=": 4
     },
     "items_returned": {
       ">=": 40

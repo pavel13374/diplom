@@ -223,13 +223,13 @@
     "_wallpaper_change": {
       "path": "rules/impact/internal_defacement_/_wallpaper_change.yml",
       "tactic": "impact",
-      "status": "experimental",
-      "author": "nikita.orlov",
-      "created": "2026-08-10",
-      "modified": "2026-08-12",
+      "status": "stable",
+      "author": "maria.ivanova",
+      "created": "2026-07-28",
+      "modified": "2026-07-29",
       "fp_rate": 0,
       "noisy": false,
-      "tunes": 1
+      "tunes": 0
     },
     "msiexec_remote_package_install": {
       "path": "rules/defense_evasion/msiexec_remote_package_install.yml",
@@ -270,7 +270,7 @@
       "status": "stable",
       "author": "irina.belova",
       "created": "2026-08-11",
-      "modified": "2026-08-15",
+      "modified": "2026-07-29",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 0
@@ -466,10 +466,10 @@
       "path": "rules/collection/local_email_collection_(pst_export).yml",
       "tactic": "collection",
       "status": "stable",
-      "author": "olga.novak",
-      "created": "2026-08-06",
-      "modified": "2026-08-06",
-      "fp_rate": 12,
+      "author": "sergey.volkov",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 1,
       "noisy": false,
       "tunes": 0
     },
@@ -652,10 +652,10 @@
     "windows_service_created_for_persistence": {
       "path": "rules/persistence/windows_service_created_for_persistence.yml",
       "tactic": "persistence",
-      "status": "stable",
-      "author": "irina.belova",
-      "created": "2026-08-18",
-      "modified": "2026-08-18",
+      "status": "experimental",
+      "author": "nikita.orlov",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
       "fp_rate": 10,
       "noisy": false,
       "tunes": 0
@@ -686,10 +686,10 @@
       "path": "rules/persistence/wmi_event_subscription_persistence.yml",
       "tactic": "persistence",
       "status": "stable",
-      "author": "nikita.orlov",
-      "created": "2026-08-19",
-      "modified": "2026-08-19",
-      "fp_rate": 11,
+      "author": "dmitry.kozlov",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 4,
       "noisy": false,
       "tunes": 0
     },
@@ -747,6 +747,28 @@
       "fp_rate": 1,
       "noisy": false,
       "tunes": 0
+    },
+    "default_account_logon": {
+      "path": "rules/initial_access/default_account_logon.yml",
+      "tactic": "initial_access",
+      "status": "experimental",
+      "author": "sergey.volkov",
+      "created": "2026-07-28",
+      "modified": "2026-07-28",
+      "fp_rate": 7,
+      "noisy": false,
+      "tunes": 0
+    },
+    "lsass_memory_dump_via_procdump": {
+      "path": "rules/credential_access/lsass_memory_dump_via_procdump.yml",
+      "tactic": "credential_access",
+      "status": "experimental",
+      "author": "nikita.orlov",
+      "created": "2026-07-29",
+      "modified": "2026-07-29",
+      "fp_rate": 0,
+      "noisy": false,
+      "tunes": 0
     }
   },
   "sprint_start": "2026-08-19",
@@ -754,11 +776,12 @@
   "oncall_index": 6,
   "issue_seq": 1000,
   "release_seq": 3,
-  "campaign_seq": 51,
+  "campaign_seq": 53,
   "pto": {
     "2026-07-08": "maria.ivanova",
     "2026-07-22": "maria.ivanova",
-    "2026-07-21": "maria.ivanova"
+    "2026-07-21": "maria.ivanova",
+    "2026-07-29": "anna.smirnova"
   },
   "pending_reverts": []
 }

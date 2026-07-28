@@ -109,6 +109,9 @@ ATTRIBUTES = {
     "obfuscation_signal": "в содержимом есть исполнение закодированной строки: "
                           "eval(atob(...)), new Function(atob(...)), "
                           "exec(b64decode(...)), «| base64 -d | sh»",
+    "security_content": "файл — рабочий продукт SOC-команды (правило, гипотеза "
+                        "для охоты, плейбук, документация): упоминание техники "
+                        "в нём ожидаемо и угрозой не является",
     "deps_manifest":    "файл является манифестом зависимостей "
                         "(requirements.txt, package.json, go.mod, pom.xml)",
     "regex_hits":       "список сработавших secret-сигнатур по именам",

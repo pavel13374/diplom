@@ -106,6 +106,11 @@ class BaseAgent:
         except Exception:
             logger.error("не удалось посчитать признаки содержимого для %s — "
                          "детектор недосчитается сигналов", path, exc_info=True)
+        # Защищённость ветки — наблюдаемый атрибут: в GitLab он виден в
+        # настройках проекта и в аудите. Без него правило про прямой push в
+        # main не может отличить обход ревью от работы в своей ветке.
+        feats["protected_branch"] = branch in getattr(config, "PROTECTED_BRANCHES",
+                                                      ["main", "master"])
         if extra:
             feats.update(extra)
         self._emit("push", gitlab_ok=ok, gitlab_error=err, project_id=project_id,

@@ -160,8 +160,13 @@ def benign_push_features(rnd):
     elif rnd.random() < 0.08:
         high_tok = True                       # git SHA-40 или UUID в конфиге
 
-    # энтропия ожидаема по типу файла — тот же критерий, что в content_features
-    generated = any(k in path for k in ("lock", ".min.", ".svg", "dist/", "vendor/"))
+    # Признаки, выводимые из пути, считаем ТЕМ ЖЕ кодом, что и бой. Своя
+    # копия критерия рано или поздно разойдётся с оригиналом, и разойдётся
+    # молча: у нормы признака не будет, у атаки будет — и «поле присутствует»
+    # снова станет меткой (это ловит tests/test_leakage.py).
+    import content_features as _cf
+    generated = bool(_cf._GENERATED_RE.search(path))
+    sec_content = bool(_cf._SECURITY_CONTENT_RE.search(path))
     deps = any(path.endswith(k) for k in ("requirements.txt", "package.json",
                                           "go.mod", "pom.xml"))
 
@@ -195,6 +200,7 @@ def benign_push_features(rnd):
             "generated_signal": generated,
             "net_sink_signal": net_sink,
             "obfuscation_signal": False,   # обычный код не исполняет base64-строки
+            "security_content": sec_content,
             "deps_manifest": deps,
             "bytes": size,
             "lines": max(1, size // 40),
@@ -269,8 +275,14 @@ def _emit_one(events, rnd, a, k=0):
 
     if r < 0.44:
         f = benign_push_features(rnd)
+        # Часть обычных пушей идёт прямо в main: правки документации, релизные
+        # хвосты, работа лида. Без этого «push в защищённую ветку» стал бы
+        # исключительным признаком атаки.
+        to_main = rnd.random() < 0.06
+        f["extra"]["protected_branch"] = to_main
         events.emit("push", actor=a, role=_role_of(a), project=repo,
-                    path=f["path"], branch=_branch(rnd), extra=f["extra"])
+                    path=f["path"], branch=("main" if to_main else _branch(rnd)),
+                    extra=f["extra"])
     elif r < 0.54:
         events.emit("branch_create", actor=a, role=_role_of(a),
                     project=repo, branch=_branch(rnd))

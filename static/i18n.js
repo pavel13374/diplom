@@ -800,6 +800,7 @@
     'Переписана история защищённой ветки': 'History of a protected branch was rewritten',
     'Перечисление участников и прав по многим репозиториям': 'Enumerating members and permissions across repositories',
     'Приватный ключ в коммите': 'Private key in a commit',
+    'Прямой push в защищённую ветку в обход MR': 'Direct push to a protected branch, bypassing MR',
     'Прямое касание репозитория секретов': 'Direct write to the secrets repository',
     'Расписание пайплайна на защищённой ветке в production': 'Pipeline schedule on a protected branch targeting production',
     'Ручной прогон в production вне рабочего времени': 'Manual production run outside working hours',

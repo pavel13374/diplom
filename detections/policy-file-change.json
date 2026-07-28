@@ -5,11 +5,12 @@
   "title": "Изменён файл политики доступа",
   "severity": "medium",
   "risk": 0.55,
-  "rationale": "Правка в каталоге policy/.",
+  "rationale": "Правка в каталоге policy/.\n\nИсключён собственный контент SOC-команды (security_content): правила, гипотезы для охоты, плейбуки и документация ОПИСЫВАЮТ атакующие техники и потому содержат их приметы. Без этого условия правило срабатывало на рабочем продукте аналитика — например на rules/persistence/registry_run_key_modification.yml или hunts/mailbox-forwarding-rule.md.",
   "when": {
     "action": "push",
     "path": {
       "contains": "policy/"
-    }
+    },
+    "security_content": false
   }
 }
