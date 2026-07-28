@@ -369,10 +369,10 @@
       "status": "stable",
       "author": "sergey.volkov",
       "created": "2026-08-18",
-      "modified": "2026-08-18",
-      "fp_rate": 8,
+      "modified": "2026-07-29",
+      "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "theft": {
       "path": "rules/privilege_escalation/token_impersonation/theft.yml",
@@ -578,10 +578,10 @@
       "status": "experimental",
       "author": "dmitry.kozlov",
       "created": "2026-08-12",
-      "modified": "2026-08-19",
+      "modified": "2026-07-29",
       "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "wmi_process_creation_for_remote_executio": {
       "path": "rules/execution/wmi_process_creation_for_remote_executio.yml",
@@ -776,7 +776,7 @@
   "oncall_index": 6,
   "issue_seq": 1000,
   "release_seq": 3,
-  "campaign_seq": 53,
+  "campaign_seq": 54,
   "pto": {
     "2026-07-08": "maria.ivanova",
     "2026-07-22": "maria.ivanova",

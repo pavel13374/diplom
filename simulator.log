@@ -95734,3 +95734,152 @@
 2026-07-28 17:22:04 INFO    [Scheduler] OK new_detection_rule
 2026-07-28 17:22:05 INFO    127.0.0.1 - - [28/Jul/2026 17:22:05] "[32mGET / HTTP/1.1[0m" 302 -
 2026-07-28 17:22:05 INFO    127.0.0.1 - - [28/Jul/2026 17:22:05] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:07 INFO    [Scheduler] Wed 2026-07-29 12:30 · итерация 293: threat_intel_update
+2026-07-28 17:22:07 INFO    [maria.ivanova] Threat intel update: TA505 / CVE-2023-20198 (Cisco IOS XE) (11 IOCs)
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/logs?since=3420 HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/logs?since=3421 HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/repos HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/insights HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/repos HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/insights HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/health HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/health HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/status HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    127.0.0.1 - - [28/Jul/2026 17:22:08] "GET /api/status HTTP/1.1" 200 -
+2026-07-28 17:22:08 INFO    [maria.ivanova] push intel/202607/ta505.json -> feat(intel): update C2 user-agent blocklist
+2026-07-28 17:22:11 INFO    127.0.0.1 - - [28/Jul/2026 17:22:11] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:11 INFO    127.0.0.1 - - [28/Jul/2026 17:22:11] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:14 INFO    127.0.0.1 - - [28/Jul/2026 17:22:14] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:14 INFO    127.0.0.1 - - [28/Jul/2026 17:22:14] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:17 INFO    127.0.0.1 - - [28/Jul/2026 17:22:17] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:17 INFO    127.0.0.1 - - [28/Jul/2026 17:22:17] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:19 INFO    [Scheduler] OK threat_intel_update
+2026-07-28 17:22:20 INFO    127.0.0.1 - - [28/Jul/2026 17:22:20] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:20 INFO    127.0.0.1 - - [28/Jul/2026 17:22:20] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:21 INFO    [Scheduler] Wed 2026-07-29 12:41 · итерация 294: nightly_schedule
+2026-07-28 17:22:21 INFO    [Scheduler] OK nightly_schedule
+2026-07-28 17:22:23 INFO    127.0.0.1 - - [28/Jul/2026 17:22:23] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:23 INFO    127.0.0.1 - - [28/Jul/2026 17:22:23] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:24 INFO    [Scheduler] Wed 2026-07-29 12:43 · итерация 295: pipeline_run
+2026-07-28 17:22:24 INFO    [Scheduler] OK pipeline_run
+2026-07-28 17:22:26 INFO    127.0.0.1 - - [28/Jul/2026 17:22:26] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:26 INFO    127.0.0.1 - - [28/Jul/2026 17:22:26] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:27 INFO    [Scheduler] Wed 2026-07-29 12:46 · итерация 296: revert_bad_rule
+2026-07-28 17:22:27 INFO    [alex.petrov] No recent feat commits to revert, skipping
+2026-07-28 17:22:27 WARNING [Scheduler] FAIL revert_bad_rule
+2026-07-28 17:22:29 INFO    127.0.0.1 - - [28/Jul/2026 17:22:29] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:29 INFO    127.0.0.1 - - [28/Jul/2026 17:22:29] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:30 INFO    [Scheduler] Wed 2026-07-29 12:48 · итерация 297: campaign
+2026-07-28 17:22:30 INFO    [campaign #54] TA505 / CVE-2023-34362 (MOVEit) → Browser Credential Store Access
+2026-07-28 17:22:30 WARNING create_issue failed: {"message":"404 Project Not Found"}
+2026-07-28 17:22:30 WARNING [Scheduler] FAIL campaign
+2026-07-28 17:22:32 INFO    [Scheduler] Wed 2026-07-29 12:50 · итерация 298: ir_runbook
+2026-07-28 17:22:32 INFO    127.0.0.1 - - [28/Jul/2026 17:22:32] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:32 INFO    127.0.0.1 - - [28/Jul/2026 17:22:32] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:33 INFO    [irina.belova] push runbooks/dns-tunneling-exfil.md -> runbook: DNS tunneling exfil (T1071.004)
+2026-07-28 17:22:35 INFO    127.0.0.1 - - [28/Jul/2026 17:22:35] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:35 INFO    127.0.0.1 - - [28/Jul/2026 17:22:35] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:38 INFO    127.0.0.1 - - [28/Jul/2026 17:22:38] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:38 INFO    127.0.0.1 - - [28/Jul/2026 17:22:38] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:38 INFO    [Scheduler] OK ir_runbook
+2026-07-28 17:22:41 INFO    [Scheduler] Wed 2026-07-29 12:57 · итерация 299: deprecate_rule
+2026-07-28 17:22:41 INFO    127.0.0.1 - - [28/Jul/2026 17:22:41] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:41 INFO    127.0.0.1 - - [28/Jul/2026 17:22:41] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:41 INFO    [pavel.morozov] Deprecating rule: directory_creation
+2026-07-28 17:22:43 INFO    [pavel.morozov] commit chore/deprecate-directory_creation-39380 (2 действий)
+2026-07-28 17:22:44 INFO    127.0.0.1 - - [28/Jul/2026 17:22:44] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:44 INFO    127.0.0.1 - - [28/Jul/2026 17:22:44] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:47 INFO    127.0.0.1 - - [28/Jul/2026 17:22:47] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:47 INFO    127.0.0.1 - - [28/Jul/2026 17:22:47] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:48 INFO    [Scheduler] OK deprecate_rule
+2026-07-28 17:22:50 INFO    [rhythm] обед (~45 мин sim)
+2026-07-28 17:22:50 INFO    127.0.0.1 - - [28/Jul/2026 17:22:50] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:50 INFO    127.0.0.1 - - [28/Jul/2026 17:22:50] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:53 INFO    127.0.0.1 - - [28/Jul/2026 17:22:53] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:53 INFO    127.0.0.1 - - [28/Jul/2026 17:22:53] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:56 INFO    127.0.0.1 - - [28/Jul/2026 17:22:56] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:56 INFO    127.0.0.1 - - [28/Jul/2026 17:22:56] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:22:58 INFO    [Scheduler] Wed 2026-07-29 13:11 · итерация 300: update_dashboard
+2026-07-28 17:22:59 INFO    [olga.novak] Updating dashboard: fp_report
+2026-07-28 17:22:59 WARNING create_branch failed: {"message":"404 Project Not Found"}
+2026-07-28 17:22:59 WARNING [Scheduler] FAIL update_dashboard
+2026-07-28 17:22:59 INFO    127.0.0.1 - - [28/Jul/2026 17:22:59] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:22:59 INFO    127.0.0.1 - - [28/Jul/2026 17:22:59] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:02 INFO    [Scheduler] Wed 2026-07-29 13:14 · итерация 301: fix_existing_rule
+2026-07-28 17:23:02 INFO    [irina.belova] Fixing rule: crowdstrike-office-spawns-script-host (add_filter)
+2026-07-28 17:23:02 INFO    127.0.0.1 - - [28/Jul/2026 17:23:02] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:03 INFO    127.0.0.1 - - [28/Jul/2026 17:23:03] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:03 INFO    [irina.belova] push rules/crowdstrike/crowdstrike-office-spawns-script-host.yml -> fix(rules): tighten condition for crowdstrike-offi
+2026-07-28 17:23:04 INFO    [irina.belova] push tests/samples/crowdstrike-office-spawns-script-host_updated.json -> test(crowdstrike-office-spawns-script-host): add u
+2026-07-28 17:23:06 INFO    127.0.0.1 - - [28/Jul/2026 17:23:06] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:06 INFO    127.0.0.1 - - [28/Jul/2026 17:23:06] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:08 INFO    [irina.belova] push rules/collection/archive_collected_data_via_7zip/rar.yml -> fix(crowdstrike-office-s-39382): align condition w
+2026-07-28 17:23:08 INFO    127.0.0.1 - - [28/Jul/2026 17:23:08] "GET /api/logs?since=3496 HTTP/1.1" 200 -
+2026-07-28 17:23:08 INFO    127.0.0.1 - - [28/Jul/2026 17:23:08] "GET /api/events?n=120 HTTP/1.1" 200 -
+2026-07-28 17:23:08 INFO    127.0.0.1 - - [28/Jul/2026 17:23:08] "GET /api/repos HTTP/1.1" 200 -
+2026-07-28 17:23:08 INFO    127.0.0.1 - - [28/Jul/2026 17:23:08] "GET /api/insights HTTP/1.1" 200 -
+2026-07-28 17:23:08 INFO    127.0.0.1 - - [28/Jul/2026 17:23:08] "GET /api/health HTTP/1.1" 200 -
+2026-07-28 17:23:08 INFO    127.0.0.1 - - [28/Jul/2026 17:23:08] "GET /api/status HTTP/1.1" 200 -
+2026-07-28 17:23:09 INFO    127.0.0.1 - - [28/Jul/2026 17:23:09] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:09 INFO    127.0.0.1 - - [28/Jul/2026 17:23:09] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:12 INFO    127.0.0.1 - - [28/Jul/2026 17:23:12] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:12 INFO    127.0.0.1 - - [28/Jul/2026 17:23:12] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:13 INFO    LLM chat ok
+2026-07-28 17:23:15 INFO    127.0.0.1 - - [28/Jul/2026 17:23:15] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:15 INFO    127.0.0.1 - - [28/Jul/2026 17:23:15] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:17 INFO    [Scheduler] OK fix_existing_rule
+2026-07-28 17:23:18 INFO    127.0.0.1 - - [28/Jul/2026 17:23:18] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:18 INFO    127.0.0.1 - - [28/Jul/2026 17:23:18] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:19 INFO    [Scheduler] Wed 2026-07-29 13:28 · итерация 302: tune_threshold
+2026-07-28 17:23:19 INFO    [pavel.morozov] Tuning rule: credentials_in_files_search
+2026-07-28 17:23:21 INFO    127.0.0.1 - - [28/Jul/2026 17:23:21] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:21 INFO    127.0.0.1 - - [28/Jul/2026 17:23:21] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:21 INFO    [pavel.morozov] push rules/credential_access/credentials_in_files_search.yml -> tune(credentials_in_files_search): add allowlist f
+2026-07-28 17:23:24 INFO    127.0.0.1 - - [28/Jul/2026 17:23:24] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:24 INFO    127.0.0.1 - - [28/Jul/2026 17:23:24] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:26 INFO    [Scheduler] OK tune_threshold
+2026-07-28 17:23:27 INFO    127.0.0.1 - - [28/Jul/2026 17:23:27] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:27 INFO    127.0.0.1 - - [28/Jul/2026 17:23:27] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:29 INFO    [Scheduler] Wed 2026-07-29 13:36 · итерация 303: update_parser
+2026-07-28 17:23:29 INFO    [elena.kuzmina] Parser parsers/cloud/aws_cloudtrail.conf not found, skipping
+2026-07-28 17:23:29 WARNING [Scheduler] FAIL update_parser
+2026-07-28 17:23:30 INFO    127.0.0.1 - - [28/Jul/2026 17:23:30] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:30 INFO    127.0.0.1 - - [28/Jul/2026 17:23:30] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:31 INFO    [Scheduler] Wed 2026-07-29 13:37 · итерация 304: hunt_query
+2026-07-28 17:23:32 INFO    [olga.novak] push hunts/202607_usb-mass-storage-eql.md -> hunt: hypothesis for USB mass storage (T1052.001)
+2026-07-28 17:23:33 INFO    127.0.0.1 - - [28/Jul/2026 17:23:33] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:33 INFO    127.0.0.1 - - [28/Jul/2026 17:23:33] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:33 INFO    [olga.novak] push hunts/queries/usb-mass-storage-eql.eql -> hunt: add EQL query for T1052.001
+2026-07-28 17:23:36 INFO    127.0.0.1 - - [28/Jul/2026 17:23:36] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:36 INFO    [olga.novak] push .ci/pipeline-status.txt -> ci: fixup after failed pipeline
+2026-07-28 17:23:36 INFO    127.0.0.1 - - [28/Jul/2026 17:23:36] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:39 INFO    127.0.0.1 - - [28/Jul/2026 17:23:39] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:39 INFO    127.0.0.1 - - [28/Jul/2026 17:23:39] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:40 INFO    [Scheduler] OK hunt_query
+2026-07-28 17:23:42 INFO    127.0.0.1 - - [28/Jul/2026 17:23:42] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:42 INFO    127.0.0.1 - - [28/Jul/2026 17:23:42] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:42 INFO    [Scheduler] Wed 2026-07-29 13:46 · итерация 305: tune_threshold
+2026-07-28 17:23:43 INFO    [maria.ivanova] Tuning rule: process_discovery_via_tasklist
+2026-07-28 17:23:44 INFO    [maria.ivanova] push rules/discovery/process_discovery_via_tasklist.yml -> tune(process_discovery_via_tasklist): lower severi
+2026-07-28 17:23:45 INFO    127.0.0.1 - - [28/Jul/2026 17:23:45] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:45 INFO    127.0.0.1 - - [28/Jul/2026 17:23:45] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:48 INFO    127.0.0.1 - - [28/Jul/2026 17:23:48] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:48 INFO    127.0.0.1 - - [28/Jul/2026 17:23:48] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:51 INFO    127.0.0.1 - - [28/Jul/2026 17:23:51] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:51 INFO    127.0.0.1 - - [28/Jul/2026 17:23:51] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:52 INFO    [Scheduler] OK tune_threshold
+2026-07-28 17:23:54 INFO    [Scheduler] Wed 2026-07-29 13:56 · итерация 306: ci_variable_update
+2026-07-28 17:23:54 INFO    127.0.0.1 - - [28/Jul/2026 17:23:54] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:54 INFO    127.0.0.1 - - [28/Jul/2026 17:23:54] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:55 INFO    [olga.novak] push .ci/variables.yml -> ci: document masked CI/CD variables
+2026-07-28 17:23:57 INFO    127.0.0.1 - - [28/Jul/2026 17:23:57] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:23:57 INFO    127.0.0.1 - - [28/Jul/2026 17:23:57] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:23:57 INFO    [olga.novak] push .ci/pipeline-status.txt -> ci: fixup after failed pipeline
+2026-07-28 17:24:00 INFO    127.0.0.1 - - [28/Jul/2026 17:24:00] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:24:00 INFO    127.0.0.1 - - [28/Jul/2026 17:24:00] "GET /login HTTP/1.1" 200 -
+2026-07-28 17:24:03 INFO    127.0.0.1 - - [28/Jul/2026 17:24:03] "[32mGET / HTTP/1.1[0m" 302 -
+2026-07-28 17:24:03 INFO    127.0.0.1 - - [28/Jul/2026 17:24:03] "GET /login HTTP/1.1" 200 -
