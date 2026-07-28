@@ -64,6 +64,7 @@ def main():
     results.append(("rule-coverage", run([sys.executable, "tests/test_rule_coverage.py"], "tests/test_rule_coverage.py")))
     results.append(("i18n-rules", run([sys.executable, "tests/test_i18n_rules.py"], "tests/test_i18n_rules.py")))
     results.append(("routes", run([sys.executable, "tests/test_routes.py"], "tests/test_routes.py")))
+    results.append(("page-scripts", run([sys.executable, "tests/test_page_scripts.py"], "tests/test_page_scripts.py")))
     results.append(("realmon", run([sys.executable, "tests/test_realmon.py"], "tests/test_realmon.py")))
     results.append(("llm-fallback", run([sys.executable, "tests/test_llm.py"], "tests/test_llm.py")))
     results.append(("contrast", run([sys.executable, "tests/test_contrast.py"], "tests/test_contrast.py")))

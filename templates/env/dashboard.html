@@ -767,7 +767,7 @@ function renderPeople(team){
     '<span class=pchev>&#9662;</span></div>'+
     '<div class=pbody id="body_'+id+'"></div></div>';}).join('');}
  team.forEach(m=>{const id=cssId(m.username);const st=m.stats||{};
-  const meta=document.getElementById('meta_'+id);if(meta)meta.innerHTML='<span title="пуши/коммиты">&#8593; <b>'+(st.pushes||0)+'</b></span> &middot; <span title="merge request'ы">MR <b>'+(st.mrs||0)+'</b></span> &middot; <span title="подозрительные (аномальные) действия">&#9888; <b>'+(st.anomalies||0)+'</b></span>';
+  const meta=document.getElementById('meta_'+id);if(meta)meta.innerHTML='<span title="пуши/коммиты">&#8593; <b>'+(st.pushes||0)+'</b></span> &middot; <span title="merge request-ы">MR <b>'+(st.mrs||0)+'</b></span> &middot; <span title="подозрительные (аномальные) действия">&#9888; <b>'+(st.anomalies||0)+'</b></span>';
   const bdg=document.getElementById('bdg_'+id);if(bdg)bdg.innerHTML=statusBadge(m);
   const card=document.getElementById('card_'+id);if(card)card.classList.toggle('open',openUsers.has(m.username));});
 }
