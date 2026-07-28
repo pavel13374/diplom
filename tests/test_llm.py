@@ -17,7 +17,6 @@ for _p in (_ROOT, _os.path.join(_ROOT, "tools"), _os.path.join(_ROOT, "research"
 _os.chdir(_ROOT)
 del _os, _sys
 import sys
-import json
 try:                       # чистый UTF-8 в консоли Windows
     sys.stdout.reconfigure(encoding="utf-8")
 except Exception:

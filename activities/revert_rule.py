@@ -99,7 +99,6 @@ class RevertRuleActivity:
 
     def _revert_note(self, title: str, sha: str,
                      reason: str, followup: str) -> str:
-        from datetime import datetime
         return """# Revert Note: {title[:60]}
 
 **Commit SHA:** `{sha[:12]}`

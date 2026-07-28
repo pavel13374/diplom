@@ -66,7 +66,7 @@ def main():
     print("=" * 56)
     print("  СБРОС ДАННЫХ СТЕНДА (код и настройки не трогаем)")
     print("=" * 56)
-    total = sum(len(v) if isinstance(v, list) else 1 for v in targets.values())
+    sum(len(v) if isinstance(v, list) else 1 for v in targets.values())
     for name, items in targets.items():
         items = items if isinstance(items, list) else items
         print(f"  • {name}")

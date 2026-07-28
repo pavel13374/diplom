@@ -9,7 +9,9 @@ def _esc(x):
 
 
 def build_report(scheduler=None, title="Отчёт SOC-симулятора", uptime_s=0):
-    import simclock, events, runlog, config
+    import simclock
+    import events
+    import runlog
 
     st = scheduler.stats if scheduler else {}
     ev = events.stats()

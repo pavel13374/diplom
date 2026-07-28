@@ -29,7 +29,7 @@ def load_events():
     """Читаем события: предпочтительно из event-store, иначе из jsonl."""
     rows = []
     try:
-        import config, eventstore
+        import eventstore
         eventstore.init()
         if eventstore.enabled():
             rows = eventstore.read_since(0, limit=10_000_000, include_meta=False)

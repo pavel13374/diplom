@@ -9,9 +9,8 @@
 """
 import random
 import logging
-from config import PROJECTS, USERS, DELAYS, FEATURES
+from config import PROJECTS, DELAYS, FEATURES
 from content import rules as rc, comments
-from activities import flow
 import simclock
 
 logger = logging.getLogger(__name__)

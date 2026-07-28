@@ -850,7 +850,7 @@ def api_detections():
 
 @app.route("/api/red")
 def api_red():
-    eng = red_team.RedTeamEngine({})
+    red_team.RedTeamEngine({})
     camps = [{"key": k, "title": v["title"],
               "steps": [{"method": m, "technique": t, "tactic": ta} for m, t, ta in v["steps"]]}
              for k, v in red_team.CAMPAIGNS.items()]
@@ -1023,7 +1023,6 @@ def api_incident_status(iid):
 @app.route("/api/workflow")
 def api_workflow():
     """Очередь триажа: инциденты + статусы + SLA + сводка шумных правил."""
-    import datetime as _dt
     stat = eventstore.all_incident_status()
     now = time.time()
     items = []
@@ -1255,8 +1254,8 @@ def _incident_report_html(iid, i):
                       for x in iocs) or "<tr><td>—</td><td>нет</td></tr>"
     chain = " → ".join(f"{esc(c.get('tactic'))}/{esc(c.get('technique'))}"
                        for c in i.get("chain", [])) or "—"
-    narr = esc(tr.get("narrative") or "разбор не выполнялся")
-    sev = esc((i.get("severity") or "").upper())
+    esc(tr.get("narrative") or "разбор не выполнялся")
+    esc((i.get("severity") or "").upper())
     # вердикт и заметка аналитика — из журнала статусов инцидента
     try:
         _wf = eventstore.all_incident_status().get(iid) or {}
@@ -1430,7 +1429,7 @@ def api_onboarding():
             age = None
     with _LOCK:
         alerts = _STATE["alerts_total"]
-    cs = _COR.summary()
+    _COR.summary()
     try:
         triaged = sum(1 for i in list(_COR.incidents.values()) if i.get("triage"))
     except Exception:

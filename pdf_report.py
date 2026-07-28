@@ -12,7 +12,7 @@ from reportlab.lib.units import mm
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-                                HRFlowable, PageBreak)
+                                HRFlowable)
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
@@ -52,7 +52,7 @@ def _fonts():
 
 def _styles():
     reg, bold, mono = _fonts()
-    ss = getSampleStyleSheet()
+    getSampleStyleSheet()
     st = {
         "h1": ParagraphStyle("h1", fontName=bold, fontSize=19, textColor=_INK, leading=23, spaceAfter=4),
         "h2": ParagraphStyle("h2", fontName=bold, fontSize=13, textColor=_ACCENT, leading=17, spaceBefore=12, spaceAfter=5),

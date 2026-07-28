@@ -4,7 +4,7 @@
 import random
 import logging
 import config
-from config import PROJECTS, USERS, DELAYS
+from config import USERS, DELAYS
 from content import commit_messages as cm
 
 logger = logging.getLogger(__name__)
@@ -154,8 +154,7 @@ class UpdatePlaybookActivity:
         return self.lead.merge_mr(self.pid, mr_iid)
 
     def _generate_playbook(self, pb: dict) -> str:
-        from datetime import date
-        severity = random.choice(["High", "Critical", "Medium"])
+        random.choice(["High", "Critical", "Medium"])
         return """# Playbook: {pb['title']}
 
 **Severity:** {severity}

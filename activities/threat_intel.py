@@ -9,7 +9,7 @@ import hashlib
 import logging
 import config
 from datetime import date
-from config import PROJECTS, USERS, DELAYS
+from config import USERS, DELAYS
 from content import commit_messages as cm, comments
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class ThreatIntelActivity:
     def run(self) -> bool:
         actor = comments.random_actor()
         cve   = comments.random_cve()
-        kind  = random.choice(["actor", "cve", "feed"])
+        random.choice(["actor", "cve", "feed"])
 
         n_iocs = random.randint(5, 40)
         iocs = {

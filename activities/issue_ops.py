@@ -9,7 +9,6 @@ import logging
 from config import PROJECTS, USERS, DELAYS, FEATURES
 from content import rules as rc, comments, commit_messages as cm
 from activities import flow
-import simclock
 
 logger = logging.getLogger(__name__)
 

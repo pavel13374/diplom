@@ -16,7 +16,7 @@
 import json
 import random
 import logging
-from datetime import date, datetime
+from datetime import date
 
 import config
 from config import DELAYS

@@ -5,8 +5,7 @@
 import random
 import logging
 import config
-import time
-from config import PROJECTS, DELAYS, USERS
+from config import DELAYS, USERS
 from content import rules as rc, commit_messages as cm, comments
 import simclock
 

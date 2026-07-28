@@ -22,7 +22,6 @@ import argparse
 import collections
 from datetime import datetime
 
-import config
 import stats
 import eventstore
 import run_defense

@@ -26,7 +26,7 @@ class IncidentActivity:
         sev   = comments.incident_severity()
         inc_id = f"INC-{random.randint(1000, 9999)}"
 
-        slug   = title.lower().split()[0]
+        title.lower().split()[0]
         branch = self.author.unique_branch(f"ir/{inc_id.lower()}")
         self.author.log(f"Handling incident {inc_id} ({sev}): {title}")
 

@@ -6,7 +6,7 @@ import re
 import random
 import logging
 import config
-from config import PROJECTS, USERS, DELAYS
+from config import USERS, DELAYS
 from content import commit_messages as cm, comments
 from activities import flow
 

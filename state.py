@@ -139,7 +139,6 @@ class SimState:
     # Отложенные реверты
     # ------------------------------------------------------------------
     def schedule_revert(self, slug, reason, delay_days=1):
-        from datetime import timedelta
         due = (simclock.today()).fromordinal(simclock.today().toordinal() + delay_days)
         self.data["pending_reverts"].append({
             "slug": slug, "reason": reason, "due_iso": due.isoformat(),

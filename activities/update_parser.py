@@ -4,7 +4,7 @@
 import random
 import logging
 import config
-from config import PROJECTS, USERS, DELAYS
+from config import USERS, DELAYS
 from content import commit_messages as cm, comments
 
 logger = logging.getLogger(__name__)
@@ -216,7 +216,6 @@ class UpdateParserActivity:
         return "\n".join(lines)
 
     def _changelog_entry(self, source: str, what: str) -> str:
-        from datetime import date
         return """# Changelog: {source} parser
 
 ## {date.today().isoformat()}

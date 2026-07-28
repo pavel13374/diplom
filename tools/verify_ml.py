@@ -23,10 +23,8 @@ _os.chdir(_ROOT)
 del _os, _sys
 import os
 import sys
-import tempfile
 import logging
 import collections
-from datetime import datetime, timedelta
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")

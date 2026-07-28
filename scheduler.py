@@ -16,7 +16,7 @@ import config
 import simclock
 import events
 from config import (
-    DELAYS, PROJECTS, OFF_HOURS_ALLOWED_ACTIVITIES, LUNCH_BREAK, FEATURES,
+    OFF_HOURS_ALLOWED_ACTIVITIES, LUNCH_BREAK, FEATURES,
 )
 
 logger = logging.getLogger(__name__)
@@ -608,7 +608,6 @@ class Scheduler:
 
     # ------------------------------------------------------------------
     def _add_test_sample(self, author, lead) -> bool:
-        from content import rules as rc
         import json
         pid   = config.rule_repo_id()
         files = author.gl.list_files(pid, "rules")

@@ -193,7 +193,7 @@ class AnomalyActivity:
             ok = actor.push_file(pid, path, self._ev_content(content),
                                  "chore: add production config", branch)
         if ok and random.random() < 0.5:
-            lead = self.agents["alex.petrov"]
+            self.agents["alex.petrov"]
             iid = actor.create_mr(pid, branch, "chore: production config", "Конфиг для прод.",
                                   USERS["alex.petrov"]["id"])
             if iid:
@@ -301,7 +301,6 @@ class AnomalyActivity:
     def _a_direct_push_protected(self, actor):
         name, pid = self._repo()
         _p, _c, _m = cover_docs.cover_hotfix(random.choice(["collector", "gateway", "indexer"]))
-        path = _p
         with events.tag(is_decisive=True, repo=name, target="main"):
             ok = actor.push_file(pid, _p, _c, _m, "main")
         if not ok:

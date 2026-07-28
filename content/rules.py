@@ -4,7 +4,6 @@
 """
 import uuid
 import random
-from datetime import date
 import simclock
 
 # -----------------------------------------------------------------------
@@ -558,11 +557,11 @@ def get_rule_path(technique: dict) -> str:
 def generate_sigma_rule(technique: dict, author: str,
                          status: str = "experimental",
                          extra_filters: list = None) -> str:
-    today   = simclock.content_date_iso()
-    rule_id = generate_rule_id()
+    simclock.content_date_iso()
+    generate_rule_id()
     fps     = random.sample(FALSE_POSITIVES_POOL, k=random.randint(1, 3))
     fps_str = "\n".join(f"    - {fp}" for fp in fps)
-    tag_tactic = technique["tactic"].replace("_", "-")
+    technique["tactic"].replace("_", "-")
 
     # Строим detection блок в зависимости от техники
     cat = technique.get("logsource_cat", "process_creation")
@@ -600,7 +599,7 @@ def generate_sigma_rule(technique: dict, author: str,
 {parent_block}{filter_str}    condition: (selection_tools or selection_cmdline){filter_cond}"""
 
     elif cat == "security":
-        eid = technique.get("eventid", "4624")
+        technique.get("eventid", "4624")
         detection = """detection:
     selection:
         EventID: {eid}

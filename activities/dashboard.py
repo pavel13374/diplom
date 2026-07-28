@@ -7,7 +7,7 @@ import logging
 from collections import Counter
 from datetime import date
 from config import PROJECTS, USERS, DELAYS
-from content import rules as rc, commit_messages as cm, comments
+from content import commit_messages as cm, comments
 
 logger = logging.getLogger(__name__)
 

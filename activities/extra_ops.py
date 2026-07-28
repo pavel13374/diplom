@@ -5,8 +5,7 @@ CI-переменные, бамп зависимостей, правки док�
 """
 import random
 import logging
-from datetime import date
-from config import PROJECTS, USERS, DELAYS
+from config import USERS, DELAYS
 from activities import flow
 import simclock
 import config

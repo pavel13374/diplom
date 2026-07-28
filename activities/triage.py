@@ -7,7 +7,7 @@ import random
 import logging
 import config
 from datetime import datetime
-from config import PROJECTS, USERS, DELAYS
+from config import USERS, DELAYS
 from content import rules as rc, commit_messages as cm, comments
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class TriageFalsePositiveActivity:
 
     def _triage_note(self, slug: str, verdict: str) -> str:
         host = f"WORKSTATION-{random.randint(1,40):02d}"
-        user = random.choice(["jsmith", "alee", "mwilson", "kdavis", "svc-backup", "svc-sccm"])
+        random.choice(["jsmith", "alee", "mwilson", "kdavis", "svc-backup", "svc-sccm"])
         return """# Alert Triage: {slug}
 
 **Время:** {datetime.now().strftime('%Y-%m-%d %H:%M')}

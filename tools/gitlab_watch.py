@@ -144,7 +144,6 @@ def scan(gl, projects, st, since_now=False):
         if not isinstance(evs, list):
             continue
         seen = set(st["seen"].get(str(pid), []))
-        fresh = []
         for ev in reversed(evs):   # от старых к новым
             pd = ev.get("push_data") or {}
             sha = pd.get("commit_to")

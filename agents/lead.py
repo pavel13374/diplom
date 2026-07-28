@@ -174,7 +174,7 @@ class LeadAgent(BaseAgent):
         return bool(mr_iid)
 
     def _runner_config(self) -> str:
-        concurrent = random.choice([4, 6, 8])
+        random.choice([4, 6, 8])
         return """concurrent = {concurrent}
 check_interval = 0
 shutdown_timeout = 0
@@ -207,7 +207,6 @@ shutdown_timeout = 0
 """
 
     def _onboarding_doc(self) -> str:
-        from datetime import date
         return """# SOC Team Onboarding Guide
 
 **Обновлено:** {date.today().isoformat()}
