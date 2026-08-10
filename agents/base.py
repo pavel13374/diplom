@@ -21,18 +21,39 @@ import events
 logger = logging.getLogger("world.agent")
 
 # Глобальный статус связи с GitLab (для статус-бара 8787)
-GITLAB_STATUS = {"errors": 0, "ok": 0, "last_error": "", "last_error_ts": None}
+GITLAB_STATUS = {"errors": 0, "ok": 0, "last_error": "", "last_error_ts": None,
+                 "by_op": {}, "ok_by_op": {}}
 
 
-def _fail(what, err):
+def _fail(what, err, ctx=None):
+    """Учесть отказ GitLab И ОСТАВИТЬ СЛЕД.
+
+    Раньше функция только увеличивала счётчик. Отказ вида «пустой ответ/отказ»
+    (то есть GitLab ответил, но не тем) не логировался ВООБЩЕ. За один прогон
+    так молча провалились 357 create_branch, 193 операции по playbooks и 53 по
+    soc-infra: в журнале событий они видны как gitlab_ok=false, а в логах — нет
+    ни строки, и разобраться, ПОЧЕМУ, было нечем.
+
+    Разбивка по операциям (GITLAB_STATUS["by_op"]) отдаётся в /api/diag, чтобы
+    систематический сбой одной операции был виден сразу, а не растворялся в
+    общем счётчике ошибок.
+    """
     GITLAB_STATUS["errors"] += 1
+    GITLAB_STATUS["by_op"][what] = GITLAB_STATUS["by_op"].get(what, 0) + 1
     GITLAB_STATUS["last_error"] = f"{what}: {err}"
     import datetime as _dt
     GITLAB_STATUS["last_error_ts"] = _dt.datetime.now().isoformat(timespec="seconds")
+    logger.warning("GitLab: операция не удалась",
+                   extra={"ctx": {"op": what, "error": str(err)[:200],
+                                  "всего_ошибок": GITLAB_STATUS["errors"],
+                                  "по_операции": GITLAB_STATUS["by_op"][what],
+                                  **(ctx or {})}})
 
 
-def _ok():
+def _ok(what=None):
     GITLAB_STATUS["ok"] += 1
+    if what:
+        GITLAB_STATUS["ok_by_op"][what] = GITLAB_STATUS["ok_by_op"].get(what, 0) + 1
 
 
 def _offline():
@@ -84,11 +105,22 @@ class BaseAgent:
         try:
             res = getattr(self.gl, fn_name)(*args, self.token)
             ok = bool(res)
-            (_ok() if ok else _fail(fn_name, "пустой ответ/отказ"))
+            if ok:
+                _ok(fn_name)
+            else:
+                # «Пустой ответ» — самый частый и самый незаметный отказ:
+                # исключения нет, значит и трейсбека нет. Логируем аргументы,
+                # чтобы было видно, ЧТО именно не создалось (обычно это
+                # конфликт имени ветки или отсутствие прав в репозитории).
+                _fail(fn_name, "пустой ответ/отказ",
+                      {"actor": self.username,
+                       "args": [str(a)[:80] for a in args]})
             return res, ok, (None if ok else f"{fn_name}: пустой ответ/отказ")
         except Exception as ex:
-            _fail(fn_name, ex)
-            logger.warning(f"[{self.username}] GitLab {fn_name} упал: {ex}")
+            _fail(fn_name, ex, {"actor": self.username,
+                                "args": [str(a)[:80] for a in args]})
+            logger.warning("[%s] GitLab %s упал: %s", self.username, fn_name, ex,
+                           exc_info=True)
             return None, False, str(ex)
 
     # ------------------------------------------------------------------
@@ -292,9 +324,21 @@ class BaseAgent:
                 iid = self.gl.create_issue(project_id, title, description, labels,
                                            milestone_id, assignee_id,
                                            created_at=created_at, user_token=self.token)
-                ok = bool(iid); (_ok() if ok else _fail("create_issue", "пусто"))
+                ok = bool(iid)
+                if ok:
+                    _ok("create_issue")
+                else:
+                    # 82% отказов этой операции за прогон приходились на
+                    # активности с устаревшим id репозитория; чтобы это было
+                    # видно, в контекст кладём project_id и заголовок
+                    _fail("create_issue", "пустой ответ/отказ",
+                          {"actor": self.username, "project_id": project_id,
+                           "title": title[:60]})
+                    err = "create_issue: пустой ответ/отказ"
             except Exception as e:
-                _fail("create_issue", e); ok = False; err = str(e)
+                _fail("create_issue", e, {"actor": self.username,
+                                          "project_id": project_id})
+                ok = False; err = str(e)
         self._emit("issue_open", gitlab_ok=ok, gitlab_error=err, project_id=project_id,
                    mr_iid=iid or 0, message=title, extra={"labels": labels or []})
         return iid or 0

@@ -41,8 +41,7 @@ class ThreatIntelActivity:
     def run(self) -> bool:
         actor = comments.random_actor()
         cve   = comments.random_cve()
-        random.choice(["actor", "cve", "feed"])
-
+    
         n_iocs = random.randint(5, 40)
         iocs = {
             "domains": [_fake_domain() for _ in range(random.randint(2, 8))],

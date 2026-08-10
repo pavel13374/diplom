@@ -1,31 +1,12 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Вход</title>
-<style>
-
-*{box-sizing:border-box}
-body{margin:0;font-family:'Inter',-apple-system,Segoe UI,Roboto,sans-serif;
- background:var(--surface-3);color:var(--ink);display:flex;min-height:100vh;align-items:center;justify-content:center}
-.wrap{display:flex;width:760px;max-width:94vw;background:#fff;border-radius:20px;overflow:hidden;
- box-shadow:0 24px 70px rgba(27,31,42,.18);border:1px solid var(--line)}
-.left{flex:1;padding:46px 40px;background:linear-gradient(160deg,var(--info),var(--info));color:#fff;display:flex;flex-direction:column;justify-content:center}
-.left .logo{font-weight:800;font-size:22px;letter-spacing:.3px}
-.left .tag{margin-top:14px;color:var(--info);font-size:14px;line-height:1.6}
-.left ul{margin:22px 0 0;padding:0;list-style:none;color:var(--info);font-size:13px}
-.left li{margin:9px 0;padding-left:22px;position:relative}
-.left li:before{content:'';position:absolute;left:0;top:6px;width:8px;height:8px;border-radius:50%;background:var(--info)}
-.right{flex:1;padding:46px 40px;display:flex;flex-direction:column;justify-content:center}
-h1{font-size:21px;margin:0 0 6px}.sub{color:var(--muted);font-size:13px;margin:0 0 26px}
-label{display:block;font-size:12px;color:var(--muted);margin:16px 0 7px;font-weight:600}
-input{width:100%;padding:12px 13px;border-radius:11px;border:1px solid var(--line);background:var(--info-bg);font-size:14px}
-input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 4px #5b5bd61f}
-button{width:100%;margin-top:26px;padding:13px;border:0;border-radius:11px;background:var(--accent);color:#fff;
- font-size:15px;font-weight:700;cursor:pointer;transition:.15s}button:hover{background:var(--info)}
-.err{color:var(--critical);font-size:13px;margin-top:14px;min-height:18px;text-align:center}
-.hint{margin-top:16px;text-align:center;color:var(--text-3);font-size:12px}
-@media(max-width:680px){.left{display:none}}
-</style><link rel="stylesheet" href="/static/design-system.css"><script src="/static/i18n.js" defer></script><script src="/static/ui.js" defer></script><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🌐</text></svg>"></head><body>
+<link rel=stylesheet href="/static/design-system.css">
+<link rel=icon href="/static/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/static/mark.png">
+<script src="/static/i18n.js" defer></script><script src="/static/ui.js" defer></script></head><body class=auth>
 <div class=wrap>
  <div class=left>
+   <img class=auth-logo src="/static/logo.png" alt="" width=112 height=112>
    <div class=logo>Sentinel Env</div>
    <div class=tag>Рабочий день SOC-команды в GitLab:<br>коммиты, ревью, инциденты — и скрытые атаки.</div>
    <ul><li>Живая команда и её расписание</li><li>Полный журнал событий</li><li>Детект и разбор — на консоли защиты</li></ul>
@@ -36,6 +17,7 @@ button{width:100%;margin-top:26px;padding:13px;border:0;border-radius:11px;backg
    <label>Пароль</label><input name=password type=password>
    <button type=submit>Войти</button>
    <div class=err>{{ERROR}}</div>
-   <div class=hint>пароль печатается в консоли при старте (или задан через SOC_ADMIN_PASS)</div>
+   <div class=hint>Пароль печатается в консоли при старте или задаётся
+     переменной <code>SOC_ADMIN_PASS</code>.</div>
  </form>
 </div></body></html>

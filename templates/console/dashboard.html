@@ -1,235 +1,9 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Sentinel SOC — Detection &amp; Response</title>
-<style>
-
-*{box-sizing:border-box}
-body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
- background:radial-gradient(900px 400px at 85% -10%,#ede9fe66,transparent 60%),
-            radial-gradient(700px 380px at -10% 30%,#dbeafe55,transparent 55%),var(--bg)}
-.app{display:grid;min-height:100vh}
-/* ---- sidebar: тёмный градиент, как «пульт» ---- */
-.side{background:linear-gradient(178deg,var(--accent-brand) 0%,var(--info) 55%,var(--info) 100%);color:var(--info);
- padding:18px 13px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
-.brand{font-weight:800;font-size:15.5px;padding:6px 8px 16px;color:#fff;letter-spacing:.01em}
-.brand b{color:var(--text-1)}
-.brand .sub{color:var(--info)}
-.nav a{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;color:var(--info);cursor:pointer;
- font-size:13.5px;font-weight:600;transition:all .18s ease;border:1px solid transparent}
-.nav a:hover{background:#ffffff12;color:#fff;transform:translateX(2px)}
-.nav a.active{background:var(--surface-3);color:var(--text-1);border-color:transparent;box-shadow:inset 2px 0 0 var(--accent-brand)}
-.side-foot{margin-top:auto;font-size:11px;color:var(--info);padding:10px 8px;border-top:1px solid #ffffff14}
-.execlnk{display:flex;flex-direction:column;gap:2px;margin-top:10px;padding:10px 12px;border-radius:10px;color:var(--info);
- font-size:13px;font-weight:700;text-decoration:none;border:1px dashed #7c3aed77;background:#7c3aed14;transition:all .18s ease}
-.execlnk:hover{background:#7c3aed2e;border-style:solid;transform:translateX(2px)}
-.main{padding:18px 26px 48px;min-width:0}
-.top{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.top h1{font-size:19px;margin:0;letter-spacing:-.01em}.grow{flex:1}.sub{color:var(--soft);font-size:12px}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px}
-.view{display:none}.view.active{display:block;animation:fadeup .3s ease}
-@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-/* ---- KPI ---- */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 17px 12px;
- box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease}
-.kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
-.kpi:before{content:'';position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--info-bg),var(--info-bg));opacity:.9}
-.kpi.crit:before{background:linear-gradient(90deg,var(--critical),var(--critical-bg))}
-.kpi.ok:before{background:linear-gradient(90deg,var(--success),var(--success))}
-.kpi.acc:before{background:var(--accent-brand)}
-.kpi .n{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.kpi .l{font-size:11px;color:var(--soft);letter-spacing:.02em;margin-top:3px;font-weight:500}
-.kpi.crit .n{color:var(--red)}.kpi.ok .n{color:var(--green)}.kpi.acc .n{color:var(--accent)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:1100px){.grid2{grid-template-columns:1fr}.app{grid-template-columns:186px 1fr}.main{padding:14px 16px 40px}}
-/* ---- карточки ---- */
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;
- box-shadow:var(--shadow);transition:box-shadow .2s ease}
-.card:hover{box-shadow:var(--shadow-lift)}
-.card h2{margin:0 0 12px;font-size:13.5px;display:flex;align-items:center;gap:8px;letter-spacing:.01em}
-.card h2:before{content:'';width:4px;height:15px;border-radius:3px;background:var(--accent-brand);flex:0 0 auto}
-.feed{display:flex;flex-direction:column;gap:6px;max-height:66vh;overflow:auto}
-.al{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:8px 11px;border-radius:10px;background:var(--panel2);
- border:1px solid var(--line);border-left:3px solid var(--amber);animation:sl .35s ease;transition:background .15s}
-.al:hover{background:var(--info-bg)}
-.al.hi{border-left-color:var(--red);background:var(--critical-bg)}.al.lo{border-left-color:var(--info-border)}
-@keyframes sl{from{opacity:0;transform:translateY(-5px)}to{opacity:1}}
-.al .ts{color:var(--soft);font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px}.al .who{font-weight:700}
-.al .tech{background:var(--accent-bg);color:var(--accent-brand);border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:700}
-.al .rk{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums}.al .rk.hi{color:var(--red)}.al .rk.md{color:var(--amber)}
-.row{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 2px;border-bottom:1px solid var(--line)}
-.row:last-child{border-bottom:none}
-.inc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:9px;cursor:pointer;
- box-shadow:var(--shadow);transition:all .18s ease}
-.inc:hover{border-color:var(--accent-border);transform:translateY(-1px);box-shadow:var(--shadow-lift)}
-/* ВЫБРАННЫЙ инцидент. Раньше клик открывал карточку сбоку, но в списке
-   ничего не менялось: после пары кликов было непонятно, что именно открыто.
-   Подсветка идёт тремя независимыми признаками — цветом рамки, фоном и
-   полосой слева, — чтобы состояние читалось и при цветовой слепоте,
-   и в высококонтрастной теме. */
-.inc.sel{border-color:var(--accent);background:var(--surface-3);
-  box-shadow:inset 3px 0 0 0 var(--accent),var(--shadow-lift)}
-.inc.sel .a{color:var(--accent)}
-.ds-q-item.sel{border-color:var(--accent);background:var(--surface-3);
-  box-shadow:inset 3px 0 0 0 var(--accent)}
-.inc .h{display:flex;align-items:center;gap:8px}.inc .a{font-weight:700}
-.badge{border-radius:6px;padding:2px 8px;font-size:10.5px;font-weight:700;letter-spacing:.02em}
-.b-crit{background:var(--critical-bg);color:var(--critical)}.b-high{background:var(--warning-bg);color:var(--warning)}.b-med{background:var(--info-bg);color:var(--info)}.b-low{background:var(--info-bg);color:var(--text-3)}
-.b-camp{background:var(--accent-bg);color:var(--accent-brand)}
-.chain{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.chip{background:var(--info-bg);border:1px solid var(--line);border-radius:7px;padding:3px 9px;font-size:11px;color:var(--text-3)}
-.chip .t{color:var(--accent);font-weight:700}
-/* ---- матрица ATT&CK ---- */
-.matrix{display:flex;gap:9px;overflow-x:auto;padding-bottom:8px}
-.mcol{min-width:150px;flex:0 0 auto}
-.mcol .th{font-size:11px;color:var(--soft);letter-spacing:.02em;margin-bottom:7px;height:28px;font-weight:700}
-.cell{border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:6px;background:var(--panel);
- box-shadow:0 1px 2px rgba(23,28,40,.04);transition:transform .15s ease,box-shadow .15s ease}
-.cell:hover{transform:scale(1.03);box-shadow:var(--shadow-lift);position:relative;z-index:2}
-.cell.cov{border-color:var(--info-border);background:linear-gradient(180deg,var(--info-bg),var(--info-bg))}
-.cell.fired{border-color:var(--red);background:linear-gradient(180deg,var(--critical-bg),var(--critical-bg));box-shadow:0 0 0 1px #dc262633}
-.cell .tid{font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;font-weight:700}
-.cell .nm{font-size:10.5px;color:var(--soft);margin-top:2px}
-.cell .ct{font-size:10px;margin-top:4px;color:var(--soft)}
-/* ---- кнопки ---- */
-.btn{background:var(--accent-brand);color:#fff;border:none;border-radius:10px;padding:9px 15px;
- font-weight:700;cursor:pointer;font-size:12.5px;box-shadow:0 2px 8px #7c3aed44;transition:all .16s ease}
-.btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px #7c3aed55;filter:brightness(1.05)}
-.btn:active{transform:none}
-.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow)}
-.btn.ghost:hover{border-color:var(--accent-border);box-shadow:var(--shadow-lift)}
-.rule{display:flex;align-items:center;gap:9px;padding:9px 10px;border-bottom:1px solid var(--line);font-size:12.5px;transition:background .15s}
-.rule:hover{background:var(--panel2)}
-.sel{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;font-size:12.5px}
-.toast{color:var(--green);font-size:12px}
-.live{display:inline-flex;align-items:center;gap:6px;background:var(--accent-bg);border:1px solid var(--accent-border);
- color:var(--accent-brand);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:800;letter-spacing:.06em}
-.live .d{width:7px;height:7px;border-radius:50%;background:var(--critical);animation:pulse 1.2s infinite}
-.hpill{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:20px;
- padding:4px 11px;font-size:11.5px;font-weight:600;color:var(--soft);box-shadow:0 1px 2px rgba(23,28,40,.04)}
-.hpill b{color:var(--ink);font-weight:700}
-.hpill .d{width:7px;height:7px;border-radius:50%;background:var(--text-3);flex:0 0 auto}
-.hpill.ok .d{background:var(--green);animation:pulse 2s infinite}
-.hpill.warn{background:var(--warning-bg);border-color:var(--warning-border)}.hpill.warn .d{background:var(--amber)}
-.hpill.bad{background:var(--critical-bg);border-color:var(--critical-border)}.hpill.bad .d{background:var(--red)}
-.worldWarn{margin:-6px 0 14px;padding:11px 15px;border-radius:11px;background:linear-gradient(90deg,var(--warning-bg),var(--warning-bg));
- border:1px solid var(--warning-border);color:var(--warning);font-size:12.5px;animation:sl .3s ease;box-shadow:var(--shadow)}
-.worldWarn code{background:#fde68a55;padding:1px 6px;border-radius:5px}
-@keyframes pulse{0%{box-shadow:0 0 0 0 #dc262688}70%{box-shadow:0 0 0 7px #dc262600}100%{box-shadow:0 0 0 0 #dc262600}}
-@keyframes flash{0%{color:#fff;text-shadow:0 0 14px var(--accent)}100%{}}
-.kpi .n.flash{animation:flash .7s ease}
-@keyframes blink{50%{background:var(--critical-bg);border-left-color:var(--critical)}}
-.al.hi.blink{animation:blink 1.1s infinite}
-.dlbtn{display:inline-block;text-decoration:none;margin-bottom:12px}
-.kc{margin-top:10px;display:flex;flex-wrap:wrap;align-items:stretch;row-gap:10px}
-.kcs{display:flex;transition:opacity .3s,transform .3s;min-width:0}
-.kcb{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:8px 11px 7px;font-size:12px;
- width:172px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px}
-.kct{font-size:11px;font-weight:500;letter-spacing:.02em}
-.kcx{display:flex;align-items:center;gap:6px}.kcx b{font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px}
-.kcl{margin-left:auto;font-size:13px}
-.kcf{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
-.kcf .rk{font-weight:800;font-size:11px;font-variant-numeric:tabular-nums}.kcf .rk.hi{color:var(--red)}.kcf .rk.md{color:var(--amber)}
-.kcarrow{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 7px;color:var(--accent-brand);font-size:17px;font-weight:800}
-.kcg{font-size:9.5px;color:var(--amber);font-weight:700;white-space:nowrap}
-.kcsum{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--soft);background:var(--panel2);
- border:1px solid var(--line);border-radius:10px;padding:8px 13px;margin-top:8px}
-.kcsum b{color:var(--ink)}
-.kc.replaying .kcs{opacity:.22;transform:scale(.97)}.kc.replaying .kcs.on{opacity:1;transform:none}
-.kcs.cur .kcb{border-color:var(--accent);box-shadow:0 0 0 1.5px var(--accent),0 6px 16px #7c3aed33}
-.iocg{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.ioci{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:3px 8px;font-size:11px}
-.ioct{color:var(--soft);margin-right:6px}.iocv{font-family:ui-monospace,SFMono-Regular,monospace;color:var(--text-3)}
-.askbox{display:flex;gap:8px;margin:4px 0 10px}
-.askin{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:13px;transition:all .15s}
-.askin:focus{outline:none;border-color:var(--accent-brand);box-shadow:0 0 0 4px #7c3aed1c}
-.rng{flex:1;accent-color:var(--accent)}
-/* наука: выводы и легенды */
-.sconcl{margin-top:12px;padding:11px 14px;border-radius:10px;background:var(--accent-bg);
- border:1px solid var(--accent-border);color:var(--accent-brand);font-size:12.5px;line-height:1.6}
-.sleg{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--soft);margin:6px 0 2px}
-.sleg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:4px}
-/* бары с градиентом */
-.brow{display:grid;grid-template-columns:minmax(90px,130px) 1fr 38px 40px;gap:8px;align-items:center;font-size:12px;padding:4px 0}
-.brow .blab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--line-strong);font-weight:600}
-.brow b{text-align:right;font-variant-numeric:tabular-nums}
-.brow .bpct{color:var(--soft);font-size:10.5px;text-align:right}
-.btrack{height:15px;border-radius:5px;background:var(--info-bg);overflow:hidden}
-.btrack i{display:block;height:100%;border-radius:5px;background:var(--accent-brand);transition:width .6s ease}
-/* воркфлоу + тренды */
-.wfcounts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.wfcount{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:9px 15px;box-shadow:var(--shadow);min-width:96px}
-.wfcount .n{font-size:21px;font-weight:800}.wfcount .l{font-size:11px;color:var(--soft);letter-spacing:.05em}
-.wfq{display:flex;flex-direction:column;gap:7px;max-height:70vh;overflow:auto}
-.wfi{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);cursor:pointer;transition:all .14s}
-.wfi:hover{border-color:var(--accent-border)}
-.wfi.sel{border-color:var(--accent);box-shadow:0 0 0 1.5px var(--accent);background:var(--accent-bg)}
-.wfi .who{font-weight:700;font-size:12.5px}
-.wfi .meta{font-size:11px;color:var(--soft)}
-.wfi .grow{flex:1}
-.sla{font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px}
-.sla.ok{background:var(--success-bg);color:var(--success)}.sla.warn{background:var(--warning-bg);color:var(--warning)}.sla.breach{background:var(--critical-bg);color:var(--critical);animation:pulse 1.4s infinite}
-.stpill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--info-bg);color:var(--info)}
-.stpill.investigating{background:var(--info-bg);color:var(--accent-brand)}.stpill.contained{background:var(--warning-bg);color:var(--warning)}.stpill.closed{background:var(--success-bg);color:var(--success)}
-.vpill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;
- letter-spacing:.02em;white-space:nowrap;border:1px solid transparent}
-.vpill.tp{background:var(--critical-bg);color:var(--critical);border-color:var(--critical-border)}
-.vpill.fp{background:var(--info-bg);color:var(--info);border-color:var(--info-border)}
-.vbanner .vpill{font-size:12px;padding:4px 11px}
-.tchart{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
-.tchart h3{margin:0 0 3px;font-size:13px}.tchart .cur{font-size:22px;font-weight:800;letter-spacing:-.02em}
-.wfstatus{margin-top:10px}
-.wfline{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-/* ПОЛОСА ВЕРДИКТА.
-   У .vbanner не было ни одного правила: блок прижимался вплотную к кнопкам
-   TP/FP и читался как их продолжение. Теперь это отдельная карточка с
-   отступом, своим фоном и полосой слева — видно, что это результат решения,
-   а не ещё одна кнопка. Цвет полосы повторяет вердикт. */
-.vbanner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
- margin-top:14px;padding:11px 14px;border-radius:10px;
- background:var(--surface-3);border:1px solid var(--line)}
-.vbanner:has(.vpill.tp){box-shadow:inset 3px 0 0 0 var(--critical)}
-.vbanner:has(.vpill.fp){box-shadow:inset 3px 0 0 0 var(--info)}
-.vbanner .sub{font-size:12px;line-height:1.5}
-.wfstep{border:1px solid var(--line);background:var(--panel);color:var(--soft);border-radius:8px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:pointer;transition:all .14s}
-.wfstep:hover{border-color:var(--accent-border)}.wfstep.on{background:var(--accent-brand);color:#fff;border-color:transparent}
-.wfarr{color:var(--accent-border);font-weight:800}
-.wfv{border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;font-weight:800;cursor:pointer;background:var(--panel)}
-.wfv.tp{color:var(--critical);border-color:var(--critical-border)}.wfv.tp:hover{background:var(--critical-bg)}
-.wfv.fp{color:var(--info)}.wfv.fp:hover{background:var(--info-bg)}
-.llmctx{background:var(--accent-brand);color:var(--info);font-family:ui-monospace,SFMono-Regular,monospace;font-size:10.5px;line-height:1.5;
- padding:12px 14px;border-radius:9px;max-height:230px;overflow:auto;margin:8px 0 0;white-space:pre-wrap}
-.cellpanel{margin-top:14px;padding:14px 16px;border:1px solid var(--accent-border);border-radius:12px;background:linear-gradient(180deg,var(--info-bg),var(--accent-bg));box-shadow:var(--shadow);animation:fadeup .25s ease}
-/* контекстная плашка «что это за консоль» */
-.ctx{display:flex;align-items:center;flex-wrap:wrap;gap:6px;background:linear-gradient(90deg,var(--accent-bg),var(--info-bg));
- border:1px solid var(--accent-border);color:var(--accent-brand);border-radius:11px;padding:9px 14px;font-size:12.5px;margin:-4px 0 14px;box-shadow:var(--shadow)}
-.ctx a{color:var(--accent-brand);font-weight:700}
-.ctx .x{margin-left:auto;cursor:pointer;color:var(--accent-brand);font-weight:800;padding:0 5px;border-radius:6px}
-.ctx .x:hover{background:#7c3aed22}
-/* онбординг-чеклист */
-.obbar{height:7px;border-radius:5px;background:var(--info-bg);overflow:hidden;margin:2px 0 14px}
-.obbar i{display:block;height:100%;width:0;border-radius:5px;background:var(--accent-brand);transition:width .5s ease}
-.obsteps{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:10px}
-.ob{display:flex;gap:10px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px 12px;transition:all .25s ease}
-.ob .obn{width:24px;height:24px;border-radius:50%;background:var(--info-bg);color:var(--soft);font-weight:800;font-size:12px;
- display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:all .25s ease}
-.ob b{font-size:12.5px}
-.ob .sub{margin-top:2px;line-height:1.5}
-.ob.done{background:var(--success-bg);border-color:var(--success-border)}
-.ob.done .obn{background:var(--green);color:#fff}
-.ob.done b{color:var(--success)}
-.ob a{color:var(--accent);font-weight:700;cursor:pointer;text-decoration:none}
-.ob a:hover{text-decoration:underline}
-/* тултипы для терминов */
-.tip{position:relative;border-bottom:1px dashed var(--accent-brand);cursor:help}
-.tip .tipbox{position:absolute;left:50%;bottom:135%;transform:translateX(-50%);width:235px;background:var(--accent-brand);color:var(--info);
- font-size:11.5px;line-height:1.55;padding:9px 12px;border-radius:9px;box-shadow:0 10px 30px rgba(23,18,54,.35);
- opacity:0;pointer-events:none;transition:opacity .15s ease;z-index:30;font-weight:400;text-transform:none;letter-spacing:0}
-.tip:hover .tipbox,.tip:focus .tipbox{opacity:1}
-::-webkit-scrollbar{width:9px;height:9px}
-::-webkit-scrollbar-thumb{background:var(--info-bg);border-radius:6px;border:2px solid var(--bg)}
-::-webkit-scrollbar-thumb:hover{background:var(--info-bg)}
-::-webkit-scrollbar-track{background:transparent}
-</style><link rel="stylesheet" href="/static/design-system.css"><script src="/static/i18n.js" defer></script><script src="/static/ui.js" defer></script><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🛡</text></svg>"></head><body>
+<link rel=stylesheet href="/static/design-system.css">
+<link rel=icon href="/static/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/static/mark.png">
+<script src="/static/i18n.js" defer></script><script src="/static/ui.js" defer></script></head><body>
 <div class=app>
   <aside class=side>
     <div class=brand><span class=brand-mark></span><span class=brand-text><b>Sentinel SOC</b><span class=sub>Detection &amp; Response</span></span></div>
@@ -239,46 +13,60 @@ body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
       <a data-v=incidents>Инциденты</a>
       <a data-v=cases>Дела</a>
       <a data-v=workflow>Очередь триажа</a>
-      <a data-v=attack>ATT&CK Coverage</a>
+      <a data-v=attack>Покрытие ATT&CK</a>
       <a data-v=detections>Детекты</a>
       <a data-v=entities>Сущности</a>
       <a data-v=risk>Профиль риска</a>
-      <a data-v=red>Red Launcher</a>
-      <a data-v=replay>Реплей прогона</a>
+      <a data-v=red>Запуск сценариев</a>
+      <a data-v=replay>Повтор прогона</a>
       <a data-v=trends>Тренды</a>
       <a data-v=diag>Диагностика</a>
     </nav>
-    <div class=side-foot><span class=dot id=dot></span><span id=runtxt>—</span></div>
+    <div class=side-foot>
+      <div class=who>Аналитик</div>
+      <div class=mt-1><a href="/logout">Выйти</a></div>
+    </div>
   </aside>
   <main class=main>
-    <div class=top><h1 id=ttl>Обзор</h1>
+    <!-- Верхняя панель: слева контекст раздела, в центре поиск,
+         справа состояние системы одной строкой через разделители. -->
+    <div class=top>
+      <h1 id=ttl>Обзор</h1>
       <span class=grow></span>
-      <span class=hpill id=hWorld title="Пишет ли мир (:8787) события в event-store"><span class=d></span>Мир: <b id=hWorldT>—</b></span>
-      <span class=hpill id=hEvents title="Событий в event-store и давность последнего"><span class=d></span>События: <b id=hEventsT>—</b></span>
-      <span class=hpill id=hOllama hidden title="LLM (Ollama) для триажа"><span class=d></span>Ollama: <b id=hOllamaT>—</b></span>
-      <span class=hpill id=hTriage title="Авто-триаж LLM новых инцидентов"><span class=d></span>Авто-триаж: <b id=hTriageT>—</b></span>
+      <div class=status-strip>
+        <span class=hpill id=hWorld title="Пишет ли среда (:8787) события в журнал"><span class=d></span>Симуляция <b id=hWorldT>—</b></span>
+        <span class=hpill id=hEvents title="Событий в журнале и давность последнего"><span class=d></span>События <b id=hEventsT>—</b></span>
+        <span class=hpill id=hOllama hidden title="Локальная модель для триажа"><span class=d></span>Модель <b id=hOllamaT>—</b></span>
+        <span class=hpill id=hTriage title="Автоматический разбор новых инцидентов"><span class=d></span>Авто-триаж <b id=hTriageT>—</b></span>
+      </div>
     </div>
     <div class=worldWarn id=worldWarn style="display:none">
-      ⚠️ <b>Мир молчит</b> — новых событий нет <span id=worldWarnAge></span>.
+      <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>️ <b>Мир молчит</b> — новых событий нет <span id=worldWarnAge></span>.
       Проверь, что консоль среды (:8787) запущена и нажата кнопка «Запустить».
+    </div>
+    <div class=worldWarn id=storeWarn style="display:none;background:var(--critical-bg)">
+      <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=12 cy=12 r=9/><path d="m5.6 5.6 12.8 12.8"/></svg> <b>Хранилище событий недоступно</b> — <code id=storeWarnMsg></code>.
+      Пока оно не откроется, защита не увидит НИ ОДНОГО события, и все счётчики
+      будут нулевыми. Это не «данных пока нет», это отказ: смотри
+      <a onclick="goView('diag')">Диагностику</a> и <code>logs/errors*.log</code>.
     </div>
 
 
     <section class="view active" id=v-overview>
       <div class=card id=obCard style="display:none">
         <h2>Быстрый старт <span class=sub id=obTtl>пройди 5 шагов — увидишь весь конвейер</span><span class=grow></span>
-          <button class="btn ghost" id=obToggle onclick=obToggle() style="padding:5px 10px;font-size:11.5px">свернуть</button></h2>
+          <button class="btn ghost" id=obToggle onclick=obToggle() style="padding:5px 10px;font-size:11.5px">Свернуть</button></h2>
         <div id=obBody>
           <div class=obbar><i id=obFill></i></div>
           <div class=obsteps>
             <div class=ob id=ob1><span class=obn>1</span><div><b>Мир пишет события</b>
-              <div class=sub>Открой <a href="http://127.0.0.1:8787" target=_blank>консоль среды</a> и нажми
-              «Запустить» — или <a onclick=runDemo()>сгенерируй демо-данные</a><span class=sub id=demoSt></span></div></div></div>
+              <div class=sub>Открой <a href="http://127.0.0.1:8787" target=_blank>Консоль среды</a> и нажми
+              «Запустить» — или <a onclick=runDemo()>Сгенерировать демо-данные</a><span class=sub id=demoSt></span></div></div></div>
             <div class=ob id=ob2><span class=obn>2</span><div><b>События копятся</b>
               <div class=sub>git/CI-поток пишется в общий журнал (event-store), защита читает его по курсору —
               как <span class=tip tabindex=0>SIEM<span class=tipbox>Security Information & Event Management — система, собирающая события из всех источников в один поток для анализа. Здесь её роль играет event-store на SQLite.</span></span></div></div></div>
             <div class=ob id=ob3><span class=obn>3</span><div><b>Запусти кампанию</b>
-              <div class=sub><a onclick="goView('red')">Red Launcher</a> — многошаговая атака по матрице
+              <div class=sub><a onclick="goView('red')">Запуск сценариев</a> — многошаговая атака по матрице
               <span class=tip tabindex=0>ATT&CK<span class=tipbox>MITRE ATT&CK — общепринятый каталог тактик и техник атакующих. По нему измеряется покрытие детекта.</span></span></div></div></div>
             <div class=ob id=ob4><span class=obn>4</span><div><b>Появились алерты</b>
               <div class=sub><a onclick="goView('alerts')">Лента алертов</a>: правила +
@@ -292,85 +80,92 @@ body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
         </div>
       </div>
       <div class=kpis>
-        <div class=kpi acc><div class=n id=kEv>—</div><div class=l>событий в сторе</div></div>
-        <div class=kpi><div class=n id=kProc>—</div><div class=l>обработано защитой</div></div>
-        <div class=kpi><div class=n id=kAl>—</div><div class=l>алертов</div></div>
-        <div class=kpi crit><div class=n id=kInc>—</div><div class=l>инцидентов</div></div>
-        <div class=kpi acc><div class=n id=kCamp>—</div><div class=l>кампаний выявлено</div></div>
-        <div class=kpi ok><div class=n id=kCov>—</div><div class=l>покрытие ATT&CK</div></div>
+        <div class=kpi acc><div class="n is-empty" id=kEv>—</div><div class=l>событий в сторе</div></div>
+        <div class=kpi><div class="n is-empty" id=kProc>—</div><div class=l>обработано защитой</div></div>
+        <div class=kpi><div class="n is-empty" id=kAl>—</div><div class=l>алертов</div></div>
+        <div class=kpi crit><div class="n is-empty" id=kInc>—</div><div class=l>инцидентов</div></div>
+        <div class=kpi acc><div class="n is-empty" id=kCamp>—</div><div class=l>кампаний выявлено</div></div>
+        <div class=kpi ok><div class="n is-empty" id=kCov>—</div><div class=l>покрытие ATT&CK</div></div>
       </div>
-      <div class=ds-toolbar style=margin-top:4px>
+      <div class="ds-toolbar mt-2">
         <span class=grow></span>
         <button class="btn ghost" onclick="execReport()">Отчёт по прогону</button>
         <button class="btn ghost" onclick="huntOpen()">Охота на угрозы</button>
       </div>
-      <div class=ds-health id=dsHealth></div>
 
-      <div class=grid2 style=margin-top:16px>
-        <div class=card><h2>Живая активность</h2>
+      <!-- Композиция обзора построена на РАЗНОМ ВЕСЕ областей, а не на
+           десяти одинаковых панелях: поток событий занимает главную
+           площадь, очередь и состояние детектирования стоят рядом
+           колонкой, справочные распределения уходят вниз строкой. -->
+      <div class="dash mt-2">
+        <div class="card dash-main"><h2>Живая активность</h2>
           <div class=ds-feed id=liveFeed></div></div>
-        <div class=card><h2>Очередь инцидентов</h2>
+
+        <div class=card><h2>Очередь инцидентов
+          <span class=grow></span>
+          <a class=sub onclick="goView('workflow')">Весь триаж</a></h2>
           <div id=incQueue></div></div>
+
+        <div class=card><h2>Детектирование</h2>
+          <div id=covMini></div>
+          <div id=qualBox></div>
+          <div id=layerBox></div></div>
       </div>
 
-      <div class=grid2 style=margin-top:16px>
-        <div class=card><h2>Пульс алертов</h2>
-          <svg id=alSpark viewBox="0 0 100 30" preserveAspectRatio=none style="width:100%;height:92px;display:block"></svg>
-          <div class=sub id=alSparkSub style=margin-top:6px>—</div></div>
-        <div class=card><h2>Распределение риска</h2>
-          <div id=riskHist style=margin-top:6px><div class=sub>—</div></div></div>
+      <div class="dash-3 mt-3">
+        <div class=card><h2>Репозитории</h2><div id=byRepo></div></div>
+        <div class=card><h2>Акторы по риску</h2><div id=byActor></div></div>
+        <div class=card><h2>Тактики ATT&CK</h2><div id=byTactic></div></div>
       </div>
 
-      <div class=grid2 style=margin-top:16px>
-        <div class=card><h2>Топ репозиториев</h2><div id=byRepo></div></div>
-        <div class=card><h2>Топ разработчиков под подозрением</h2><div id=byActor></div></div>
+      <div class="card mt-3"><h2>Динамика
+          <span class=grow></span>
+          <span class=sub id=alSparkSub>—</span></h2>
+        <div class=dash-dyn>
+          <div><svg id=alSpark viewBox="0 0 100 30" preserveAspectRatio=none class=spark></svg></div>
+          <div id=riskHist><div class=sub>—</div></div>
+        </div>
       </div>
 
-      <div class=grid2 style=margin-top:16px>
-        <div class=card><h2>Активность по тактикам ATT&CK</h2><div id=byTactic></div></div>
-        <div class=card><h2>Покрытие детектами</h2><div id=covMini></div></div>
-      </div>
-
-      <div class=grid2 style=margin-top:16px>
-        <div class=card><h2>Качество детекта</h2><div id=qualBox></div></div>
-        <div class=card><h2>Вклад слоёв детекта</h2><div id=layerBox></div></div>
-      </div>
-      <div class=card style=margin-top:16px><h2>AI-копайлот</h2>
+      <div class="card mt-3"><h2>Запрос к данным</h2>
         <div class=ds-prompts id=askPrompts></div>
-        <div class=askbox style=margin-top:10px><input class=askin id=askIn placeholder="Спросите у данных: что делала maria ночью · покажи секреты в soc-infra"
+        <div class="askbox"><input class=askin id=askIn placeholder="Вопрос по событиям и инцидентам"
           onkeydown="if(event.key==='Enter')askQuery()"><button class=btn onclick=askQuery()>Спросить</button></div>
         <div id=askAns class=ds-answer></div>
-        <div id=askEv class=feed style=max-height:34vh;margin-top:8px></div>
+        <div id=askEv class=feed></div>
       </div>
     </section>
 
     <section class=view id=v-alerts>
+      <p class=page-sub>Срабатывания детектора: по одному на событие, до склейки в инциденты.</p>
       <div class=card>
-        <h2>Лента детектов</h2>
+        <h2>Алерты<span class=grow></span><span class=sub id=alCount></span></h2>
         <div class=ds-toolbar id=alFilters>
           <div class=ds-search>
             <svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3"/></svg>
             <input class=tin id=alSearch placeholder="Поиск: актёр, репозиторий, правило, техника…" oninput="alSearchGo()">
           </div>
-          <button class="btn ghost af on" data-f="" onclick="alFilter('')">все</button>
-          <button class="btn ghost af" data-f="crit" onclick="alFilter('crit')">critical</button>
-          <button class="btn ghost af" data-f="hi" onclick="alFilter('hi')">high</button>
-          <button class="btn ghost af" data-f="ueba" onclick="alFilter('ueba')">UEBA</button>
-          <button class="btn ghost af" data-f="rules" onclick="alFilter('rules')">сигнатуры</button>
-          <span class=grow></span>
-          <span class=sub id=alCount></span>
+          <span class=af-group>
+            <button class="af on" data-f="" onclick="alFilter('')">Все</button>
+            <button class=af data-f="crit" onclick="alFilter('crit')">Critical</button>
+            <button class=af data-f="hi" onclick="alFilter('hi')">High</button>
+          </span>
+          <span class=af-group>
+            <button class=af data-f="rules" onclick="alFilter('rules')">Сигнатуры</button>
+            <button class=af data-f="ueba" onclick="alFilter('ueba')">UEBA</button>
+          </span>
         </div>
         <div class=ds-tablewrap>
           <table class=ds-table id=alTable>
             <thead><tr>
-              <th scope=col data-k=ts style="width:130px">Время</th>
-              <th scope=col data-k=sev style="width:96px">Severity</th>
-              <th scope=col data-k=layer style="width:74px">Слой</th>
-              <th scope=col data-k=actor style="width:150px">Разработчик</th>
-              <th scope=col data-k=project style="width:170px">Репозиторий</th>
-              <th scope=col data-k=tech style="width:110px">MITRE</th>
-              <th scope=col data-k=reason>Правило / причина</th>
-              <th scope=col data-k=risk style="width:76px;text-align:right">Риск</th>
+              <th scope=col data-k=ts class=w-ts>Время</th>
+              <th scope=col data-k=sev class=w-sev>Уровень</th>
+              <th scope=col data-k=layer class=w-layer>Слой</th>
+              <th scope=col data-k=actor class=w-actor>Актор</th>
+              <th scope=col data-k=project class=w-repo>Репозиторий</th>
+              <th scope=col data-k=tech class=w-mitre>MITRE</th>
+              <th scope=col data-k=reason>Правило</th>
+              <th scope=col data-k=risk class="w-risk right">Риск</th>
             </tr></thead>
             <tbody id=alBody></tbody>
           </table>
@@ -380,60 +175,69 @@ body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
     </section>
 
     <section class=view id=v-incidents>
-      <div class=grid2>
-        <div class=card><h2>Инциденты</h2><div id=incList></div></div>
-        <div class=card><h2 id=incTtl>Детали инцидента</h2><div id=incDetail class=sub>выберите инцидент слева</div></div>
+      <p class=page-sub>Алерты одного актора за три часа, собранные в один случай.</p>
+      <div class=card>
+        <h2>Инциденты<span class=grow></span><span class=sub id=incTtl>Разбор</span></h2>
+        <div class=split>
+          <div class=split-list id=incList></div>
+          <div class=split-detail id=incDetail><div class="help empty">Выберите инцидент в списке.</div></div>
+        </div>
       </div>
     </section>
 
     <section class=view id=v-cases>
+      <p class=page-sub>Инциденты с принятым решением: вердикт, статус, ответственный.</p>
       <div class=ds-toolbar>
         <div class=ds-search>
           <svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3"/></svg>
           <input class=tin id=caseSearch placeholder="Поиск по делам, аналитику, акторам…" oninput="caseRender()">
         </div>
-        <button class="btn ghost cf on" data-f="" onclick="caseFilter('')">все</button>
-        <button class="btn ghost cf" data-f="open" onclick="caseFilter('open')">в работе</button>
-        <button class="btn ghost cf" data-f="closed" onclick="caseFilter('closed')">закрытые</button>
+        <span class=af-group><button class="af cf on" data-f="" onclick="caseFilter('')">Все</button><button class="af cf" data-f="open" onclick="caseFilter('open')">В работе</button><button class="af cf" data-f="closed" onclick="caseFilter('closed')">Закрытые</button></span>
         <span class=grow></span>
         <span class=sub id=caseCount></span>
-        <button class=btn onclick="caseNew()">+ Новое дело</button>
+        <button class=btn onclick="caseNew()">Новое дело</button>
       </div>
-      <div class=grid2 style=margin-top:14px>
-        <div class=card><h2>Дела</h2><div id=caseList></div></div>
-        <div class=card><h2 id=caseTtl>Карточка дела</h2><div id=caseDetail class=sub>выберите дело слева или создайте новое</div></div>
+      <div class="card mt-2">
+        <h2>Дела<span class=grow></span><span class=sub id=caseTtl>Карточка</span></h2>
+        <div class=split>
+          <div class=split-list id=caseList></div>
+          <div class=split-detail id=caseDetail><div class="help empty">Выберите дело или создайте новое.</div></div>
+        </div>
       </div>
     </section>
 
     <section class=view id=v-risk>
+      <p class=page-sub>Накопленный риск по разработчикам и репозиториям.</p>
       <div class=ds-covstrip id=riskStrip></div>
-      <div class=grid2 style=margin-top:16px>
+      <div class="grid2 mt-4">
         <div class=card><h2>Разработчики по риску</h2><div id=riskDev></div></div>
         <div class=card><h2>Репозитории по риску</h2><div id=riskRepo></div></div>
       </div>
-      <div class=card style=margin-top:16px><h2>Динамика риска во времени</h2><div id=riskDyn></div></div>
+      <div class="card mt-4"><h2>Динамика риска во времени</h2><div id=riskDyn></div></div>
     </section>
 
     <section class=view id=v-replay>
       <div class=card>
-        <h2>Реплей прогона</h2>
-        <div class=ds-toolbar style=margin-top:4px>
-          <button class=btn id=rpPlay onclick="rpToggle()">▶ Играть</button>
+        <h2>Повтор прогона</h2>
+        <div class="ds-toolbar mt-1">
+          <button class=btn id=rpPlay onclick="rpToggle()"><svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Играть</button>
           <button class="btn ghost" onclick="rpSpeed()">скорость <b id=rpSpeedT>1×</b></button>
           <span class=rp-sep></span>
-          <button class="btn ghost rw on" data-w="1d" onclick="rpWin('1d')">сутки</button>
-          <button class="btn ghost rw" data-w="7d" onclick="rpWin('7d')">неделя</button>
-          <button class="btn ghost rw" data-w="all" onclick="rpWin('all')">весь журнал</button>
-          <button class="btn ghost" onclick="rpLoad(1)">обновить</button>
+          <span class=af-group>
+            <button class="af rw on" data-w="1d" onclick="rpWin('1d')">Сутки</button>
+            <button class="af rw" data-w="7d" onclick="rpWin('7d')">Неделя</button>
+            <button class="af rw" data-w="all" onclick="rpWin('all')">Весь журнал</button>
+          </span>
+          <button class="btn ghost" onclick="rpLoad(1)">Обновить</button>
           <span class=grow></span>
           <span class=sub id=rpCount></span>
-          <span class=rp-clock id=rpClock>—</span>
+          <span class=rp-clock id=rpClock></span>
         </div>
         <div class=rp-wrap id=rpWrap><div class=sub style=padding:20px>загружаю прогон…</div></div>
         <input type=range id=rpRange min=0 max=1000 value=0 oninput="rpSeek(this.value)" class=rp-range
                  aria-label="Положение курсора на шкале прогона" title="Положение курсора на шкале прогона">
       </div>
-      <div class=grid2 style=margin-top:16px>
+      <div class="grid2 mt-4">
         <div class=card><h2>Что произошло к этому моменту</h2><div id=rpFeed></div></div>
         <div class=card><h2>Состояние SOC на курсоре</h2><div id=rpState></div></div>
       </div>
@@ -441,65 +245,115 @@ body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
 
     <section class=view id=v-attack>
       <div class=ds-covstrip id=covStrip></div>
-      <div class=card style=margin-top:16px><h2>Матрица покрытия ATT&amp;CK</h2>
-        <div class=ds-legend>
-          <span class=ds-leg><i class=ds-leg-box></i>слепая зона</span>
-          <span class=ds-leg><i class="ds-leg-box cov"></i>покрыта правилом</span>
-          <span class=ds-leg><i class="ds-leg-box fired"></i>срабатывала</span>
-          <span class=sub style=margin-left:auto>клик по технике — детали и связанные инциденты</span>
+      <div class="card mt-4"><h2>Матрица покрытия ATT&amp;CK
+        <span class=grow></span>
+        <a class=nolink href="/api/navigator" download
+           title="Слой для mitre-attack.github.io/attack-navigator, пункт Open Existing Layer">
+          Слой для Navigator</a></h2>
+        <div class=mx-legend>
+          <span class=mx-leg><span class="mx-sw blind"></span>слепая зона</span>
+          <span class=mx-leg><span class="mx-sw cov"></span>покрыта правилом</span>
+          <span class=mx-leg>срабатывала
+            <span class=mx-ramp><i></i><i></i><i></i><i></i><i></i></span>
+            <span id=mxMax>реже — чаще</span></span>
+          <span class=grow></span>
+          <span id=mxCount></span>
         </div>
-        <a class="btn dlbtn" href="/api/navigator" download>⬇ Скачать слой для ATT&amp;CK Navigator (JSON)</a>
-        <span class=sub style=margin-left:10px>открой в mitre-attack.github.io/attack-navigator → Open Existing Layer</span>
-        <div class=matrix id=matrix></div>
-        <div id=cellPanel class=cellpanel style=display:none></div></div>
+        <div class=mx id=matrix></div>
+        <div id=cellPanel class=cellpanel hidden></div></div>
     </section>
 
     <section class=view id=v-detections>
-      <div class=card><h2>Правила детектирования</h2>
+      <p class=page-sub>Каталог правил детектирования и их срабатывания.</p>
+      <div class=card><h2>Правила детектирования<span class=grow></span><span class=sub id=ruleCount></span></h2>
         <div class=ds-toolbar id=ruleFilters>
           <div class=ds-search>
             <svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3"/></svg>
             <input class=tin id=ruleSearch placeholder="Поиск по правилам, техникам, тактикам…" oninput="ruleSearchGo()">
           </div>
-          <button class="btn ghost af on" data-f="" onclick="ruleFilter('')">все</button>
-          <button class="btn ghost af" data-f="fired" onclick="ruleFilter('fired')">срабатывали</button>
-          <button class="btn ghost af" data-f="silent" onclick="ruleFilter('silent')">молчат</button>
-          <button class="btn ghost af" data-f="critical" onclick="ruleFilter('critical')">critical</button>
-          <button class="btn ghost af" data-f="high" onclick="ruleFilter('high')">high</button>
-          <span class=grow></span><span class=sub id=ruleCount></span>
+          <span class=af-group>
+            <button class="af on" data-f="" onclick="ruleFilter('')">Все</button>
+            <button class=af data-f="fired" onclick="ruleFilter('fired')">Срабатывали</button>
+            <button class=af data-f="silent" onclick="ruleFilter('silent')">Молчат</button>
+          </span>
+          <span class=af-group>
+            <button class=af data-f="critical" onclick="ruleFilter('critical')">Critical</button>
+            <button class=af data-f="high" onclick="ruleFilter('high')">High</button>
+          </span>
         </div>
-        <div id=rules></div></div>
+        <div class=ds-tablewrap>
+          <table class=ds-table>
+            <thead><tr>
+              <th scope=col class=w-mitre>MITRE</th>
+              <th scope=col class=w-repo>Идентификатор</th>
+              <th scope=col>Правило</th>
+              <th scope=col class=w-actor>Тактика</th>
+              <th scope=col class=w-sev>Уровень</th>
+              <th scope=col class="w-risk right">Риск</th>
+              <th scope=col class="w-num right">Сраб.</th>
+            </tr></thead>
+            <tbody id=rules></tbody>
+          </table>
+        </div></div>
     </section>
 
     <section class=view id=v-entities>
-      <div class=grid2>
-        <div class=card><h2>Сущности</h2><div id=entList></div></div>
-        <div class=card><h2 id=entTtl>Профиль сущности</h2><div id=entDetail class=sub>выберите актора слева</div></div>
+      <p class=page-sub>Базовая линия поведения: обычные часы, репозитории и действия актора.</p>
+      <div class=card>
+        <h2>Акторы<span class=grow></span><span class=sub id=entTtl>Профиль</span></h2>
+        <div class=split>
+          <div class=split-list id=entList></div>
+          <div class=split-detail id=entDetail><div class="help empty">Выберите актора в списке.</div></div>
+        </div>
       </div>
     </section>
 
     <section class=view id=v-workflow>
-      <div class=ctx style=margin-top:0>Как в реальном SOC: очередь по важности, статусы, SLA-таймеры.
-        Горячие клавиши: <b>J/K</b> — навигация, <b>T</b> — TP, <b>F</b> — FP, <b>E</b> — эскалация, <b>Enter</b> — открыть.</div>
+      <p class=page-sub>Очередь инцидентов по важности: статус, ответственный, SLA.</p>
       <div class=wfcounts id=wfCounts></div>
-      <div class=grid2 style="grid-template-columns:1.6fr 1fr">
-        <div class=card><h2>Очередь инцидентов</h2>
+      <div class="dash mt-3">
+        <div class="card dash-main"><h2>Очередь<span class=grow></span>
+          <span class=sub><kbd>J</kbd><kbd>K</kbd> навигация · <kbd>T</kbd> TP · <kbd>F</kbd> FP · <kbd>E</kbd> эскалация</span></h2>
           <div id=wfQueue class=wfq></div></div>
-        <div class=card><h2>Самые шумные правила</h2>
+        <div class=card><h2>Шумные правила</h2>
           <div id=wfNoisy></div>
-          <div class=sub style=margin-top:8px id=wfMuted></div></div>
+          <div class=sub id=wfMuted></div></div>
       </div>
     </section>
 
     <section class=view id=v-trends>
-      <div class=ctx style=margin-top:0>История метрик во времени (снапшоты раз в 5 мин + по кнопке). Вертикальные метки — события «добавлено правило / запущена кампания». Покрытие — по всей матрице ATT&CK (не по атакованным техникам), доля ложных — по действенным инцидентам (подкреплённым правилом или риском ≥ 0.6) после корреляции, а не по каждому сырому детекту.
-        <a onclick=snapNow() style=color:#6d28d9;font-weight:700;cursor:pointer>снять снапшот сейчас</a> ·
-        <a href="/api/trends.csv" style=color:#6d28d9;font-weight:700>скачать CSV</a></div>
-      <div class=grid2 id=trendGrid></div>
-      <div class=sub id=trendNote style=margin-top:12px></div>
+      <p class=page-sub>Как метрики защиты меняются по ходу прогона.</p>
+      <div class=refresh-bar>
+        <span class="dot" id=trendDot></span>
+        <span id=trendStatus>метрики пересчитываются автоматически</span>
+        <span class=grow></span>
+        <span class=sub id=trendNote></span>
+        <button class="btn ghost" onclick=trendNow()>Пересчитать сейчас</button>
+      </div>
+      <div class=charts id=trendGrid></div>
+
+      <div class="card mt-4">
+        <h2>Полнота против нагрузки на аналитика</h2>
+        <p class=page-sub>Сколько атак доходит до очереди при разной нагрузке на смену.</p>
+        <details class=explain><summary>Как читать график</summary><div>
+          По горизонтали — инцидентов в симулированный день, то есть объём работы смены;
+          по вертикали — доля пойманных эпизодов. Подписи у точек — порог действия,
+          лента — 95% интервал Уилсона. Рабочую точку выбирают там, где начинается плато:
+          правее полнота уже не растёт, а очередь продолжает расти. Штриховая линия —
+          ёмкость смены: всё правее неё разобрано не будет.
+          Нагрузка в инцидентах на день нагляднее доли ложных срабатываний: «2%» на потоке
+          в 20 тысяч событий — это 400 тревог, а на потоке в 200 — четыре.
+        </div></details>
+        <figure class=figure><img src="/api/workload_curve.svg"
+             alt="Кривая полноты обнаружения против нагрузки на аналитика"></figure>
+        <div class="sub mt-2">
+          Перестроить: <code>python research/workload_curve.py --capacity 10</code>
+        </div>
+      </div>
     </section>
 
     <section class=view id=v-red>
+      <p class=page-sub>Ручной запуск многошаговых атак по матрице ATT&amp;CK.</p>
       <div class=card><h2>Сценарии атак</h2>
         <div style=display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap>
           <select class=sel id=evasion aria-label="Профиль скрытности атаки" title="Профиль скрытности атаки"><option value=noisy>noisy (быстро, явно)</option>
@@ -510,34 +364,51 @@ body{margin:0;font-family:Inter,Segoe UI,Roboto,sans-serif;color:var(--ink);
           <span class=toast id=redToast></span></div>
         <div id=redResult></div>
         <div id=camps></div>
-        <h2 style=margin-top:18px>Очередь команд</h2><div id=cmds class=sub></div>
+        <h2 class=mt-4>Очередь команд</h2><div id=cmds class=sub></div>
       </div>
     </section>
 
     <section class=view id=v-diag>
-      <div class=ctx style=margin-top:0>Здоровье платформы и журнал ошибок. Если что-то не работает —
-        пришли на разбор файлы <code>logs/errors.log</code> и <code>logs/debug.jsonl</code>.</div>
+      <p class=page-sub>Состояние подсистем и журнал ошибок.</p>
       <div class=kpis id=diagCounts></div>
-      <div class=card style=margin-bottom:16px><h2>Инфраструктура</h2>
-        <div class=sub style=margin-bottom:10px>Служебные подсистемы. В рабочей части интерфейса их не показываем:
-          аналитику важен поток событий и детекты, а не состояние конкретного сервиса.</div>
+      <div class="card mb-4"><h2>Инфраструктура</h2>
         <div class=ds-health id=diagInfra></div></div>
       <div class=grid2>
-        <div class=card><h2>Журнал ошибок</h2>
-          <div class=sub style=margin-bottom:8px>Файл <code>logs/errors.log</code> целиком, включая прошлые запуски. Счётчики выше относятся к текущей сессии — поэтому «ошибок нет» и записи ниже не противоречат друг другу.</div>
-          <pre class=llmctx id=diagErrors style=max-height:44vh>—</pre></div>
+        <div class=card><h2>Ошибки текущего запуска</h2>
+          <div id=diagErrSummary class="help empty">Ошибок не зафиксировано.</div>
+          <details class=explain id=diagErrWrap hidden><summary>Показать трейсбек</summary>
+            <pre class="llmctx scrollbox h-md" id=diagErrors>—</pre></details></div>
         <div class=card><h2>Структурный лог</h2>
-          <div style="display:flex;gap:8px;margin-bottom:8px">
-            <select class=sel id=diagLvl onchange=pollDiag() aria-label="Уровень подробности лога" title="Уровень подробности лога">
-              <option value="">все уровни</option><option>ERROR</option>
-              <option>WARNING</option><option>INFO</option><option>DEBUG</option></select>
-            <button class="btn ghost" onclick=pollDiag()>обновить</button></div>
-          <div class=feed id=diagRecent style=max-height:40vh></div></div>
+          <div class=ds-toolbar>
+            <select class=sel id=diagLvl onchange=pollDiag() aria-label="Уровень подробности лога">
+              <option value="">Все уровни</option><option value=ERROR>Ошибки</option>
+              <option value=WARNING>Предупреждения</option><option value=INFO>Информация</option>
+              <option value=DEBUG>Отладка</option></select>
+            <span class=grow></span>
+            <span class=sub id=diagCount></span>
+            <button class="btn ghost" onclick=pollDiag()>Обновить</button></div>
+          <div class="feed scrollbox h-md" id=diagRecent></div></div>
       </div>
     </section>
   </main>
 </div>
 <script>
+/* ОШИБКИ ИНТЕРФЕЙСА
+   Циклы опроса раньше были обёрнуты в `catch(e){}`. Одна опечатка
+   внутри — например classList.add('') — тихо обрывала весь цикл, и
+   половина значений навсегда оставалась прочерками, без единого следа
+   в консоли. Теперь ошибка печатается с контекстом и один раз
+   показывается тостом. Функция объявлена здесь, а не в ui.js: тот
+   подключается с defer и выполняется позже этого скрипта. */
+var _uiErrSeen={};
+function uiErr(where,e){
+ var msg=((e&&(e.message||e))||'')+'';
+ var key=where+':'+msg;
+ if(_uiErrSeen[key])return; _uiErrSeen[key]=1;
+ try{console.error('[ui] '+where+': '+msg,e);}catch(x){}
+ try{if(window.toast)window.toast('Сбой в интерфейсе: '+where,'error',6000);}catch(x){}
+}
+
 const $=x=>document.getElementById(x);
 /* Экранирование значений, попадающих в разметку. Закрываем не только
    угловые скобки, но и кавычки с амперсандом: те же значения
@@ -552,7 +423,7 @@ function esc(x){return (x==null?'':(''+x)).replace(/[&<>"']/g,c=>_ESC[c]);}
 function escJs(x){return esc(String(x==null?'':x).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));}
 async function jget(u){const r=await fetch(u);return r.json();}
 async function jpost(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});return r.json();}
-const TTL={overview:'Обзор',alerts:'Алерты',incidents:'Инциденты',cases:'Дела',workflow:'Очередь триажа',attack:'ATT&CK Coverage',detections:'Детекты',entities:'Сущности',risk:'Профиль риска команды',red:'Red Launcher',replay:'Реплей прогона',trends:'Тренды метрик',diag:'Диагностика'};
+const TTL={overview:'Обзор',alerts:'Алерты',incidents:'Инциденты',cases:'Дела',workflow:'Очередь триажа',attack:'Покрытие ATT&CK',detections:'Детекты',entities:'Сущности',risk:'Профиль риска команды',red:'Запуск сценариев',replay:'Повтор прогона',trends:'Тренды метрик',diag:'Диагностика'};
 let view='overview';
 document.querySelectorAll('#nav a').forEach(a=>a.onclick=()=>{
   document.querySelectorAll('#nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
@@ -560,10 +431,17 @@ document.querySelectorAll('#nav a').forEach(a=>a.onclick=()=>{
   $('v-'+view).classList.add('active');$('ttl').textContent=TTL[view];refresh();});
 function sevBadge(s){const m={critical:'b-crit',high:'b-high',medium:'b-med',low:'b-low'};return '<span class="badge '+(m[s]||'b-low')+'">'+s+'</span>';}
 function rkcls(r){return r>=0.8?'hi':(r>=0.5?'md':'');}
-function setN(id,v){const e=$(id);if(!e)return;if(e.textContent!==String(v)){e.textContent=v;e.classList.remove('flash');void e.offsetWidth;e.classList.add('flash');}}
+// Числа выводятся с разделителем разрядов и моноширинными цифрами
+// (font-variant-numeric в CSS), поэтому колонки не дрожат при обновлении.
+function setN(id,v){const e=$(id);if(!e)return;
+ const empty=(v==null||v===''||v==='—');
+ const t=empty?'—':((typeof v==='number')?fmtNum(v):String(v));
+ if(e.textContent!==t)e.textContent=t;
+ // прочерк «нет данных» не должен читаться как крупное значение
+ e.classList.toggle('is-empty',empty);}
 function gapLabel(a,b){try{const da=new Date((a||'').replace(' ','T')),db=new Date((b||'').replace(' ','T'));const m=(db-da)/60000;if(m>=1440)return '+'+Math.round(m/1440)+'д';if(m>=60)return '+'+Math.round(m/60)+'ч';if(m>=2)return '+'+Math.round(m)+'м';return '';}catch(e){return '';}}
-const TCOL={'Reconnaissance':'#0ea5e9','Initial Access':'#6366f1','Execution':'#8b5cf6','Persistence':'#a855f7','Privilege Escalation':'#d946ef','Defense Evasion':'#64748b','Credential Access':'#dc2626','Discovery':'#0891b2','Lateral Movement':'#4f46e5','Collection':'#d97706','Command and Control':'#9333ea','Exfiltration':'#b91c1c','Impact':'#7f1d1d','Behavioral':'#059669'};
-function tcol(t){return TCOL[t]||'#7c3aed';}
+const TCOL={'Reconnaissance':'var(--accent)','Initial Access':'var(--accent)','Execution':'var(--text-3)','Persistence':'var(--text-3)','Privilege Escalation':'var(--text-3)','Defense Evasion':'var(--text-3)','Credential Access':'var(--sev-critical)','Discovery':'var(--accent)','Lateral Movement':'var(--accent)','Collection':'var(--sev-medium)','Command and Control':'var(--text-3)','Exfiltration':'var(--sev-critical)','Impact':'var(--sev-critical)','Behavioral':'var(--success)'};
+function tcol(t){return TCOL[t]||'var(--text-3)';}
 function killchain(chain,alerts){if(!chain||!chain.length)return '<div class=sub>—</div>';
  // ХРОНОЛОГИЯ: шаги упорядочиваем по времени (в сторе порядок может быть иной)
  chain=chain.slice().sort((a,b)=>String(a.ts||'').localeCompare(String(b.ts||'')));
@@ -574,9 +452,17 @@ function killchain(chain,alerts){if(!chain||!chain.length)return '<div class=sub
  const dur=Math.max(0,Math.round((t1-t0)/60000));
  const durTxt=dur>=60?(Math.floor(dur/60)+' ч '+(dur%60)+' мин'):(dur+' мин');
  const tacs=[...new Set(chain.map(c=>c.tactic).filter(Boolean))];
- let h='<div class=kcsum><span>шагов: <b>'+chain.length+'</b></span><span>тактик: <b>'+tacs.length+'</b></span>'+
-  '<span title="от первого до последнего шага атаки">развитие атаки: <b>'+durTxt+'</b></span>'+
-  '<span>сигнатуры: <b>'+ru+'</b></span><span>поведение: <b>'+ue+'</b></span></div>';
+ // Пять значений подряд обычными span-ами склеивались в одну строку
+ // («шагов: 1тактик: 1развитие атаки: 0 мин»). Полоса метрик: подпись
+ // сверху, число снизу, между колонками — линия.
+ let h='<div class=metrics>'+
+  '<div><span class=mk>Шагов</span><span class=mv>'+chain.length+'</span></div>'+
+  '<div><span class=mk>Тактик ATT&CK</span><span class=mv>'+tacs.length+'</span></div>'+
+  '<div title="от первого до последнего шага атаки"><span class=mk>Развитие</span>'+
+   '<span class=mv>'+durTxt+'</span></div>'+
+  '<div><span class=mk>Правилами</span><span class="mv'+(ru?' acc':'')+'">'+ru+'</span></div>'+
+  '<div><span class=mk>Поведением</span><span class="mv'+(ue?' warn':'')+'">'+ue+'</span></div>'+
+  '</div>';
  h+='<div class=kc id=kcwrap>';
  for(let n=0;n<chain.length;n++){const c=chain[n];const d=(c.ts||'').replace('T',' ').slice(5,16);
   const L=lay[(c.ts||'')+'|'+(c.technique||'')];
@@ -587,14 +473,34 @@ function killchain(chain,alerts){if(!chain||!chain.length)return '<div class=sub
    '<div class=sub>'+esc(c.action||'')+'</div>'+
    '<div class=kcf><span class=sub>'+d+'</span><span class="rk '+rkcls(c.risk||0)+'">'+(c.risk!=null?c.risk:'')+'</span></div></div></div>';
   if(n<chain.length-1){const g=gapLabel(c.ts,chain[n+1].ts);
-   h+='<div class=kcarrow>'+(g?'<span class=kcg title="пауза между шагами атаки (dwell)">'+g+'</span>':'')+'→</div>';}}
+   // стрелка между шагами цепочки — иконка, а не типографский символ
+   h+='<div class=kcarrow>'+(g?'<span class=kcg title="пауза между шагами атаки">'+g+'</span>':'')+
+    '<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>';}}
  return h+'</div>';}
 function cssv(name,fb){try{var v=getComputedStyle(document.documentElement).getPropertyValue(name).trim();return v||fb;}catch(e){return fb;}}
-function bars(o){const k=Object.keys(o||{});if(!k.length)return '<div class="help empty">данных пока нет — запусти кампанию во вкладке Red Launcher</div>';
- const mx=Math.max(...k.map(x=>o[x])),tot=k.reduce((a,x)=>a+o[x],0)||1;
- return k.map(x=>'<div class=brow><span class=blab title="'+esc(x)+'">'+esc(x)+'</span>'+
+/* Раньше любое распределение рисовалось полосками. При значениях 1–4 из 18
+   полоска не несёт информации: обрубок в двадцать пикселей нельзя ни с чем
+   сравнить, а семь одинаковых панелей подряд выглядят как заполнение места.
+   Полоса остаётся там, где разброс реально большой (максимум хотя бы вчетверо
+   больше минимума и значений достаточно). Иначе — компактная таблица.
+   Проценты не показываем на малых знаменателях: «4 из 18» честнее, чем «22%». */
+function bars(o){
+ const k=Object.keys(o||{});
+ if(!k.length)return '<div class="help empty">Данных пока нет. Запустите сценарий в разделе «Запуск сценариев».</div>';
+ const vals=k.map(x=>o[x]);
+ const mx=Math.max(...vals), mn=Math.min(...vals), tot=vals.reduce((a,b)=>a+b,0)||1;
+ const rows=k.slice().sort((a,b)=>o[b]-o[a]);
+ const showBar=(k.length>=4&&mx>=4*Math.max(mn,1));
+ const showPct=(tot>=20);
+ if(!showBar){
+  return '<table class=ds-table><tbody>'+rows.map(x=>
+   '<tr><td>'+esc(x)+'</td><td class=num style="text-align:right;width:64px">'+o[x]+'</td>'+
+   (showPct?'<td class=num style="text-align:right;width:52px;color:var(--text-3)">'+Math.round(o[x]/tot*100)+'%</td>':'')+
+   '</tr>').join('')+'</tbody></table>';
+ }
+ return rows.map(x=>'<div class=brow><span class=blab title="'+esc(x)+'">'+esc(x)+'</span>'+
   '<div class=btrack><i style="width:'+(o[x]/mx*100)+'%"></i></div><b>'+o[x]+'</b>'+
-  '<span class=bpct>'+Math.round(o[x]/tot*100)+'%</span></div>').join('');}
+  (showPct?'<span class=bpct>'+Math.round(o[x]/tot*100)+'%</span>':'')+'</div>').join('');}
 
 /* ============================================================
    THREAT HUNTING — гипотеза → запрос → результат → правило.
@@ -609,32 +515,32 @@ const HUNT_PRESET=[
  {n:'Массовые удаления',q:'удал',hint:'кандидаты на Impact/T1485'},
  {n:'Доступ к vault',q:'vault',hint:'касание репозитория секретов'}];
 function huntLoad(){try{return JSON.parse(localStorage.getItem(HUNT_KEY)||'[]');}catch(e){return [];}}
-function huntSave(list){try{localStorage.setItem(HUNT_KEY,JSON.stringify(list));}catch(e){}}
+function huntSave(list){try{localStorage.setItem(HUNT_KEY,JSON.stringify(list));}catch(e){uiErr('huntSave',e)}}
 
 function huntOpen(){
  if(!window.dsDrawer)return;
  const saved=huntLoad();
  const presetHtml=HUNT_PRESET.map(function(p,i){
-  return '<div class=ds-ev-item style=cursor:pointer onclick="huntRun('+JSON.stringify(p.q).replace(/"/g,'&quot;')+')">'+
+  return '<div class="ds-ev-item clickable" onclick="huntRun('+JSON.stringify(p.q).replace(/"/g,'&quot;')+')">'+
    '<span><b>'+esc(p.n)+'</b><div class=sub>'+esc(p.hint)+'</div></span>'+
    '<span class=sub>&rarr;</span></div>';}).join('');
  const savedHtml=saved.length?saved.map(function(h,i){
-  return '<div class=ds-ev-item><span style=cursor:pointer onclick="huntRun('+JSON.stringify(h.q).replace(/"/g,'&quot;')+')">'+
+  return '<div class=ds-ev-item><span class=clickable onclick="huntRun('+JSON.stringify(h.q).replace(/"/g,'&quot;')+')">'+
    '<b>'+esc(h.n)+'</b><div class=sub>'+esc(h.q)+'</div></span>'+
-   '<button class="btn ghost" style=padding:3px_8px onclick="huntDel('+i+')">удалить</button></div>';}).join('')
+   '<button class="btn ghost" style=padding:3px_8px onclick="huntDel('+i+')">Удалить</button></div>';}).join('')
   :'<div class=sub>сохранённых запросов пока нет</div>';
  dsDrawer('Threat Hunting',
   '<div class=sub>Проверка гипотезы по потоку детектов. Нашли закономерность — сохраните запрос '+
    'и заведите правило в Detection-as-Code.</div>'+
   '<div class=ds-drawer-sec><div class=t-label>Свой запрос</div>'+
    '<div style="display:flex;gap:8px;margin-top:8px">'+
-    '<input class=tin id=huntQ placeholder="актёр, репозиторий, техника, путь…" style=flex:1 '+
+    '<input class="tin grow" id=huntQ placeholder="актёр, репозиторий, техника, путь…" '+
      'onkeydown="if(event.key===\'Enter\')huntRun($(\'huntQ\').value)">'+
     '<button class=btn onclick="huntRun($(\'huntQ\').value)">Искать</button></div>'+
    '<div style="display:flex;gap:8px;margin-top:8px;align-items:center">'+
-    '<input class=tin id=huntName placeholder="название гипотезы" style=flex:1>'+
+    '<input class="tin grow" id=huntName placeholder="название гипотезы">'+
     '<button class="btn ghost" onclick="huntAdd()">Сохранить запрос</button></div>'+
-   '<div id=huntRes class=sub style=margin-top:10px></div></div>'+
+   '<div class="sub mt-3" id=huntRes></div></div>'+
   '<div class=ds-drawer-sec><div class=t-label>Готовые гипотезы</div>'+
    '<div class=ds-ev-list>'+presetHtml+'</div></div>'+
   '<div class=ds-drawer-sec><div class=t-label>Сохранённые запросы</div>'+
@@ -643,7 +549,7 @@ function huntOpen(){
 async function huntRun(q){
  q=(q||'').toLowerCase().trim();if(!q)return;
  const box=$('huntRes');
- let al=[];try{al=(await jget('/api/alerts')).alerts||[];}catch(e){}
+ let al=[];try{al=(await jget('/api/alerts')).alerts||[];}catch(e){uiErr('huntRun',e)}
  const hits=al.filter(a=>((a.actor||'')+' '+(a.project||'')+' '+(a.reason||'')+' '+
    (a.technique||'')+' '+(a.action||'')+' '+(a.path||'')).toLowerCase().indexOf(q)>=0);
  const byTech={},byActor={};
@@ -651,9 +557,9 @@ async function huntRun(q){
                   if(a.actor)byActor[a.actor]=(byActor[a.actor]||0)+1;});
  const top=o=>Object.keys(o).sort((x,y)=>o[y]-o[x]).slice(0,4).map(k=>k+' ('+o[k]+')').join(', ')||'—';
  if(box)box.innerHTML='<b style=color:var(--text-1)>Найдено: '+hits.length+'</b> из '+al.length+' детектов'+
-  '<div style=margin-top:6px>Техники: '+esc(top(byTech))+'</div>'+
+  '<div class=mt-2>Техники: '+esc(top(byTech))+'</div>'+
   '<div>Разработчики: '+esc(top(byActor))+'</div>'+
-  (hits.length?'<button class="btn ghost" style=margin-top:10px onclick="dsDrawerClose();goView(\'alerts\');'+
+  (hits.length?'<button class="btn ghost mt-3" onclick="dsDrawerClose();goView(\'alerts\');'+
     'setTimeout(function(){$(\'alSearch\').value='+JSON.stringify(q)+';alSearchGo();},200)">Открыть в ленте детектов</button>':'');
  if($('huntQ'))$('huntQ').value=q;}
 
@@ -688,29 +594,33 @@ async function runDemo(){
   if(window.toast)toast('Не удалось запустить генерацию','error');}}
 
 /* общая печатная вёрстка для отчётов, открываемых в новом окне */
+// Отчёт открывается в отдельном окне и печатается на бумагу: токенов
+// дизайн-системы там нет, поэтому цвета заданы буквально и рассчитаны
+// на белый лист. Шкала та же, что в консоли: 11 / 13 / 15 / 22 / 28.
 const RPT_CSS=
- 'body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:960px;margin:24px auto;color:#1f2733;padding:0 16px}'+
- 'h1{font-size:23px} h2{font-size:15px;margin-top:26px;border-bottom:2px solid #e4e8f0;padding-bottom:5px}'+
- '.meta{color:#6b7480;font-size:13px}'+
+ 'body{font-family:Inter,-apple-system,Segoe UI,Roboto,sans-serif;max-width:960px;margin:24px auto;color:#111820;padding:0 16px;font-size:14px;line-height:1.45}'+
+ 'h1{font-size:22px;font-weight:600;letter-spacing:-.015em;margin:0 0 4px}'+
+ 'h2{font-size:14px;font-weight:600;margin:26px 0 0;border-bottom:1px solid #E1E6ED;padding-bottom:6px}'+
+ '.meta{color:#5F6B7A;font-size:12px}'+
  'table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}'+
- 'th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #eef2f7;vertical-align:top}'+
- 'th{background:#f6f8fc;font-size:11px;text-transform:uppercase;color:#6b7480;width:38%}'+
- '.kpis{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}'+
- '.k{border:1px solid #e4e8f0;border-radius:10px;padding:12px 16px;min-width:130px}'+
- '.k b{display:block;font-size:26px;font-family:ui-monospace,Consolas,monospace}'+
- '.k span{font-size:11px;font-weight:500;color:#6b7480;letter-spacing:.02em}'+
+ 'th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #E1E6ED;vertical-align:top}'+
+ 'th{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:#5F6B7A;width:38%}'+
+ '.kpis{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}'+
+ '.k{border:1px solid #E1E6ED;border-radius:6px;padding:12px 16px;min-width:130px}'+
+ '.k b{display:block;font-size:28px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}'+
+ '.k span{font-size:12px;font-weight:400;color:#5F6B7A}'+
  '.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}'+
- '.print{margin:14px 0;color:#6b7480;font-size:12px}@media print{.print{display:none}}';
+ '.print{margin:14px 0;color:#5F6B7A;font-size:12px}@media print{.print{display:none}}';
 
 async function execReport(){
  if(window.toast)toast('Собираю отчёт по прогону…','info');
  let s={},wf={},cov={},al=[],inc=[],det={};
- try{s=await jget('/api/stats');}catch(e){}
- try{wf=await jget('/api/workflow');}catch(e){}
- try{cov=await jget('/api/coverage');}catch(e){}
- try{al=(await jget('/api/alerts')).alerts||[];}catch(e){}
- try{inc=(await jget('/api/incidents')).incidents||[];}catch(e){}
- try{det=await jget('/api/detections');}catch(e){}
+ try{s=await jget('/api/stats');}catch(e){uiErr('execReport',e)}
+ try{wf=await jget('/api/workflow');}catch(e){uiErr('execReport',e)}
+ try{cov=await jget('/api/coverage');}catch(e){uiErr('execReport',e)}
+ try{al=(await jget('/api/alerts')).alerts||[];}catch(e){uiErr('execReport',e)}
+ try{inc=(await jget('/api/incidents')).incidents||[];}catch(e){uiErr('execReport',e)}
+ try{det=await jget('/api/detections');}catch(e){uiErr('execReport',e)}
 
  const items=(wf.items||[]);
  const tp=items.filter(x=>x.verdict==='tp').length;
@@ -749,14 +659,14 @@ async function execReport(){
   '<div class=k><b>'+(s.campaigns_detected||0)+'</b><span>кампаний</span></div>'+
   '<div class=k><b>'+(s.coverage_pct||0)+'%</b><span>покрытие ATT&amp;CK</span></div>'+
  '</div>'+
- '<h2>1. Что происходило</h2><table>'+
+ '<h2>Что происходило</h2><table>'+
   row('Событий обработано защитой',(s.processed||0))+
   row('Поднято детектов',(s.alerts||0))+
   row('Сгруппировано в инциденты',(s.incidents||0))+
   row('Из них многошаговых кампаний',(s.campaigns_detected||0))+
   row('Активных правил детектирования',(s.rules||0))+
  '</table>'+
- '<h2>2. Качество детектирования</h2><table>'+
+ '<h2>Качество детектирования</h2><table>'+
   row('Инцидентов разобрано аналитиком',judged+' из '+items.length)+
   row('Подтверждено как атака (TP)',tp)+
   row('Признано ложным (FP)',fp)+
@@ -764,36 +674,36 @@ async function execReport(){
   row('Закрыто инцидентов',closed)+
   row('Медианное время жизни инцидента',med<3600?(Math.round(med/60)+' мин'):(Math.round(med/360)/10+' ч'))+
  '</table>'+
- '<h2>3. Распределение детектов по критичности</h2><table>'+
+ '<h2>Распределение детектов по критичности</h2><table>'+
   row('Критические (≥0.85)',sevCount.critical)+
   row('Высокие (0.7–0.85)',sevCount.high)+
   row('Средние (0.5–0.7)',sevCount.medium)+
   row('Низкие (&lt;0.5)',sevCount.low)+
  '</table>'+
- '<h2>4. Покрытие MITRE ATT&amp;CK</h2><table>'+
+ '<h2>Покрытие MITRE ATT&amp;CK</h2><table>'+
   row('Техник в матрице',totN)+
   row('Покрыто правилами',covN+' ('+(totN?Math.round(covN/totN*100):0)+'%)')+
   row('Срабатывало в этом прогоне',fired)+
   row('Слепые зоны',gaps.length?('<span class=mono>'+E(gaps.join(', '))+'</span>'):'нет')+
  '</table>'+
- '<h2>5. Сработавшие правила</h2><table><tr><th scope=row>Правило</th><td>Сработок</td></tr>'+
+ '<h2>Сработавшие правила</h2><table><tr><th scope=row>Правило</th><td>Сработок</td></tr>'+
   (firedRules.length?firedRules.map(r=>'<tr><th scope=row>'+E(r.title)+' <span class=mono>'+E(r.technique||'')+
      '</span></th><td>'+r.fired+'</td></tr>').join(''):'<tr><th scope=row>—</th><td>ни одно правило не срабатывало</td></tr>')+
  '</table>'+
- '<h2>6. Инциденты</h2><table><tr><th scope=row>Инцидент</th><td>Детали</td></tr>'+
+ '<h2>Инциденты</h2><table><tr><th scope=row>Инцидент</th><td>Детали</td></tr>'+
   (inc.length?inc.map(i=>'<tr><th scope=row>#'+i.id+' · @'+E(i.actor)+'</th><td>'+
      E(i.severity)+' · риск '+i.max_risk+' · '+i.alerts+' детектов · '+
      E((i.tactics||[]).join(' → '))+(i.verdict?(' · вердикт '+E(i.verdict.toUpperCase())):'')+
      '</td></tr>').join(''):'<tr><th scope=row>—</th><td>инцидентов нет</td></tr>')+
  '</table>'+
- '<h2>7. Вывод</h2><p>'+
+ '<h2>Вывод</h2><p>'+
   (s.incidents?('За прогон система обработала '+(s.processed||0)+' событий разработки, подняла '+
    (s.alerts||0)+' детектов и собрала их в '+(s.incidents||0)+' инцидент(ов). '+
    (s.campaigns_detected?('Из них '+s.campaigns_detected+' — многошаговые атаки, восстановленные в цепочку ATT&CK. '):'')+
    (prec!=null?('Точность на разобранных аналитиком инцидентах — '+prec+'%. '):'')+
    'Покрытие матрицы ATT&CK — '+(s.coverage_pct||0)+'%.')
    :'В этом прогоне инцидентов не зафиксировано.')+
- '</p><div class=meta style=margin-top:28px>Sentinel SOC · отчёт построен только по наблюдаемым данным (анти-лик).</div>'+
+ '</p>'+
  '</body></html>';
 
  const w=window.open('','_blank');
@@ -816,31 +726,19 @@ function nEv(n){return plural(n,'событие','события','событи�
 function nTech(n){return plural(n,'техника','техники','техник');}
 function nRule(n){return plural(n,'правило','правила','правил');}
 
-function fmtNum(n){return (n==null?'—':(''+n).replace(/\B(?=(\d{3})+(?!\d))/g,' '));}
+function fmtNum(n){if(n==null||n==='')return '—';
+ const m=String(n).match(/^(-?\d+)(\D*)$/);
+ if(!m)return String(n);
+ return m[1].replace(/\B(?=(\d{3})+(?!\d))/g,'\u2009')+m[2];}
 function healthTile(name,state,val,hint){
  const cls=state==='ok'?'ok':(state==='warn'?'warn':(state==='bad'?'bad':''));
  return '<div class="ds-h-tile '+cls+'" title="'+esc(hint||'')+'">'+
   '<span class=ds-h-dot></span><div class=ds-h-body>'+
   '<div class=ds-h-name>'+esc(name)+'</div><div class=ds-h-val>'+esc(val)+'</div></div></div>';}
 
-async function pollHealthStrip(s){
- let h={};try{h=await jget('/api/health');}catch(e){}
- const ev=h.events||{},df=h.defense||{},age=ev.last_age_s;
- const ageTxt=age==null?'нет данных':(age<60?age+' с назад':Math.floor(age/60)+' мин назад');
- // «обработано» считается за текущую сессию консоли, а стор копится между
- // запусками — вычитать одно из другого нельзя, получался фиктивный лаг.
- const fresh=(age!=null&&age<180);
- const box=$('dsHealth');if(!box)return;
- box.innerHTML=[
-  healthTile('GitLab / Мир',h.world_alive?'ok':'bad',h.world_alive?'пишет':'молчит','Пишет ли консоль среды события в общий журнал'),
-  healthTile('Симуляция',h.world_alive?'ok':'warn',ageTxt,'Давность последнего события'),
-  healthTile('Журнал событий',(ev.total||0)>0?'ok':'warn',fmtNum(ev.total||0)+' соб.','Общий журнал событий'),
-  healthTile('Детектор',df.running?'ok':'bad',nRule(s.rules||0),'Стрим-детектор: правила + UEBA'),
-  healthTile('Приём событий',df.running?(fresh?'ok':'warn'):'bad',fmtNum(df.processed||0)+' обраб.','Обработано защитой за текущую сессию'),
-  healthTile('Поведение (UEBA)',(s.techniques_fired||0)>0?'ok':'',nTech(s.techniques_fired||0),'Сработавшие техники ATT&CK'),
-  healthTile('Модель (LLM)',h.ollama?'ok':'warn',h.ollama?'готова':'офлайн','Локальная модель для триажа'),
-  healthTile('Авто-триаж',h.auto_triage?'ok':'',h.auto_triage?'включён':'выключен','Автоматический разбор инцидентов')
- ].join('');}
+// Плашки состояния подсистем оставлены только на «Диагностике»:
+// на «Обзоре» они дублировались под другими названиями. Функция,
+// которая их рисовала, удалена вместе с лишним запросом /api/health.
 
 let _feedSeen={};
 function feedIcon(k){
@@ -887,14 +785,12 @@ function renderLayers(alerts){
  a.forEach(x=>{if(x.technique==='UEBA')ueba++;else rules++;});
  const tot=a.length,pr=Math.round(rules/tot*100),pu=100-pr;
  box.innerHTML=
-  '<div class=brow><span class=blab>Сигнатурные правила</span>'+
-   '<div class=btrack><i style="width:'+pr+'%;background:var(--info)"></i></div>'+
+  '<div class=brow><span class=blab>Сигнатуры</span>'+
+   '<div class=btrack><i style="width:'+pr+'%"></i></div>'+
    '<b>'+rules+'</b><span class=bpct>'+pr+'%</span></div>'+
-  '<div class=brow><span class=blab>Поведенческий слой (UEBA)</span>'+
-   '<div class=btrack><i style="width:'+pu+'%;background:var(--success)"></i></div>'+
-   '<b>'+ueba+'</b><span class=bpct>'+pu+'%</span></div>'+
-  '<div class=sub style=margin-top:10px>Сигнатуры ловят известное содержимое, UEBA — нетипичное '+
-  'поведение. Вместе они закрывают разные классы атак.</div>';}
+  '<div class=brow><span class=blab>UEBA</span>'+
+   '<div class=btrack><i style="width:'+pu+'%"></i></div>'+
+   '<b>'+ueba+'</b><span class=bpct>'+pu+'%</span></div>';}
 
 function renderQuality(wf){
  const box=$('qualBox');if(!box)return;
@@ -902,20 +798,28 @@ function renderQuality(wf){
  const tp=items.filter(x=>x.verdict==='tp').length;
  const fp=items.filter(x=>x.verdict==='fp').length;
  const judged=tp+fp;
- if(!judged){box.innerHTML='<div class="ds-empty">Разберите инциденты (TP / FP) — здесь появятся '+
-   'точность детекта и вклад в тюнинг правил</div>';return;}
- const prec=Math.round(tp/judged*100);
+ if(!judged){box.innerHTML='<div class="row"><span class=muted-t>Точность детекта</span>'+
+   '<span class=muted-t>нет разобранных инцидентов</span></div>';return;}
+ const MIN_JUDGED=10;
+ const prec=judged?Math.round(tp/judged*100):0;
  const noisy=(wf.noisy_rules||[]).filter(r=>r.fp>0);
  box.innerHTML=
-  '<div class=ds-cov><div class=ds-cov-num style="color:var(--info)">'+prec+'%</div>'+
-  '<div class=ds-cov-bar><i style="width:'+prec+'%;background:var(--info)"></i></div></div>'+
+  // Точность по одному-двум разборам — не метрика, а совпадение.
+  // Ниже порога показываем прогресс набора, а не громкий процент.
+  (judged>=MIN_JUDGED
+    ? '<div class=ds-cov><div class=ds-cov-num>'+prec+'%</div>'+
+      '<div class=ds-cov-bar><i style="width:'+prec+'%"></i></div></div>'
+    : '<div class=ds-cov><div class=ds-cov-num>—</div>'+
+      '<div class=ds-cov-bar><i style="width:'+Math.round(judged/MIN_JUDGED*100)+'%"></i></div></div>'+
+      '<div class="sub mt-2">Недостаточно данных: разобрано '+judged+
+      ' из '+MIN_JUDGED+', нужных для оценки точности.</div>')+
   '<div class=ds-cov-legend>'+
    '<span>подтверждено TP: <b>'+tp+'</b></span>'+
    '<span>ложных FP: <b>'+fp+'</b></span>'+
    '<span>разобрано: <b>'+judged+'</b> из '+items.length+'</span>'+
    (wf.muted_hits?('<span>отклонено тюнингом: <b>'+wf.muted_hits+'</b></span>'):'')+
   '</div>'+
-  (noisy.length?('<div class=sub style=margin-top:10px>Правила с подтверждёнными FP: '+
+  (noisy.length?('<div class="sub mt-3">Правила с подтверждёнными FP: '+
     noisy.map(r=>esc(r.rule_id)+' ('+r.fp+')').join(', ')+'</div>'):'');}
 
 function renderCovMini(s){
@@ -928,22 +832,20 @@ function renderCovMini(s){
 
 async function pollOverview(){const s=await jget('/api/stats');
  setN('kEv',s.store_events);setN('kProc',s.processed);setN('kAl',s.alerts);
- setN('kInc',s.incidents);setN('kCamp',s.campaigns_detected);setN('kCov',s.coverage_pct+'%');
- $('runtxt').textContent=s.running?('работает · '+Math.floor(s.uptime/60)+'м'):'ждёт поток';
+ setN('kInc',s.incidents);setN('kCamp',s.campaigns_detected);setN('kCov',(s.coverage_pct==null?'—':s.coverage_pct+'%'));
  $('byTactic').innerHTML=bars(s.by_tactic);
  $('byActor').innerHTML=bars(s.by_actor);
  if($('byRepo'))$('byRepo').innerHTML=bars(s.by_repo);
  renderCovMini(s);
- try{await pollHealthStrip(s);}catch(e){}
  let alerts=[],incs=[],wf=null;
- try{alerts=(await jget('/api/alerts')).alerts||[];}catch(e){}
- try{incs=(await jget('/api/incidents')).incidents||[];}catch(e){}
- try{wf=await jget('/api/workflow');}catch(e){}
- try{drawPulse(alerts);}catch(e){}
- try{renderLiveFeed(alerts,incs);}catch(e){}
- try{renderIncQueue(wf&&wf.items);}catch(e){}
- try{renderQuality(wf);}catch(e){}
- try{renderLayers(alerts);}catch(e){}}
+ try{alerts=(await jget('/api/alerts')).alerts||[];}catch(e){uiErr('pollOverview',e)}
+ try{incs=(await jget('/api/incidents')).incidents||[];}catch(e){uiErr('pollOverview',e)}
+ try{wf=await jget('/api/workflow');}catch(e){uiErr('pollOverview',e)}
+ try{drawPulse(alerts);}catch(e){uiErr('pollOverview',e)}
+ try{renderLiveFeed(alerts,incs);}catch(e){uiErr('pollOverview',e)}
+ try{renderIncQueue(wf&&wf.items);}catch(e){uiErr('pollOverview',e)}
+ try{renderQuality(wf);}catch(e){uiErr('pollOverview',e)}
+ try{renderLayers(alerts);}catch(e){uiErr('pollOverview',e)}}
 function drawPulse(al){
  // спарклайн: алерты по 30-мин слотам сим-времени
  const slots={},order=[];
@@ -952,27 +854,28 @@ function drawPulse(al){
   if(!(key in slots)){slots[key]=0;order.push(key);}slots[key]++;});
  const svg=$('alSpark');if(svg){
   const vals=order.map(k=>slots[k]);
-  if(!vals.length){svg.innerHTML='';$('alSparkSub').textContent='алертов пока нет — запусти кампанию';}
-  else{const W=100,H=30,p=2,n=vals.length,mx=Math.max(...vals,1);
+  if(!vals.length){svg.innerHTML='';$('alSparkSub').textContent='Алертов пока нет.';}
+  else{const W=100,H=30,p=3,n=vals.length,mx=Math.max(...vals,1);
    const X=i=>n<=1?W/2:(i/(n-1))*W, Y=v=>H-p-(v/mx)*(H-2*p);
-   let line='';vals.forEach((v,i)=>{line+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ';});
-   const area='M0 '+H+' '+vals.map((v,i)=>'L'+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ')+' L'+W+' '+H+' Z';
-   // Мало точек -> заливка превращалась в сплошной прямоугольник и читалась
-   // как «баг». Рисуем столбики: на разреженных данных понятнее, чем площадь.
-   if(n<6){const bw=Math.min(5.5,Math.max(1.2,(W/n)*0.32));
-    svg.innerHTML=vals.map((v,i)=>{const h=Math.max(0.8,(v/mx)*(H-2*p));
-     return '<rect x="'+(X(i)-bw/2).toFixed(1)+'" y="'+(H-p-h).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+cssv("--info","#3b82f6")+'" rx="1"></rect>';}).join('')+
-     '<line x1="0" y1="'+(H-p)+'" x2="'+W+'" y2="'+(H-p)+'" stroke="'+cssv("--line","#1f2a38")+'" stroke-width="0.4"></line>';}
-   else{svg.innerHTML='<path d="'+area+'" fill="'+cssv("--info","#3b82f6")+'" fill-opacity="0.12"></path>'+
-    '<path d="'+line+'" fill="none" stroke="'+cssv("--info","#3b82f6")+'" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>';}
-   $('alSparkSub').textContent='последние '+nAlerts(al.length)+' · '+order[0].replace('T',' ')+' → '+order[order.length-1].replace('T',' ')+' · пик '+mx+' за 30 мин';}}
+   // Заливка площади под линией растягивалась в сплошной синий блок и
+   // читалась как ошибка отрисовки. Оставляем тонкую линию и базу;
+   // на разреженных данных — столбики, они честнее линии по трём точкам.
+   const base='<line class=spark-base x1="0" y1="'+(H-p)+'" x2="'+W+'" y2="'+(H-p)+'"></line>';
+   if(n<6){const bw=Math.min(4,Math.max(1,(W/n)*0.28));
+    svg.innerHTML=base+vals.map(function(v,i){const h=Math.max(0.6,(v/mx)*(H-2*p));
+     return '<rect class=spark-bar x="'+(X(i)-bw/2).toFixed(1)+'" y="'+(H-p-h).toFixed(1)+
+            '" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+'"></rect>';}).join('');}
+   else{let line='';vals.forEach(function(v,i){line+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ';});
+    svg.innerHTML=base+'<path class=spark-line d="'+line+'"></path>';}
+   $('alSparkSub').textContent='Последние '+nAlerts(al.length)+' · '+order[0].replace('T',' ')+
+     ' → '+order[order.length-1].replace('T',' ')+' · пик '+mx+' за 30 мин';}}
  // гистограмма риска
- const b=[['критический (≥0.85)',0,'#dc2626'],['высокий (0.7–0.85)',0,'#ea580c'],['средний (0.5–0.7)',0,'#d97706'],['низкий (<0.5)',0,'#64748b']];
+ const b=[['Критический ≥0.85',0,'critical'],['Высокий 0.7–0.85',0,'high'],['Средний 0.5–0.7',0,'medium'],['Низкий <0.5',0,'low']];
  al.forEach(a=>{const r=a.risk||0;if(r>=0.85)b[0][1]++;else if(r>=0.7)b[1][1]++;else if(r>=0.5)b[2][1]++;else b[3][1]++;});
  const mx2=Math.max(...b.map(x=>x[1]),1),tot=al.length||1;
  $('riskHist').innerHTML=al.length?b.map(x=>'<div class=brow><span class=blab>'+x[0]+'</span>'+
-  '<div class=btrack><i style="width:'+(x[1]/mx2*100)+'%;background:'+x[2]+'"></i></div><b>'+x[1]+'</b>'+
-  '<span class=bpct>'+Math.round(x[1]/tot*100)+'%</span></div>').join(''):'<div class="help empty">алертов пока нет</div>';}
+  '<div class="btrack rk-bar '+x[2]+'"><i style="width:'+(x[1]/mx2*100)+'%"></i></div><b>'+x[1]+'</b>'+
+  '<span class=bpct>'+Math.round(x[1]/tot*100)+'%</span></div>').join(''):'<div class="help empty">Алертов пока нет.</div>';}
 let _alF='';
 function alFilter(f){_alF=f;_alPage=0;document.querySelectorAll('#alFilters .af').forEach(b=>b.classList.toggle('on',b.dataset.f===f));pollAlerts();}
 function skeletonRows(cols,rows){let h='';
@@ -1015,21 +918,22 @@ function renderAlerts(){
 
  $('alBody').innerHTML=page.map((a,i)=>{
   const idx=_alPage*_AL_PER+i;
-  return '<tr onclick="openAlert('+idx+')">'+
-   '<td class=num style="color:var(--text-4)">'+esc((a.ts_sim||'').replace('T',' ').slice(5,16))+'</td>'+
+  const sev=(a.risk||0)>=.85?'crit':((a.risk||0)>=.6?'high':'low');
+  return '<tr class="sev-'+sev+'" onclick="openAlert('+idx+')">'+
+   '<td class=mono>'+esc((a.ts_sim||'').replace('T',' ').slice(5,16))+'</td>'+
    '<td>'+alSevBadge(a.risk||0)+'</td>'+
-   '<td>'+(a.technique==='UEBA'?'<span class="ly u">UEBA</span>':'<span class="ly r">RULE</span>')+'</td>'+
-   '<td style="color:var(--text-1);font-weight:600">@'+esc(a.actor||'—')+'</td>'+
-   '<td class=num>'+esc(a.project||'—')+'</td>'+
-   '<td>'+(a.technique&&a.technique!=='UEBA'?'<span class=tech>'+esc(a.technique)+'</span>':'<span class=sub>—</span>')+'</td>'+
+   '<td class=muted-t>'+(a.technique==='UEBA'?'UEBA':'RULE')+'</td>'+
+   '<td class=mono><b>@'+esc(a.actor||'—')+'</b></td>'+
+   '<td class=mono>'+esc(a.project||'—')+'</td>'+
+   '<td class=mono>'+(a.technique&&a.technique!=='UEBA'?esc(a.technique):'<span class=muted-t>—</span>')+'</td>'+
    '<td>'+esc(a.reason||'')+'</td>'+
-   '<td style="text-align:right"><span class="rk '+rkcls(a.risk)+'">'+a.risk+'</span></td></tr>';}).join('')
+   '<td class=right><span class="rk '+rkcls(a.risk)+'">'+a.risk+'</span></td></tr>';}).join('')
   ||'<tr><td colspan=8><div class="ds-empty">'+(all.length?'под фильтр ничего не попало':'детектов пока нет — запустите кампанию в Red Launcher')+'</div></td></tr>';
 
  $('alPager').innerHTML=total>_AL_PER?
-  ('<button class="btn ghost" onclick="alPage(-1)"'+(_alPage<=0?' disabled':'')+'>← назад</button>'+
+  ('<button class="btn ghost" onclick="alPage(-1)"'+(_alPage<=0?' disabled':'')+'><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m15 18-6-6 6-6"/></svg> Назад</button>'+
    '<span class=sub>страница '+(_alPage+1)+' из '+pages+'</span>'+
-   '<button class="btn ghost" onclick="alPage(1)"'+(_alPage>=pages-1?' disabled':'')+'>вперёд →</button>'):'';
+   '<button class="btn ghost" onclick="alPage(1)"'+(_alPage>=pages-1?' disabled':'')+'>Вперёд <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m9 18 6-6-6-6"/></svg></button>'):'';
  _alSorted=rows;}
 
 let _alSorted=[];
@@ -1074,14 +978,21 @@ async function pollAlerts(){
  if(!_alLoaded&&$('alBody')&&!$('alBody').innerHTML)$('alBody').innerHTML=skeletonRows(8,6);
  const d=await jget('/api/alerts');_alRows=d.alerts||[];_alLoaded=true;renderAlerts();}
 async function pollIncidents(){const d=await jget('/api/incidents');
- $('incList').innerHTML=(d.incidents||[]).map(i=>'<div class="inc'+(String(i.id)===String(_incSel)?' sel':'')+'" data-inc="'+i.id+'" tabindex=0 role=button aria-current="'+(String(i.id)===String(_incSel)?'true':'false')+'" onclick="openInc('+i.id+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openInc('+i.id+')}"><div class=h>'+
-   '<span class=a>@'+esc(i.actor)+'</span>'+sevBadge(i.severity)+(i.is_campaign?'<span class="badge b-camp">CAMPAIGN</span>':'')+(i.triage?'<span class="badge b-camp">LLM: '+esc(i.triage)+'</span>':'')+
-   (i.verdict?'<span class="vpill '+esc(i.verdict)+'" title="ваш вердикт">'+(i.verdict==='tp'?'TP':'FP')+'</span>':'')+
+ $('incList').innerHTML=(d.incidents||[]).map(function(i){
+   const sel=String(i.id)===String(_incSel)?' sel':'';
+   return '<div class="inc'+sel+'" data-inc="'+i.id+'" tabindex=0 role=button'+
+   ' aria-current="'+(sel?'true':'false')+'"'+
+   ' onclick="openInc('+i.id+')"'+
+   ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openInc('+i.id+')}">'+
+   sevBadge(i.severity)+
+   '<span class=a>@'+esc(i.actor)+'</span>'+
+   '<span class=sub>'+nAlerts(i.alerts)+' · '+nTac((i.tactics||[]).length)+'</span>'+
+   '<span class=sub>'+esc((i.repos||[]).slice(0,2).join(', '))+'</span>'+
+   (i.is_campaign?'<span class=sub>кампания</span>':'')+
+   (i.verdict?'<span class="vpill '+esc(i.verdict)+'">'+(i.verdict==='tp'?'TP':'FP')+'</span>':'')+
    (i.status&&i.status!=='new'?'<span class="stpill '+esc(i.status)+'">'+esc(i.status)+'</span>':'')+
-   '<span class=grow></span><span class=sub>риск '+i.max_risk+'</span></div>'+
-   '<div class=sub style=margin-top:5px>'+i.alerts+' алертов · '+esc((i.repos||[]).join(', '))+'</div>'+
-   '<div class=chain>'+(i.tactics||[]).map(t=>'<span class=chip>'+esc(t)+'</span>').join('')+'</div></div>').join('')
-   ||'<div class="help empty">инцидентов пока нет — запусти атаку в Red Launcher</div>';
+   '<span class=grow></span><span class="rk '+rkcls(i.max_risk)+'">'+i.max_risk+'</span></div>';}).join('')
+   ||'<div class="help empty">Инцидентов пока нет. Запустите сценарий атаки.</div>';
  markIncSel();}
 let _incTab='timeline', _incData=null;
 
@@ -1108,7 +1019,7 @@ function incTimeline(i){
     ' <span class="rk '+rkcls(a.risk)+'">'+a.risk+'</span></div>'+
    '<div class=ds-tl-desc>'+esc(a.reason||'')+
     (a.path?' · <code>'+esc(a.path)+'</code>':'')+
-    (a.url?' · <a href="'+esc(a.url)+'" target=_blank>открыть в GitLab ↗</a>':'')+'</div></div>';}).join('')+'</div>';}
+    (a.url?' · <a href="'+esc(a.url)+'" target=_blank>открыть в GitLab&nbsp;<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></a>':'')+'</div></div>';}).join('')+'</div>';}
 
 function incEvidence(i){
  const files={},repos=(i.repos||[]);
@@ -1121,7 +1032,7 @@ function incEvidence(i){
    (fk.length?fk.map(function(f){return '<div class=ds-ev-item><code>'+esc(f)+'</code><span class=sub>'+files[f]+'×</span></div>';}).join(''):'<div class=sub>—</div>')+'</div></div>'+
   '</div>'+
   '<div class=ds-drawer-sec><div class=t-label>Индикаторы компрометации ('+((i.ioc||[]).length)+')</div>'+
-   '<div class=iocg style=margin-top:8px>'+(i.ioc||[]).map(function(x){
+   '<div class="iocg mt-2">'+(i.ioc||[]).map(function(x){
      return '<div class=ioci><span class=ioct>'+esc(x.label)+'</span><span class=iocv>'+esc(x.value)+'</span></div>';}).join('')+'</div></div>';}
 
 function incMitre(i){
@@ -1138,20 +1049,19 @@ function incActions(i){
  return '<div class=ds-act-grid>'+
   '<button class=btn onclick="triage('+i.id+')">Запустить LLM-разбор</button>'+
   '<button class="btn ghost" onclick="llmPanel('+i.id+')">Что видела модель</button>'+
-  '<a class="btn ghost" href="/api/incident/'+i.id+'/report" target=_blank style=text-decoration:none>Отчёт (PDF)</a>'+
+  '<a class="btn ghost nolink" href="/api/incident/'+i.id+'/report" target=_blank>Отчёт (PDF)</a>'+
   '<button class="btn ghost" onclick="casePick('+i.id+')">Приобщить к делу</button>'+
-  (i.responded?'<a class="btn ghost" href="'+esc(i.responded)+'" target=_blank style=text-decoration:none>IR-issue заведён ↗</a>':
+  (i.responded?'<a class="btn ghost nolink" href="'+esc(i.responded)+'" target=_blank>IR-issue заведён&nbsp;<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></a>':
    (i.resp_pending?'<span class="btn ghost" style="opacity:.7">IR заводится…</span>':
     '<button class="btn ghost" id=respBtn onclick="respond('+i.id+')">'+(i.resp_error?'Повторить IR':'Реагировать — завести IR')+'</button>'))+
   '</div>'+
-  (i.resp_error?'<div class=sub style="color:var(--critical);margin-top:8px">не удалось: '+esc(i.resp_error)+'</div>':'')+
+  (i.resp_error?'<div class="sub err-line">не удалось: '+esc(i.resp_error)+'</div>':'')+
   '<span class=toast id=incToast></span>'+
   '<div class=ds-drawer-sec><div class=t-label>Заметка расследования</div>'+
-   '<div class=sub style=margin:6px_0_8px>Вывод аналитика. Попадает в отчёт по инциденту.</div>'+
-   '<textarea class=tin id=incNote rows=4 style="width:100%;resize:vertical" '+
-    'placeholder="Что установлено, почему такой вердикт, что сделано…">'+
+   '<textarea class=tin id=incNote rows=5 '+
+    'placeholder="Что установлено, почему такой вердикт, что сделано. Попадёт в отчёт по инциденту.">'+
     esc(((i.workflow||{}).reason)||'')+'</textarea>'+
-   '<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'+
+   '<div class=ds-sec-foot>'+
     '<button class=btn onclick="saveNote('+i.id+')">Сохранить заметку</button>'+
     '<span class=sub id=noteSt></span></div></div>'+
   '<div class=ds-drawer-sec><div class=t-label>Рекомендованные действия</div>'+
@@ -1167,7 +1077,7 @@ function renderIncBody(){
  if(_incTab==='timeline')box.innerHTML=incTimeline(i);
  else if(_incTab==='killchain')box.innerHTML=
   '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'+
-   '<button class="btn ghost" id=playBtn onclick="playInc('+((i.chain||[]).length)+')">▶ Реплей атаки</button>'+
+   '<button class="btn ghost" id=playBtn onclick="playInc('+((i.chain||[]).length)+')"><svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Реплей атаки</button>'+
    '<input type=range class=rng id=rng min=0 max="'+(Math.max(0,(i.chain||[]).length-1))+
     '" value="'+(Math.max(0,(i.chain||[]).length-1))+'" oninput="scrub(+this.value)"></div>'+
    killchain(i.chain,i.alerts);
@@ -1194,7 +1104,7 @@ async function openInc(id){_incSel=id;markIncSel();
   '<div class=ds-inc-head>'+sevBadge(i.severity)+
    (i.is_campaign?' <span class="badge b-camp">многошаговая</span>':'')+
    ' <span class=ds-inc-risk>риск '+Math.round(i.max_risk*100)/100+'</span>'+
-   ' <span class=sub>'+((i.alerts||[]).length)+' событий · '+((i.repos||[]).length)+' репозиториев</span></div>'+
+   ' <span class=sub>'+nAlerts((i.alerts||[]).length)+' · '+nRepo((i.repos||[]).length)+'</span></div>'+
   '<div class=wfstatus id=wfStatus></div>'+
   incTabs()+
   '<div id=incBody class=ds-tabbody></div>';
@@ -1202,51 +1112,61 @@ async function openInc(id){_incSel=id;markIncSel();
  renderWfStatus(i.id,i.workflow);}
 let _openId=null;
 function renderWfStatus(id,wf){const box=$('wfStatus');if(!box)return;wf=wf||{status:'new'};
- const CN={new:'новый',investigating:'в работе',contained:'сдержано',closed:'закрыто'};
+ const CN={new:'новый',investigating:'в работе',contained:'локализовано',closed:'закрыто'};
  const steps=['new','investigating','contained','closed'];
- box.innerHTML='<div class=wfline>'+steps.map(s=>'<button class="wfstep'+(wf.status===s?' on':'')+'" onclick="setStatus('+id+',\''+s+'\')">'+CN[s]+'</button>').join('<span class=wfarr>›</span>')+
+ // Дорожка статусов: пройденное помечено, текущее залито, будущее —
+ // обычная кнопка. Раньше все четыре выглядели одинаково, и понять,
+ // на каком шаге инцидент, можно было только по цвету одной из них.
+ const cur=steps.indexOf(wf.status||'new');
+ box.innerHTML='<div class=wfline>'+
+  '<div class=wftrack>'+steps.map((s,n)=>{
+    const cls=n<cur?' done':(n===cur?' on':'');
+    return '<button class="wfstep'+cls+'" onclick="setStatus('+id+',\''+s+'\')">'+CN[s]+'</button>';
+   }).join('')+'</div>'+
   '<span class=grow></span>'+
-  '<button class="wfv tp'+(wf.verdict==='tp'?' on':'')+'" onclick="setStatus('+id+',\'closed\',\'tp\')">TP</button>'+
-  '<button class="wfv fp'+(wf.verdict==='fp'?' on':'')+'" onclick="setStatus('+id+',\'closed\',\'fp\')">FP</button></div>'+
+  '<div class=wfvgroup><span class=wfvlab>Вердикт</span>'+
+   '<button class="wfv tp'+(wf.verdict==='tp'?' on':'')+'" title="подтверждённая атака" onclick="setStatus('+id+',\'closed\',\'tp\')">TP</button>'+
+   '<button class="wfv fp'+(wf.verdict==='fp'?' on':'')+'" title="ложное срабатывание" onclick="setStatus('+id+',\'closed\',\'fp\')">FP</button></div></div>'+
   (wf.verdict
-    ? '<div class=vbanner><span class="vpill '+wf.verdict+'">'+(wf.verdict==='tp'?'TP — подтверждённая атака':'FP — ложное срабатывание')+'</span>'+
-      (wf.verdict==='fp'?'<span class=sub>правила из этого инцидента получают +1 FP; после 3 подтверждений правило глушится (см. «Очередь триажа» → «Самые шумные правила»)</span>':'<span class=sub>инцидент закрыт как настоящая атака</span>')+
-      (wf.updated?'<span class=sub style=margin-left:auto>'+wf.updated.replace('T',' ')+'</span>':'')+'</div>'
-    : '<div class=sub style=margin-top:5px>вердикт не выставлен — нажмите TP или FP</div>');}
+    ? '<div class="vbanner '+wf.verdict+'">'+
+      '<span class=vt>'+(wf.verdict==='tp'?'Подтверждённая атака':'Ложное срабатывание')+'</span>'+
+      '<span>'+(wf.verdict==='fp'
+        ?'Правилам инцидента засчитан FP. После третьего правило перестаёт поднимать инциденты.'
+        :'Инцидент закрыт как настоящая атака.')+'</span>'+
+      (wf.updated?'<span class=vtime>'+wf.updated.replace('T',' ')+'</span>':'')+'</div>'
+    : '');}
 async function setStatus(id,status,verdict){await jpost('/api/incident/'+id+'/status',{status:status,verdict:verdict||null});
- if(window.toast){const CN={new:'новый',investigating:'в работе',contained:'сдержано',closed:'закрыто'};
+ if(window.toast){const CN={new:'новый',investigating:'в работе',contained:'локализовано',closed:'закрыто'};
   toast(verdict?('Инцидент #'+id+' закрыт как '+verdict.toUpperCase()):('Статус инцидента #'+id+': '+(CN[status]||status)),
         verdict==='tp'?'error':(verdict==='fp'?'warning':'success'));}
  const i=await jget('/api/incident/'+id);renderWfStatus(id,i.workflow);
- try{await pollIncidents();}catch(e){}
- try{if(typeof pollWorkflow==='function')await pollWorkflow();}catch(e){}}
+ try{await pollIncidents();}catch(e){uiErr('setStatus',e)}
+ try{if(typeof pollWorkflow==='function')await pollWorkflow();}catch(e){uiErr('setStatus',e)}}
 async function llmPanel(id){const box=$('llmBox');
  if(box.dataset.open==='1'){box.dataset.open='';box.innerHTML='';return;}
- box.dataset.open='1';box.innerHTML='<div class=sub style=margin-top:10px>загружаю контекст…</div>';
+ box.dataset.open='1';box.innerHTML='<div class="sub mt-3">загружаю контекст…</div>';
  let d;try{d=await jget('/api/incident/'+id+'/llm');}catch(e){box.innerHTML='<div class=sub>ошибка</div>';return;}
  box.innerHTML='<div class=card style="margin-top:10px;background:var(--panel2);border-color:var(--line2)">'+
   '<div style=display:flex;align-items:center;gap:8px><b>Вход модели</b>'+
    '<span class="badge '+(d.ollama_available?'b-med':'b-low')+'">'+(d.ollama_available?'Ollama: '+esc(d.model||'on'):'Ollama не запущена')+'</span>'+
    '<span class=grow></span><span class=sub>hash '+esc(d.context_hash)+'</span></div>'+
-  '<div class=sub style="margin:6px 0">Это ровно тот JSON, который уходит в модель. Здесь нет разметки симулятора — '+
-   'ни «это атака», ни типа аномалии: '+esc(d.leak_guard)+'</div>'+
-  '<div class=sub style=margin-bottom:4px>полей: <b>'+d.context_fields.length+'</b> — '+d.context_fields.map(esc).join(', ')+'</div>'+
+  '<div class="sub mb-1">полей: <b>'+((d.context_fields||[]).length)+'</b> — '+(d.context_fields||[]).map(esc).join(', ')+'</div>'+
   '<pre class=llmctx>'+esc(d.context_json)+'</pre>'+
-  '<div class=sub style=margin-top:8px>Вывод модели — на кнопке <b>«LLM-разбор»</b>.</div>'+
-  '<div class=askbox style=margin-top:12px><input class=askin id=incAskIn placeholder="спроси про этот инцидент: почему это TP? кто ещё затронут?" onkeydown="if(event.key===\'Enter\')incAsk('+id+')"><button class=btn onclick=incAsk('+id+')>Спросить</button></div>'+
+  '<div class="sub mt-2">Вывод модели — на кнопке <b>«LLM-разбор»</b>.</div>'+
+  '<div class="askbox mt-3"><input class=askin id=incAskIn placeholder="спроси про этот инцидент: почему это TP? кто ещё затронут?" onkeydown="if(event.key===\'Enter\')incAsk('+id+')"><button class=btn onclick=incAsk('+id+')>Спросить</button></div>'+
   '<div id=incAskAns class=sub></div></div>';}
 async function incAsk(id){const q=$('incAskIn').value.trim();if(!q)return;$('incAskAns').textContent='думаю…';
  const r=await jpost('/api/incident/'+id+'/ask',{q:q});$('incAskAns').innerHTML='<b>'+esc(r.answer||'')+'</b> <span class=sub>('+esc(r.source||'')+')</span>';}
 
 function showTriage(t){const box=$('triageBox');if(!box)return;
- if(!t){box.innerHTML='<div class=sub style=margin-top:10px>\u0410\u0432\u0442\u043e-\u0440\u0430\u0437\u0431\u043e\u0440 LLM \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0432 \u0444\u043e\u043d\u0435\u2026</div>';return;}
+ if(!t){box.innerHTML='<div class="sub mt-3">\u0410\u0432\u0442\u043e-\u0440\u0430\u0437\u0431\u043e\u0440 LLM \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0432 \u0444\u043e\u043d\u0435\u2026</div>';return;}
  box.innerHTML='<div class=card style="margin-top:10px;background:var(--panel2)"><div class=sub>LLM-\u0440\u0430\u0437\u0431\u043e\u0440 \u00b7 \u0438\u0441\u0442\u043e\u0447\u043d\u0438\u043a: '+esc(t._source||'?')+'</div>'+
-  '<div style=margin-top:6px>'+sevBadge(t.severity||'low')+' <b>'+esc(t.title||'')+'</b> <span class=sub>TP: '+(t.is_true_positive?'\u0434\u0430':'\u043d\u0435\u0442')+' \u00b7 conf '+(t.confidence||'')+'</span></div>'+
-  '<div style=margin-top:8px>'+esc(t.narrative||'')+'</div>'+
-  ((t.recommended_actions||[]).length?'<div style=margin-top:8px><b>\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f:</b><ul>'+(t.recommended_actions||[]).map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul></div>':'')+
-  (t.benign_explanation?'<div class=sub style=margin-top:6px>benign: '+esc(t.benign_explanation)+'</div>':'')+'</div>';}
+  '<div class=mt-2>'+sevBadge(t.severity||'low')+' <b>'+esc(t.title||'')+'</b> <span class=sub>TP: '+(t.is_true_positive?'\u0434\u0430':'\u043d\u0435\u0442')+' \u00b7 conf '+(t.confidence||'')+'</span></div>'+
+  '<div class=mt-2>'+esc(t.narrative||'')+'</div>'+
+  ((t.recommended_actions||[]).length?'<div class=mt-2><b>\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f:</b><ul>'+(t.recommended_actions||[]).map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul></div>':'')+
+  (t.benign_explanation?'<div class="sub mt-2">benign: '+esc(t.benign_explanation)+'</div>':'')+'</div>';}
 async function triage(id){showTriage(null);const r=await jpost('/api/incident/'+id+'/triage',{});showTriage(r.triage||{});}
-async function refreshOpenTriage(){if(_openId==null)return;try{const i=await jget('/api/incident/'+_openId);if(i&&i.triage)showTriage(i.triage);}catch(e){}}
+async function refreshOpenTriage(){if(_openId==null)return;try{const i=await jget('/api/incident/'+_openId);if(i&&i.triage)showTriage(i.triage);}catch(e){uiErr('refreshOpenTriage',e)}}
 setInterval(refreshOpenTriage,3000);
 async function respond(id){const t0=$('incToast');if(t0)t0.textContent='IR заводится в GitLab…';
  if(window.toast)toast('Завожу IR-issue в GitLab…','info');
@@ -1272,29 +1192,70 @@ function covSummary(grid){
  const pct=total?Math.round(cov/total*100):0;
  const box=$('covStrip');if(!box)return;
  box.innerHTML=
-  '<div class=ds-covcard><div class=ds-covcard-n>'+pct+'%</div><div class=ds-covcard-l>покрытие</div></div>'+
-  '<div class=ds-covcard><div class=ds-covcard-n>'+total+'</div><div class=ds-covcard-l>техник в матрице</div></div>'+
-  '<div class=ds-covcard><div class="ds-covcard-n ok">'+cov+'</div><div class=ds-covcard-l>покрыто правилами</div></div>'+
-  '<div class=ds-covcard><div class="ds-covcard-n crit">'+fired+'</div><div class=ds-covcard-l>срабатывало</div></div>'+
-  '<div class=ds-covcard><div class="ds-covcard-n warn">'+(total-cov)+'</div><div class=ds-covcard-l>слепых зон</div></div>';}
+  // Семантика была перевёрнута: «срабатывало» горело красным (само по себе
+  // это не проблема), а «слепые зоны» — единственное, что требует работы, —
+  // стояли нейтральным. Красным помечаем только слепые зоны.
+  '<div class=ds-covcard><div class=ds-covcard-n>'+pct+'%</div><div class=ds-covcard-l>Покрытие</div></div>'+
+  '<div class=ds-covcard><div class=ds-covcard-n>'+total+'</div><div class=ds-covcard-l>Техник в матрице</div></div>'+
+  '<div class=ds-covcard><div class=ds-covcard-n>'+cov+'</div><div class=ds-covcard-l>Покрыто правилами</div></div>'+
+  '<div class=ds-covcard><div class=ds-covcard-n>'+fired+'</div><div class=ds-covcard-l>Срабатывало</div></div>'+
+  '<div class=ds-covcard><div class="ds-covcard-n'+((total-cov)?' crit':'')+'">'+(total-cov)+'</div><div class=ds-covcard-l>Слепых зон</div></div>';}
 
-async function pollAttack(){const d=await jget('/api/coverage');_cov={};
- covSummary(d.grid);
- $('matrix').innerHTML=(d.grid||[]).map(col=>'<div class=mcol><div class=th>'+esc(col.tactic)+'</div>'+
-   col.techniques.map(c=>{_cov[c.technique]={...c,tactic:col.tactic};
-    return '<div class="cell '+(c.fired?'fired':(c.covered?'cov':''))+'" onclick="cellInfo(\''+c.technique+'\')"><div class=tid>'+esc(c.technique)+'</div>'+
-     '<div class=nm>'+esc(c.name)+'</div><div class=ct>'+(c.fired?('&#9650; '+c.fired+' срабат.'):(c.covered?'есть правило':'слепая зона'))+'</div></div>';}).join('')+
-   '</div>').join('');}
+/* Ступень заливки по количеству сработок. Абсолютные пороги здесь не
+   годятся: на коротком прогоне максимум — три сработки, на длинном —
+   полторы сотни, и в обоих случаях нужно различать «редко» и «часто».
+   Поэтому шкала относительная — от максимума по всей матрице. */
+function mxLevel(n,mx){
+ if(!n)return '';
+ if(mx<=1)return 'f3';
+ const r=n/mx;
+ if(r>=0.80)return 'f5';
+ if(r>=0.55)return 'f4';
+ if(r>=0.32)return 'f3';
+ if(r>=0.14)return 'f2';
+ return 'f1';}
+
+async function pollAttack(){let d;
+ try{d=await jget('/api/coverage');}catch(e){uiErr('pollAttack',e);return;}
+ _cov={};
+ const grid=d.grid||[];
+ covSummary(grid);
+ let mxFired=0,nTot=0,nCov=0,nFired=0;
+ grid.forEach(function(col){(col.techniques||[]).forEach(function(c){
+  nTot++; if(c.fired){nFired++;} if(c.covered||c.fired){nCov++;}
+  if((c.fired||0)>mxFired)mxFired=c.fired;});});
+
+ $('matrix').innerHTML=grid.map(function(col){
+  const tt=col.techniques||[];
+  const cov=tt.filter(function(c){return c.covered||c.fired;}).length;
+  return '<div class=mx-col>'+
+   '<div class=mx-th><span class=mx-tac title="'+esc(col.tactic)+'">'+esc(col.tactic)+'</span>'+
+    '<span class=mx-cnt>'+cov+' из '+tt.length+' покрыто</span></div>'+
+   '<div class=mx-cells>'+tt.map(function(c){
+     _cov[c.technique]=Object.assign({},c,{tactic:col.tactic});
+     const lvl=c.fired?mxLevel(c.fired,mxFired):(c.covered?'cov':'blind');
+     const ttl=esc(c.technique)+' · '+esc(c.name)+' — '+
+       (c.fired?(c.fired+' сработок'):(c.covered?'есть правило, сработок нет':'правил нет'));
+     return '<div class="mx-cell '+lvl+'" title="'+ttl+'" onclick="cellInfo(\''+c.technique+'\')">'+
+      '<span class=mx-nm>'+esc(c.name)+'</span>'+
+      '<span class=mx-id>'+esc(c.technique)+
+       (c.fired?'<span class=mx-ct> · '+c.fired+'</span>':'')+'</span></div>';}).join('')+
+   '</div></div>';}).join('')||'<div class="help empty">Матрица пуста — правила не загружены.</div>';
+
+ const mc=$('mxCount');
+ if(mc)mc.textContent=nCov+' из '+nTot+' техник покрыто · '+nFired+' срабатывало';
+ const mm=$('mxMax');
+ if(mm)mm.textContent=mxFired?('1 — '+mxFired):'сработок нет';}
 async function cellInfo(tid){const c=_cov[tid];if(!c)return;
  // связанные инциденты: те, в цепочке которых встречается эта техника
  let rel=[];
  try{const inc=(await jget('/api/incidents')).incidents||[];
-  rel=inc.filter(i=>(i.techniques||[]).indexOf(tid)>=0);}catch(e){}
+  rel=inc.filter(i=>(i.techniques||[]).indexOf(tid)>=0);}catch(e){uiErr('cellInfo',e)}
  const rulesHtml=(c.rules||[]).length
   ? (c.rules||[]).map(r=>'<div class=ds-ev-item><span>'+esc(r.title)+'</span>'+sevBadge(r.severity||'low')+'</div>').join('')
   : '<div class="ds-empty">Правил нет — слепая зона, кандидат на новое правило</div>';
  const relHtml=rel.length
-  ? rel.map(i=>'<div class=ds-ev-item style=cursor:pointer onclick="dsDrawerClose();goView(\'incidents\');setTimeout(function(){openInc('+i.id+');},150)">'+
+  ? rel.map(i=>'<div class="ds-ev-item clickable" onclick="dsDrawerClose();goView(\'incidents\');setTimeout(function(){openInc('+i.id+');},150)">'+
       '<span>#'+i.id+' · @'+esc(i.actor)+'</span>'+sevBadge(i.severity)+'</div>').join('')
   : '<div class=sub>инцидентов с этой техникой пока нет</div>';
  dsDrawer(esc(tid)+' · '+esc(c.name),
@@ -1303,7 +1264,7 @@ async function cellInfo(tid){const c=_cov[tid];if(!c)return;
    kvRow('Статус',c.fired?('<span class="badge b-crit">срабатывала ×'+c.fired+'</span>'):
      (c.covered?'<span class="badge b-med">покрыта правилом</span>':'<span class="badge b-low">слепая зона</span>'))+
    kvRow('Покрывающих правил',((c.rules||[]).length))+
-   kvRow('MITRE','<a href="https://attack.mitre.org/techniques/'+esc(tid.replace(".","/"))+'/" target=_blank>открыть в ATT&CK ↗</a>')+
+   kvRow('MITRE','<a href="https://attack.mitre.org/techniques/'+esc(tid.replace(".","/"))+'/" target=_blank>открыть в ATT&CK&nbsp;<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></a>')+
   '</div>'+
   '<div class=ds-drawer-sec><div class=t-label>Правила детектирования</div>'+
    '<div class=ds-ev-list>'+rulesHtml+'</div></div>'+
@@ -1314,8 +1275,8 @@ function cellInfoOld(tid){const c=_cov[tid];if(!c)return;const p=$('cellPanel');
  const rules=(c.rules||[]).map(r=>'<div class=brow style=grid-template-columns:1fr_auto><span class=blab>'+esc(r.title)+'</span>'+sevBadge(r.severity||'low')+'</div>').join('')||'<div class=sub>правил нет — это слепая зона, кандидат на новое правило</div>';
  p.innerHTML='<div style=display:flex;align-items:center;gap:9px><b style=font-family:ui-monospace>'+esc(tid)+'</b> <span>'+esc(c.name)+'</span>'+
   '<span class="badge '+(c.fired?'b-crit':(c.covered?'b-med':'b-low'))+'">'+(c.fired?('срабатывала ×'+c.fired):(c.covered?'покрыта':'слепая зона'))+'</span>'+
-  '<span class=grow></span><a class=tech href="https://attack.mitre.org/techniques/'+esc(tid.replace(".","/"))+'/" target=_blank style=text-decoration:none>MITRE ↗</a>'+
-  '<span class=x onclick="$(\'cellPanel\').style.display=\'none\'" style=cursor:pointer;font-weight:800;color:#7c3aed;padding:0_6px>✕</span></div>'+
+  '<span class=grow></span><a class="tech nolink" href="https://attack.mitre.org/techniques/'+esc(tid.replace(".","/"))+'/" target=_blank>MITRE&nbsp;<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></a>'+
+  '<span class="x clickable" onclick="$(\'cellPanel\').style.display=\'none\'"><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>'+
   '<div class=sub style=margin:8px_0_4px>тактика: '+esc(c.tactic)+' · покрывающих правил: '+((c.rules||[]).length)+'</div>'+rules;
  p.scrollIntoView({behavior:'smooth',block:'nearest'});}
 let _rules=[],_ruleQ='',_ruleF='';
@@ -1331,13 +1292,18 @@ function renderRules(){
  if(_ruleQ)rows=rows.filter(r=>((r.title||'')+' '+(r.id||'')+' '+(r.technique||'')+' '+
    (r.tactic||'')).toLowerCase().indexOf(_ruleQ)>=0);
  $('ruleCount').textContent='показано '+rows.length+' из '+_rules.length;
- $('rules').innerHTML=rows.map((r,i)=>
-   '<div class=rule style=cursor:pointer onclick="openRule('+_rules.indexOf(r)+')">'+
-   '<span class=tech>'+esc(r.technique||'—')+'</span><b>'+esc(r.title)+'</b>'+
-   '<span class=grow></span>'+sevBadge(r.severity)+
-   '<span class=sub>риск '+r.risk+'</span>'+
-   '<span class="badge '+(r.fired?'b-crit':'b-low')+'">'+(r.fired?('×'+r.fired):'0')+'</span></div>').join('')
-  ||'<div class="ds-empty">Под фильтр ничего не попало</div>';}
+ $('rules').innerHTML=rows.map(function(r){
+   const sev=(r.severity||'').toLowerCase();
+   const cls=sev==='critical'?'sev-crit':(sev==='high'?'sev-high':'sev-low');
+   return '<tr class="'+cls+'" onclick="openRule('+_rules.indexOf(r)+')">'+
+   '<td class=mono>'+esc(r.technique||'—')+'</td>'+
+   '<td class=mono>'+esc(r.id||'')+'</td>'+
+   '<td><b>'+esc(r.title)+'</b></td>'+
+   '<td>'+esc(r.tactic||'')+'</td>'+
+   '<td>'+sevBadge(r.severity)+'</td>'+
+   '<td class="right num">'+r.risk+'</td>'+
+   '<td class="right num">'+(r.fired?r.fired:'<span class=muted-t>0</span>')+'</td></tr>';}).join('')
+  ||'<tr><td colspan=7><div class="help empty">Под фильтр ничего не попало.</div></td></tr>';}
 function openRule(i){
  const r=_rules[i];if(!r)return;
  dsDrawer('Правило · '+esc(r.title),
@@ -1354,7 +1320,7 @@ function openRule(i){
           :'Правило активно, но пока ни разу не срабатывало. Это нормально для редких техник — проверить можно кампанией в Red Launcher.')+
    '</div></div>'+
   '<div class=ds-drawer-sec><div class=t-label>Действия</div>'+
-   '<div class=ds-act-grid style=margin-top:8px>'+
+   '<div class="ds-act-grid mt-2">'+
    '<button class=btn onclick="dsDrawerClose();goView(\'alerts\');setTimeout(function(){$(\'alSearch\').value='+JSON.stringify(r.technique||r.title)+';alSearchGo();},200)">Показать детекты правила</button>'+
    '<button class="btn ghost" onclick="dsDrawerClose();goView(\'attack\')">Открыть матрицу ATT&CK</button>'+
    '</div></div>');}
@@ -1362,7 +1328,7 @@ function openRule(i){
 async function pollDetections(){const d=await jget('/api/detections');_rules=d.rules||[];renderRules();}
 function scrub(k){const w=$('kcwrap');if(!w)return;w.classList.add('replaying');const n=w.querySelectorAll('.kcs').length;for(let i=0;i<n;i++){const e=$('kcs-'+i);if(!e)continue;e.classList.toggle('on',i<=k);e.classList.toggle('cur',i===k);}const r=$('rng');if(r)r.value=k;}
 let _playT=null;
-function playInc(max){const btn=$('playBtn');if(_playT){clearInterval(_playT);_playT=null;if(btn)btn.textContent='▶ Реплей атаки';return;}if(btn)btn.textContent='⏸ Пауза';let k=0;scrub(0);_playT=setInterval(()=>{k++;if(k>=max){clearInterval(_playT);_playT=null;if(btn)btn.textContent='▶ Реплей атаки';scrub(Math.max(0,max-1));return;}scrub(k);},750);}
+function playInc(max){const btn=$('playBtn');if(_playT){clearInterval(_playT);_playT=null;if(btn)btn.innerHTML='<svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Реплей атаки';return;}if(btn)btn.innerHTML='<svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg> Пауза';let k=0;scrub(0);_playT=setInterval(()=>{k++;if(k>=max){clearInterval(_playT);_playT=null;if(btn)btn.innerHTML='<svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Реплей атаки';scrub(Math.max(0,max-1));return;}scrub(k);},750);}
 const ASK_PROMPTS=['что делала maria ночью','покажи секреты в soc-infra','кто трогал .gitlab-ci.yml',
  'какие удаления файлов были','кто создавал токены','активность вне рабочих часов'];
 function renderPrompts(){const b=$('askPrompts');if(!b||b.dataset.done)return;b.dataset.done='1';
@@ -1373,16 +1339,17 @@ async function askQuery(){const q=$('askIn').value.trim();if(!q)return;$('askAns
  $('askEv').innerHTML=(r.events||[]).map(e=>'<div class="al lo"><span class=ts>'+esc((e.ts_sim||'').replace('T',' ').slice(5,16))+'</span><span class=who>@'+esc(e.actor)+'</span><span>'+esc(e.action)+'→'+esc(e.project)+'</span>'+(e.path?'<span class=sub>'+esc(e.path)+'</span>':'')+(e.is_night?'<span class=tech title="событие вне рабочих часов команды">вне работы</span>':'')+'</div>').join('')||'<div class=sub>ничего не найдено</div>';}
 let _wfSel=0,_wfIds=[];
 async function pollWorkflow(){let d;try{d=await jget('/api/workflow');}catch(e){return;}
- const CN={new:'новый',investigating:'в работе',contained:'сдержан',closed:'закрыт'};
+ const CN={new:'новый',investigating:'в работе',contained:'локализован',closed:'закрыт'};
+ const wc=d.counts||{}, wi=d.items||[];
  $('wfCounts').innerHTML=['new','investigating','contained','closed'].map(k=>
-  '<div class=wfcount><div class=n>'+(d.counts[k]||0)+'</div><div class=l>'+CN[k]+'</div></div>').join('')+
-  '<div class=wfcount><div class=n>'+d.items.length+'</div><div class=l>всего</div></div>';
- _wfIds=d.items.map(x=>x.id);if(_wfSel>=_wfIds.length)_wfSel=Math.max(0,_wfIds.length-1);
+  '<div class=wfcount><div class=n>'+(wc[k]||0)+'</div><div class=l>'+CN[k]+'</div></div>').join('')+
+  '<div class=wfcount><div class=n>'+wi.length+'</div><div class=l>всего</div></div>';
+ _wfIds=(d.items||[]).map(x=>x.id);if(_wfSel>=_wfIds.length)_wfSel=Math.max(0,_wfIds.length-1);
  const fmtAgeM=s=>s<3600?Math.floor(s/60)+'м':Math.floor(s/3600)+'ч';
  $('wfQueue').innerHTML=d.items.map((x,idx)=>{
   return '<div class="wfi'+(idx===_wfSel?' sel':'')+'" data-id='+x.id+' onclick="wfPick('+idx+')" ondblclick="openInc('+x.id+');goView(\'incidents\')">'+
    sevBadge(x.severity)+'<div><div class=who>@'+esc(x.actor)+(x.is_campaign?' <span class="badge b-camp">campaign</span>':'')+'</div>'+
-   '<div class=meta>риск '+x.max_risk+' · '+plural(x.alerts,'детект','детекта','детектов')+' · '+plural((x.tactics||[]).length,'тактика','тактики','тактик')+(x.owner?' · 👤'+esc(x.owner):'')+'</div></div>'+
+   '<div class=meta>риск '+x.max_risk+' · '+plural(x.alerts,'детект','детекта','детектов')+' · '+plural((x.tactics||[]).length,'тактика','тактики','тактик')+(x.owner?' · <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx=12 cy=7 r=4/></svg>'+esc(x.owner):'')+'</div></div>'+
    '<span class=grow></span>'+
    (x.verdict?'<span class="vpill '+x.verdict+'">'+x.verdict.toUpperCase()+'</span>':'')+
    '<span class="stpill '+x.status+'">'+esc(CN[x.status]||x.status)+'</span>'+
@@ -1390,9 +1357,9 @@ async function pollWorkflow(){let d;try{d=await jget('/api/workflow');}catch(e){
  const mxf=Math.max(1,...d.noisy_rules.map(r=>r.fired));
  $('wfNoisy').innerHTML=d.noisy_rules.map(r=>'<div class=brow><span class=blab title="'+esc(r.rule_id)+'">'+esc(r.rule_id)+
   (r.muted?' <span class="vpill fp" title="правило заглушено вашими FP — новые сработки отбрасываются">заглушено</span>':'')+'</span>'+
-  '<div class=btrack><i style="width:'+(r.fired/mxf*100)+'%;background:'+(r.muted?'#94a3b8':(r.fp>0?'#dc2626':'#5457d6'))+'"></i></div>'+
+  '<div class="btrack rk-bar'+(r.fp>0?' critical':'')+'"><i style="width:'+(mxf?(r.fired/mxf*100):0)+'%"></i></div>'+
   '<b>'+r.fired+'</b><span class=bpct>'+(r.fp>0?'FP '+r.fp:'')+'</span></div>').join('')||'<div class=sub>—</div>';
- const mh=$('wfMuted');if(mh)mh.innerHTML=d.muted_hits?('Отклонено FP-тюнингом: <b>'+d.muted_hits+'</b> сработок. Правило глушится после <b>'+d.fp_threshold+'</b> подтверждённых FP.'):('Пометьте инцидент как FP (клавиша <b>F</b>) — после <b>'+(d.fp_threshold||3)+'</b> подтверждений правило перестаёт поднимать инциденты.');}
+ const mh=$('wfMuted');if(mh)mh.textContent=d.muted_hits?('Отклонено тюнингом: '+d.muted_hits+' сработок'):'';}
 function wfPick(idx){_wfSel=idx;document.querySelectorAll('.wfi').forEach((e,i)=>e.classList.toggle('sel',i===idx));}
 async function wfSet(status,verdict){const id=_wfIds[_wfSel];if(id==null)return;
  await jpost('/api/incident/'+id+'/status',{status:status,verdict:verdict});pollWorkflow();}
@@ -1406,29 +1373,128 @@ document.addEventListener('keydown',e=>{if(view!=='workflow')return;if(/input|te
  else if(e.key==='Enter'){const id=_wfIds[_wfSel];if(id!=null){openInc(id);goView('incidents');}}});
 async function snapNow(){$('trendNote').textContent='считаю снапшот…';await jpost('/api/metrics/snapshot',{});setTimeout(()=>{ _trDone=false;pollTrends();},1500);}
 let _trDone=false;
-async function pollTrends(){let d;try{d=await jget('/api/trends');}catch(e){return;}
+/* ============================================================
+   ГРАФИК ВРЕМЕННОГО РЯДА.
+   Возвращает разметку блока: шапка со значением и изменением, шкала
+   слева, направляющие, линия, границы периода снизу. Точки и курсор
+   рисуются не в SVG, а обычными элементами поверх: SVG растянут
+   preserveAspectRatio=none, и любой круг в нём превратился бы в эллипс.
+   Значения кладём в data-атрибут — их читает обработчик наведения.
+   ============================================================ */
+function chartBlock(o){
+ const vals=o.values, n=vals.length;
+ const hi=Math.max.apply(null,vals), lo=Math.min.apply(null,vals);
+ // Верх шкалы: у долей всегда 100%, иначе с запасом над максимумом —
+ // кривая, упирающаяся в потолок, выглядит обрезанной.
+ const top=o.pct?1:(hi>0?hi*1.15:1), bot=0;
+ const W=100,H=40,X=i=>n<=1?W/2:(i/(n-1))*W,Y=v=>H-((v-bot)/((top-bot)||1))*H;
+ let line='',area='';
+ vals.forEach(function(v,i){line+=(i?'L':'M')+X(i).toFixed(2)+' '+Y(v).toFixed(2)+' ';});
+ if(n>1)area='M0 '+H+' L'+vals.map((v,i)=>X(i).toFixed(2)+' '+Y(v).toFixed(2)).join(' L')+' L'+W+' '+H+' Z';
+ const grid=[0,.5,1].map(g=>'<line class=chart-grid x1=0 x2='+W+' y1='+(g*H).toFixed(1)+' y2='+(g*H).toFixed(1)+'/>').join('');
+ const last=vals[n-1], first=vals[0], diff=last-first;
+ const dcls=Math.abs(diff)<1e-9?'flat':((o.lowerBetter?diff<0:diff>0)?'up':'down');
+ const dtxt=(diff>0?'+':'')+(o.pct?(Math.round(diff*1000)/10+' п.п.'):(Math.round(diff*10)/10));
+ const payload={v:vals,l:o.labels,p:o.pct?1:0,u:o.unit||''};
+ return '<div class="chart '+o.cls+'">'+
+  '<div class=chart-h><span class=chart-t>'+esc(o.title)+'</span>'+
+   '<span class=chart-u>'+esc(o.unit||'')+'</span>'+
+   '<span class=chart-v>'+esc(o.fmt(last))+'</span>'+
+   '<span class="chart-d '+dcls+'" title="изменение за период">'+esc(dtxt)+'</span></div>'+
+  '<div class=chart-body>'+
+   '<div class=chart-y><span>'+esc(o.fmt(top))+'</span><span>'+esc(o.fmt(top/2))+'</span><span>'+esc(o.fmt(0))+'</span></div>'+
+   '<div class=chart-plot data-chart=\''+esc(JSON.stringify(payload))+'\'>'+
+    '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio=none>'+grid+
+     (area?'<path class=chart-area d="'+area+'"/>':'')+
+     '<path class=chart-line d="'+line+'"/></svg>'+
+    '<i class=chart-cursor></i><i class=chart-dot></i>'+
+    '<div class=chart-tip></div></div></div>'+
+  '<div class=chart-x><span>'+esc(o.labels[0]||'')+'</span>'+
+   (n>2?'<span>'+esc(o.labels[Math.floor(n/2)]||'')+'</span>':'')+
+   '<span>'+esc(o.labels[n-1]||'')+'</span></div>'+
+  (o.foot?'<div class=chart-foot>'+esc(o.foot)+'</div>':'')+
+ '</div>';}
+
+/* Наведение на любой график: делегированный обработчик, привязывается
+   один раз. Ближайшая точка ищется по доле от ширины — ряд равномерный. */
+function chartHoverInit(){
+ if(document._chartHover)return; document._chartHover=1;
+ document.addEventListener('mousemove',function(ev){
+  const plot=ev.target.closest&&ev.target.closest('.chart-plot');
+  if(!plot)return;
+  let d;try{d=JSON.parse(plot.dataset.chart||'null');}catch(x){return;}
+  if(!d||!d.v||!d.v.length)return;
+  const r=plot.getBoundingClientRect(), n=d.v.length;
+  const rel=Math.min(1,Math.max(0,(ev.clientX-r.left)/(r.width||1)));
+  const i=n<=1?0:Math.round(rel*(n-1));
+  const v=d.v[i];
+  const hi=Math.max.apply(null,d.v);
+  const top=d.p?1:(hi>0?hi*1.15:1);
+  const px=n<=1?r.width/2:(i/(n-1))*r.width;
+  const py=r.height-(v/(top||1))*r.height;
+  const cur=plot.querySelector('.chart-cursor'),dot=plot.querySelector('.chart-dot'),tip=plot.querySelector('.chart-tip');
+  cur.style.display='block';cur.style.left=px+'px';
+  dot.style.display='block';dot.style.left=px+'px';dot.style.top=py+'px';
+  tip.style.display='block';
+  tip.innerHTML='<b class=tv>'+(d.p?(Math.round(v*1000)/10+'%'):(Math.round(v*100)/100))+
+    (d.p?'':(d.u?' '+esc(d.u):''))+'</b><span class=tt>'+esc((d.l&&d.l[i])||'')+'</span>';
+  // у краёв подсказка не должна вылезать за график
+  const tw=tip.offsetWidth||120;
+  tip.style.left=Math.min(r.width-tw/2-2,Math.max(tw/2+2,px))+'px';
+  tip.style.top=Math.max(30,py-10)+'px';
+ },true);
+ document.addEventListener('mouseout',function(ev){
+  const plot=ev.target.closest&&ev.target.closest('.chart-plot');
+  if(!plot||plot.contains(ev.relatedTarget))return;
+  ['.chart-cursor','.chart-dot','.chart-tip'].forEach(function(sel){
+   const el=plot.querySelector(sel);if(el)el.style.display='none';});
+ },true);}
+
+const TREND_DEFS=[
+ {k:'detection_rate',t:'Доля обнаруженных атак',u:'% эпизодов',pct:1,cls:'c-accent',
+  foot:'Сколько запущенных атак дошло до очереди аналитика'},
+ {k:'coverage',t:'Покрытие ATT&CK',u:'% техник',pct:1,cls:'c-success',
+  foot:'Доля техник матрицы, на которые есть хотя бы одно правило'},
+ {k:'fp_rate',t:'Доля ложных инцидентов',u:'% инцидентов',pct:1,cls:'c-critical',
+  lowerBetter:1,foot:'Инциденты, помеченные аналитиком как FP — чем ниже, тем лучше'},
+ {k:'mttd',t:'Время до обнаружения',u:'минут',pct:0,cls:'c-medium',
+  lowerBetter:1,foot:'От первого шага атаки до первого детекта, медиана'}];
+
+async function pollTrends(){let d;try{d=await jget('/api/trends');}catch(e){uiErr('pollTrends',e);return;}
  const H=d.history||[];
- if(!H.length){$('trendGrid').innerHTML='<div class="help empty">Снапшотов пока нет. Нажмите «снять снапшот сейчас» в подсказке над карточками — метрики посчитаются по текущему прогону.</div>';return;}
- const defs=[['detection_rate','Доля обнаруженных атак',cssv('--accent-brand','#6366F1'),1],['coverage','Покрытие ATT&CK',cssv('--info','#3B82F6'),1],['fp_rate','Доля ложных инцидентов',cssv('--critical','#DC2626'),1],['mttd','Время до обнаружения, мин',cssv('--success','#10B981'),0]];
- $('trendGrid').innerHTML=defs.map(df=>{
-  const vals=H.map(h=>h[df[0]]).filter(v=>v!=null);if(!vals.length)return '';
-  const isPct=df[3], W=100,Ht=34,p=3,n=vals.length;
-  const mx=isPct?1:Math.max(...vals,0.01),mn=0;
-  const X=i=>n<=1?W/2:p+(i/(n-1))*(W-2*p),Y=v=>Ht-p-((v-mn)/((mx-mn)||1))*(Ht-2*p);
-  let line='';vals.forEach((v,i)=>{line+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ';});
-  const last=vals[vals.length-1],cur=isPct?Math.round(last*100)+'%':(Math.round(last*10)/10);
-  const first=vals[0],delta=isPct?Math.round((last-first)*100)+' п.п.':(Math.round((last-first)*10)/10);
-  return '<div class=tchart><h3>'+df[1]+'</h3><div class=cur style=color:'+df[2]+'>'+cur+'</div>'+
-   '<svg viewBox="0 0 100 38" preserveAspectRatio=none style="width:100%;height:80px;display:block"><path d="'+line+'" fill=none stroke='+df[2]+' stroke-width=1.4 stroke-linejoin=round vector-effect=non-scaling-stroke />'+
-   vals.map((v,i)=>'<circle cx='+X(i).toFixed(1)+' cy='+Y(v).toFixed(1)+' r=1 fill='+df[2]+'/>').join('')+'</svg>'+
-   '<div class=sub>'+n+' точек · Δ '+delta+'</div></div>';}).join('');
- $('trendNote').textContent=H.length+' снапшотов · '+(d.annotations||[]).length+' меток событий · последний '+((H[H.length-1].ts||'').replace('T',' '));}
+ if(!H.length){$('trendGrid').innerHTML='<div class="help empty">Снапшотов пока нет — метрики появятся после первого прогона.</div>';return;}
+ chartHoverInit();
+ const labels=H.map(h=>(h.ts||'').replace('T',' ').slice(5,16));
+ $('trendGrid').innerHTML=TREND_DEFS.map(function(df){
+  const idx=[],vals=[];
+  H.forEach(function(h,i){if(h[df.k]!=null){vals.push(h[df.k]);idx.push(labels[i]);}});
+  if(!vals.length)return '';
+  const fmt=df.pct?function(v){return Math.round(v*1000)/10+'%';}
+                  :function(v){return String(Math.round(v*10)/10);};
+  return chartBlock({title:df.t,unit:df.u,pct:df.pct,lowerBetter:df.lowerBetter,
+   cls:df.cls,values:vals,labels:idx,fmt:fmt,
+   foot:df.foot+' · '+plural(vals.length,'точка','точки','точек')});}).join('');
+ const sn=d.snapshot||{};
+ $('trendNote').textContent=plural(H.length,'точка','точки','точек')+' · последняя '+
+  ((H[H.length-1].ts||'').replace('T',' ').slice(0,16));
+ const st=$('trendStatus'),dot=$('trendDot');
+ if(st){
+  if(sn.error){st.textContent='пересчёт не удался: '+sn.error;}
+  else if(sn.running){st.textContent='идёт пересчёт метрик…';}
+  else if(sn.next_in_s!=null){st.textContent='следующий пересчёт через '+fmtAge(sn.next_in_s);}
+  else{st.textContent='пересчёт каждые '+Math.round((sn.period_s||300)/60)+' мин';}}
+ if(dot)dot.className='dot '+(sn.error?'bad':(sn.running?'warn':'ok'));}
+
+async function trendNow(){
+ if(window.toast)toast('Пересчитываю метрики…','info',2500);
+ try{await jpost('/api/metrics/snapshot',{});}catch(e){uiErr('trendNow',e);return;}
+ setTimeout(pollTrends,1200); setTimeout(pollTrends,6000);}
 function hoursHist(hh){if(!hh||!hh.length)return '';
  const m={};hh.forEach(x=>{m[x[0]]=x[1];});
  const mx=Math.max(...hh.map(x=>x[1]),1);
  let h='<div class=sub style="margin-top:8px">суточный профиль активности (0–23ч):</div><div style="display:flex;gap:2px;align-items:flex-end;height:38px;margin-top:4px">';
  for(let i=0;i<24;i++){const v=m[i]||0;const night=(i>=22||i<7);
-  h+='<div title="'+i+':00 — '+v+' соб." style="flex:1;border-radius:2px 2px 0 0;min-height:2px;height:'+Math.max(4,v/mx*100)+'%;background:'+(v?(night?'#ffa94d':'#7048e8'):'#20263a')+'"></div>';}
+  h+='<div title="'+i+':00 — '+v+' соб." style="flex:1;border-radius:2px 2px 0 0;min-height:2px;height:'+Math.max(4,v/mx*100)+'%;background:'+(v?(night?'var(--sev-high)':'var(--text-3)'):'var(--surface-4)')+'"></div>';}
  h+='</div><div class=sub style="display:flex;justify-content:space-between;font-size:9.5px"><span>0</span><span>6</span><span>12</span><span>18</span><span>23</span></div>';
  return h;}
 async function pollEntities(){const d=await jget('/api/entities');
@@ -1438,18 +1504,18 @@ async function openEnt(a){const e=await jget('/api/entity/'+encodeURIComponent(a
  const why=Object.keys(e.tactics_hit||{}).map(t=>'<span class=chip>'+esc(t)+' ×'+e.tactics_hit[t]+'</span>').join(' ')||'<span class=sub>—</span>';
  $('entTtl').textContent='@'+a;
  $('entDetail').innerHTML='<div>'+sevBadge(e.risk_label)+' <span class=sub>пиковый риск '+e.max_risk+' · '+e.alerts_total+' алертов</span></div>'+
-  (b?('<div style=margin-top:10px><b>Базлайн (UEBA):</b> '+b.events_seen+' событий</div>'+
+  (b?('<div class=mt-3><b>Базлайн (UEBA):</b> '+b.events_seen+' событий</div>'+
    hoursHist(b.hours_hist)+
-   '<div class=sub style=margin-top:4px>типичные часы: '+(b.top_hours||[]).join(', ')+'</div>'+
+   '<div class="sub mt-1">типичные часы: '+(b.top_hours||[]).join(', ')+'</div>'+
    '<div class=sub>репозитории: '+esc((b.top_repos||[]).join(', '))+'</div>'+
-   '<div class=sub>действия: '+esc((b.top_actions||[]).join(', '))+'</div>'):'<div class=sub style=margin-top:10px>базлайн ещё не накоплен</div>')+
-  '<div style=margin-top:10px><b>Почему подозрителен:</b><div class=chain style=margin-top:6px>'+why+'</div></div>'+
-  '<div style=margin-top:10px><b>Недавние алерты:</b></div><div class=feed style=max-height:34vh;margin-top:6px>'+
+   '<div class=sub>действия: '+esc((b.top_actions||[]).join(', '))+'</div>'):'<div class="sub mt-3">базлайн ещё не накоплен</div>')+
+  '<div class=mt-3><b>Почему подозрителен:</b><div class="chain mt-2">'+why+'</div></div>'+
+  '<div class=mt-3><b>Недавние алерты:</b></div><div class=feed style=max-height:34vh;margin-top:6px>'+
   (e.recent_alerts||[]).map(x=>'<div class="al '+rkcls(x.risk)+'"><span class=ts>'+esc((x.ts_sim||'').replace('T',' ').slice(5,16))+'</span><span>'+esc(x.action)+'→'+esc(x.project)+'</span>'+(x.technique?'<span class=tech>'+esc(x.technique)+'</span>':'')+'<span class="rk '+rkcls(x.risk)+'">'+x.risk+'</span></div>').join('')+'</div>';}
 async function pollRed(){const d=await jget('/api/red');
  $('camps').innerHTML=(d.campaigns||[]).map(c=>'<div class=inc><div class=h><span class=a>'+esc(c.title)+'</span>'+
-   '<span class=grow></span><button class=btn onclick="launch(\''+c.key+'\')">▶ Запустить</button></div>'+
-   '<div class=chain style=margin-top:8px>'+c.steps.map((s,n)=>'<span class=chip><b>'+(n+1)+'.</b> <span class=t>'+esc(s.tactic)+'</span> '+esc(s.technique)+'</span>').join(' → ')+'</div></div>').join('');
+   '<span class=grow></span><button class=btn onclick="launch(\''+c.key+'\')"><svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Запустить</button></div>'+
+   '<div class="chain mt-2">'+c.steps.map((s,n)=>'<span class=chip><b>'+(n+1)+'.</b> <span class=t>'+esc(s.tactic)+'</span> '+esc(s.technique)+'</span>').join(' → ')+'</div></div>').join('');
  /* Очередь читается человеком: служебные слова переводим, снейк-кейс
     сценария разворачиваем в название, «3/4 steps» — в «шаг 3 из 4». */
  const CMD_T={campaign:'кампания',response:'реагирование',reset:'сброс'};
@@ -1462,7 +1528,7 @@ async function pollRed(){const d=await jget('/api/red');
              supply_chain:'атака на цепочку поставок'};
  const human=r=>{
    if(!r)return '';
-   if(/^https?:\/\//.test(r))return '<a href="'+esc(r)+'" target=_blank>открыть issue ↗</a>';
+   if(/^https?:\/\//.test(r))return '<a href="'+esc(r)+'" target=_blank>открыть issue&nbsp;<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></a>';
    let m=r.match(/^([a-z_]+):\s*(\d+)\/(\d+)\s*steps?$/i);
    if(m)return esc(SCEN[m[1]]||m[1].replace(/_/g,' '))+' · шаг '+m[2]+' из '+m[3];
    m=r.match(/^([a-z_]+)$/i);
@@ -1485,11 +1551,11 @@ function renderRedResult(title,ev,tp,nsteps,d){
  const st=_CMDST_RU[d.cmd_status]||(d.cmd_status||'в очереди');
  const first=incs.length?_hhmm(Math.min.apply(null,incs.map(i=>i.seen_real||1e18))):'';
  let h='<div class=card style="border-left:3px solid var(--accent-brand);margin-bottom:14px">'+
-   '<h2 style=margin-bottom:6px>Результат кампании: <span>'+esc(title)+'</span></h2>'+
+   '<h2 class=mb-2>Результат кампании: <span>'+esc(title)+'</span></h2>'+
    '<div class=sub>статус: <b>'+esc(st)+'</b> · профиль <b>'+esc(ev)+'</b> · темп <b>'+(_TEMPO_RU[tp]||tp)+'</b> · шагов <b>'+nsteps+'</b></div>'+
-   '<div class=sub style=margin-top:4px>детектов: <b>'+dets+'</b> · инцидентов: <b>'+incs.length+'</b>'+(first?(' · первый в <b>'+first+'</b>'):'')+'</div>';
- if(!incs.length){h+='<div class="help empty" style=margin-top:10px>ждём детекты… (атака разворачивается)</div>';}
- else{h+='<div style=margin-top:10px>'+incs.map(i=>{
+   '<div class="sub mt-1">детектов: <b>'+dets+'</b> · инцидентов: <b>'+incs.length+'</b>'+(first?(' · первый в <b>'+first+'</b>'):'')+'</div>';
+ if(!incs.length){h+='<div class="help empty mt-3">ждём детекты… (атака разворачивается)</div>';}
+ else{h+='<div class=mt-3>'+incs.map(i=>{
    const tm=_hhmm(i.seen_real), tech=(i.techniques||[]).slice(0,5).join(', ');
    return '<div class=row style=align-items:center;gap:8px>'+
      '<span class=mono>#'+i.id+'</span> <span>'+esc(i.actor||'')+'</span>'+
@@ -1497,7 +1563,7 @@ function renderRedResult(title,ev,tp,nsteps,d){
      (i.is_campaign?'<span class="badge campaign">многошаговая</span>':'')+
      '<span class=grow></span>'+
      '<span class=sub>'+esc(tech)+' · '+i.n_alerts+' детект.'+(tm?(' · '+tm):'')+'</span> '+
-     '<a onclick="gotoInc('+i.id+')" style=cursor:pointer;color:var(--accent-brand);font-weight:700>→ открыть</a></div>';}).join('')+'</div>';}
+     '<a onclick="gotoInc('+i.id+')" class="link clickable">Открыть</a></div>';}).join('')+'</div>';}
  h+='</div>';
  $('redResult').innerHTML=h;
 }
@@ -1513,7 +1579,7 @@ async function launch(key){
  const t0=Date.now();
  renderRedResult(title,ev,tp,nsteps,{cmd_status:'queued',incidents:[],detections:0});
  async function tick(){
-   let d={}; try{d=await jget('/api/red/result?cmd='+encodeURIComponent(cid)+'&ts='+started);}catch(e){}
+   let d={}; try{d=await jget('/api/red/result?cmd='+encodeURIComponent(cid)+'&ts='+started);}catch(e){uiErr('tick',e)}
    renderRedResult(title,ev,tp,nsteps,d); pollRed();
    const done=(d.cmd_status==='done'||d.cmd_status==='failed'||d.cmd_status==='error');
    if((done && (d.incidents||[]).length && Date.now()-t0>6000) || Date.now()-t0>150000){
@@ -1529,12 +1595,12 @@ async function launch(key){
 async function pollInfra(){
  const box=$('diagInfra');if(!box)return;
  let h={},s={};
- try{h=await jget('/api/health');}catch(e){}
- try{s=await jget('/api/stats');}catch(e){}
+ try{h=await jget('/api/health');}catch(e){uiErr('pollInfra',e)}
+ try{s=await jget('/api/stats');}catch(e){uiErr('pollInfra',e)}
  const ev=h.events||{};
  const rows=[
   ['GitLab',        h.gitlab!==false?'ok':'bad', h.gitlab!==false?'на связи':'нет связи'],
-  ['Симуляция',     h.world_alive?'ok':(ev.total>0?'warn':'bad'), h.world_alive?'пишет':'молчит'],
+  ['Симуляция',     h.world_alive?'ok':(ev.total>0?'warn':'bad'), h.world_alive?'пишет':'нет данных'],
   ['Event store',   ev.total>0?'ok':'bad', fmtNum(ev.total||0)+' соб.'],
   ['Детектор',      (s.rules||0)>0?'ok':'warn', nRule(s.rules||0)],
   ['Приём событий', (s.processed||0)>0?'ok':'warn', fmtNum(s.processed||0)+' обраб.'],
@@ -1545,18 +1611,38 @@ async function pollInfra(){
 
 async function pollDiag(){let d;try{d=await jget('/api/diag');}catch(e){return;}
  const c=d.counts||{};
- $('diagCounts').innerHTML=[['ERROR','crit'],['WARNING',''],['INFO','acc'],['DEBUG','']].map(x=>
-  '<div class="kpi '+x[1]+'"><div class=n>'+(c[x[0]]||0)+'</div><div class=l>'+x[0]+'</div></div>').join('')+
-  '<div class=kpi ok><div class=n>'+((d.errors||[]).length?'⚠':'✓')+'</div><div class=l>'+((d.errors||[]).length?'есть ошибки':'ошибок нет')+'</div></div>';
+ // Красным подсвечивается только ненулевое число ошибок. Раньше «0 ERROR»
+ // печаталось красным, а количество строк DEBUG — самым крупным кеглем.
+ // Пятая карточка со значением «галочка» дублировала первую и удалена.
+ $('diagCounts').innerHTML=[['ERROR','Ошибки'],['WARNING','Предупреждения'],['INFO','Информация'],['DEBUG','Отладка']]
+  .map(function(x){var v=c[x[0]]||0;
+   return '<div class="kpi'+(x[0]==='ERROR'&&v?' crit':'')+'"><div class=n>'+v+'</div><div class=l>'+x[1]+'</div></div>';})
+  .join('');
  await pollInfra();
  const tail=(d.errors_log_tail||[]).join('');
- $('diagErrors').textContent=tail||'файл пуст — ошибок не зафиксировано';
+ // Абсолютные пути до домашней папки разработчика на экране продукта
+ // не нужны: оставляем имя файла и номер строки.
+ const shortTail=tail.replace(/File "[^"]*[\\\/]([^"\\\/]+)"/g,'File "$1"');
+ const nErr=(d.errors||[]).length;
+ $('diagErrors').textContent=shortTail||'Файл пуст.';
+ const w=$('diagErrWrap'), sum=$('diagErrSummary');
+ if(w&&sum){ w.hidden=!shortTail; sum.hidden=!!shortTail;
+  sum.textContent=nErr?('Ошибок за сессию: '+nErr):'Ошибок не зафиксировано.'; }
  const lvl=$('diagLvl').value;
  const rows=(d.recent||[]).filter(r=>!lvl||r.level===lvl).slice(-120).reverse();
- $('diagRecent').innerHTML=rows.map(r=>'<div class="al '+(r.level==='ERROR'?'hi':(r.level==='DEBUG'?'lo':''))+'">'+
-  '<span class=ts>'+esc(r.ts)+'</span><span class=tech>'+esc(r.level)+'</span><span class=who>'+esc(r.module)+'</span>'+
-  '<span>'+esc(r.event)+'</span>'+(r.ctx?'<span class=sub style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px">'+esc(JSON.stringify(r.ctx))+'</span>':'')+'</div>').join('')
-  ||'<div class=sub>записей нет</div>';}
+ const dc=$('diagCount');
+ if(dc)dc.textContent=rows.length?(rows.length+' из '+((d.recent||[]).length)):'';
+ // Уровень записи — цветной маркер слева, а не такое же серое слово
+ // в общем ряду. В логе на сотню строк ошибку надо находить взглядом.
+ const LV={ERROR:'lg-err',WARNING:'lg-warn',INFO:'lg-info',DEBUG:'lg-dbg'};
+ $('diagRecent').innerHTML=rows.map(function(r){
+  return '<div class="logrow '+(LV[r.level]||'lg-dbg')+'">'+
+   '<span class=lg-t>'+esc(r.ts)+'</span>'+
+   '<span class=lg-l>'+esc(r.level)+'</span>'+
+   '<span class=lg-m>'+esc(r.module)+'</span>'+
+   '<span class=lg-e>'+esc(r.event)+'</span>'+
+   (r.ctx?'<span class=lg-c>'+esc(JSON.stringify(r.ctx))+'</span>':'')+'</div>';}).join('')
+  ||'<div class="help empty">записей нет</div>';}
 /* ============================================================
    ДЕЛА (Case Management). Несколько инцидентов — одно
    расследование: ответственный, статус, приоритет, история
@@ -1571,7 +1657,7 @@ let _cases=null,_caseSel=null,_caseInc=[],_caseF='';
 function caseLoad(){if(_cases)return _cases;
  try{_cases=JSON.parse(localStorage.getItem(CASE_KEY)||'[]');}catch(e){_cases=[];}
  if(!Array.isArray(_cases))_cases=[];return _cases;}
-function caseFlush(){try{localStorage.setItem(CASE_KEY,JSON.stringify(_cases||[]));}catch(e){}}
+function caseFlush(){try{localStorage.setItem(CASE_KEY,JSON.stringify(_cases||[]));}catch(e){uiErr('caseFlush',e)}}
 function caseNow(){const d=new Date(),p=n=>String(n).padStart(2,'0');
  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}
 function caseById(id){return caseLoad().filter(c=>c.id===id)[0]||null;}
@@ -1647,13 +1733,13 @@ function caseOpen(id){
    '<div><label class=t-label>Ответственный</label>'+
     '<input class=tin id=cfOwner value="'+at(c.owner||'')+'" placeholder="аналитик"></div>'+
   '</div>'+
-  '<div class=case-row style=margin-top:10px>'+
+  '<div class="case-row mt-3">'+
    '<div><label class=t-label>Статус</label><select class=tin id=cfStatus>'+opt(CASE_ST,c.status)+'</select></div>'+
    '<div><label class=t-label>Приоритет</label><select class=tin id=cfPrio>'+opt(CASE_PR,c.prio)+'</select></div>'+
   '</div>'+
   '<div style="display:flex;gap:8px;align-items:center;margin-top:12px">'+
    '<button class=btn onclick="caseSaveForm(\''+c.id+'\')">Сохранить</button>'+
-   '<button class="btn ghost" onclick="caseReport(\''+c.id+'\')">Сводка по делу</button>'+
+   '<button class="btn ghost" onclick="caseReport(\''+c.id+'\')">Отчёт по делу</button>'+
    '<span class=grow></span>'+
    '<button class="btn ghost danger" onclick="caseDel(\''+c.id+'\')">Удалить</button></div>'+
   '<div class=ds-drawer-sec><div class=t-label>Сводка</div><div class=ds-kv>'+
@@ -1666,12 +1752,12 @@ function caseOpen(id){
    kvRow('Тактики',a.tactics.length?esc(a.tactics.join(' → ')):'—')+
    kvRow('Заведено',esc(c.created||'—'))+'</div></div>'+
   '<div class=ds-drawer-sec><div class=t-label>Инциденты</div>'+caseIncList(c,m)+
-   '<div style=margin-top:10px><button class="btn ghost" onclick="caseAddOpen(\''+c.id+'\')">+ Приобщить инцидент</button></div></div>'+
+   '<div class=mt-3><button class="btn ghost" onclick="caseAddOpen(\''+c.id+'\')">Приобщить инцидент</button></div></div>'+
   '<div class=ds-drawer-sec><div class=t-label>История действий</div>'+
    '<div style="display:flex;gap:8px;margin:8px 0">'+
-    '<input class=tin id=cfLog style=flex:1 placeholder="Опросили владельца сервиса, отозвали токен…" '+
+    '<input class="tin grow" id=cfLog placeholder="Опросили владельца сервиса, отозвали токен…" '+
      'onkeydown="if(event.key===\'Enter\')caseAddLog(\''+c.id+'\')">'+
-    '<button class=btn onclick="caseAddLog(\''+c.id+'\')">Записать</button></div>'+
+    '<button class=btn onclick="caseAddLog(\''+c.id+'\')">Добавить запись</button></div>'+
    caseLogHtml(c)+'</div>';}
 
 function caseIncList(c,m){
@@ -1683,8 +1769,8 @@ function caseIncList(c,m){
        (i.max_risk||0).toFixed(2)+'</span>')
      :'<span class=sub>вне текущего окна выдачи</span>')+
    '<span class=grow></span>'+
-   (i?'<button class="btn ghost xs" onclick="caseGoInc('+id+')">открыть</button>':'')+
-   '<button class="btn ghost xs" onclick="caseUnlink(\''+c.id+'\','+id+')">убрать</button></div>';}).join('')+'</div>';}
+   (i?'<button class="btn ghost xs" onclick="caseGoInc('+id+')">Открыть</button>':'')+
+   '<button class="btn ghost xs" onclick="caseUnlink(\''+c.id+'\','+id+')">Открепить</button></div>';}).join('')+'</div>';}
 
 function caseLogHtml(c){
  if(!(c.log||[]).length)return '<div class=sub>записей нет</div>';
@@ -1692,7 +1778,7 @@ function caseLogHtml(c){
   '<div class="ds-tl-item info"><div class=ds-tl-time>'+esc(e.ts)+'</div>'+
   '<div class=ds-tl-desc>'+esc(e.t)+'</div></div>').join('')+'</div>';}
 
-function caseGoInc(id){goView('incidents');setTimeout(()=>{try{openInc(id);}catch(e){}},150);}
+function caseGoInc(id){goView('incidents');setTimeout(()=>{try{openInc(id);}catch(e){uiErr('caseGoInc',e)}},150);}
 function caseUnlink(cid,iid){const c=caseById(cid);if(!c)return;
  c.incidents=(c.incidents||[]).filter(x=>x!==iid);
  caseNote(c,'инцидент #'+iid+' исключён из дела');caseFlush();caseOpen(cid);}
@@ -1724,7 +1810,7 @@ function caseAddOpen(cid){
   ?('<div class=ds-ev-list>'+free.map(i=>'<div class=case-inc><span class=case-inc-id>#'+i.id+'</span>'+
      sevBadge(i.severity)+'<span class=sub>@'+esc(i.actor||'')+' · '+(i.alerts||0)+' детектов · риск '+
      (i.max_risk||0).toFixed(2)+((i.repos||[]).length?(' · '+esc(i.repos.join(', '))):'')+'</span>'+
-     '<span class=grow></span><button class="btn xs" onclick="caseLink(\''+cid+'\','+i.id+')">приобщить</button></div>').join('')+'</div>')
+     '<span class=grow></span><button class="btn xs" onclick="caseLink(\''+cid+'\','+i.id+')">Приобщить</button></div>').join('')+'</div>')
   :'<div class="help empty">все инциденты из текущей выдачи уже в деле</div>';
  dsDrawer('Приобщить инцидент к '+esc(cid),body);}
 
@@ -1737,16 +1823,16 @@ function caseLink(cid,iid){const c=caseById(cid);if(!c)return;
  if(window.toast)toast('Инцидент #'+iid+' в деле '+cid,'success');}
 
 async function casePick(iid){
- try{_caseInc=(await jget('/api/incidents')).incidents||[];}catch(e){}
+ try{_caseInc=(await jget('/api/incidents')).incidents||[];}catch(e){uiErr('casePick',e)}
  const l=caseLoad();
  const rows=l.map(c=>'<div class=case-inc><span class=case-inc-id>'+esc(c.id)+'</span>'+
    '<span>'+esc(c.title||'')+'</span><span class=sub>'+(c.incidents||[]).length+' инц. · '+
    esc(CASE_ST[c.status]||c.status||'')+'</span><span class=grow></span>'+
    ((c.incidents||[]).indexOf(iid)>=0?'<span class=sub>уже в деле</span>'
-    :'<button class="btn xs" onclick="caseLink(\''+c.id+'\','+iid+')">приобщить</button>')+'</div>').join('');
+    :'<button class="btn xs" onclick="caseLink(\''+c.id+'\','+iid+')">Приобщить</button>')+'</div>').join('');
  dsDrawer('Инцидент #'+iid+' → дело',
   (l.length?('<div class=ds-ev-list>'+rows+'</div>'):'<div class="help empty">дел ещё нет</div>')+
-  '<div style=margin-top:14px><button class=btn onclick="caseNewWith('+iid+')">Завести новое дело с этим инцидентом</button></div>');}
+  '<div class=mt-4><button class=btn onclick="caseNewWith('+iid+')">Завести новое дело с этим инцидентом</button></div>');}
 
 function caseNewWith(iid){
  const c=caseNew();if(!c)return;
@@ -1774,16 +1860,15 @@ function caseReport(cid){
    '<div class=k><b>'+a.alerts+'</b><span>детектов</span></div>'+
    '<div class=k><b>'+(a.risk?a.risk.toFixed(2):'—')+'</b><span>пиковый риск</span></div>'+
    '<div class=k><b>'+a.crit+'</b><span>критичных</span></div></div>'+
-  '<h2>1. Карточка дела</h2><table>'+
+  '<h2>Карточка дела</h2><table>'+
    '<tr><th scope=row>Статус</th><td>'+E(CASE_ST[c.status]||c.status||'')+'</td></tr>'+
    '<tr><th scope=row>Приоритет</th><td>'+E(CASE_PR[c.prio]||c.prio||'')+'</td></tr>'+
    '<tr><th scope=row>Ответственный аналитик</th><td>'+E(c.owner||'не назначен')+'</td></tr>'+
    '<tr><th scope=row>Фигуранты</th><td>'+E(a.actors.join(', ')||'—')+'</td></tr>'+
    '<tr><th scope=row>Затронутые репозитории</th><td>'+E(a.repos.join(', ')||'—')+'</td></tr>'+
    '<tr><th scope=row>Тактики ATT&amp;CK</th><td>'+E(a.tactics.join(' → ')||'—')+'</td></tr></table>'+
-  '<h2>2. Инциденты в деле</h2><table>'+rows+'</table>'+
-  '<h2>3. История действий</h2><table>'+log+'</table>'+
-  '<div class=meta style=margin-top:28px>Sentinel SOC · сводка построена только по наблюдаемым данным.</div>'+
+  '<h2>Инциденты в деле</h2><table>'+rows+'</table>'+
+  '<h2>История действий</h2><table>'+log+'</table>'+
   '</body></html>';
  const w=window.open('','_blank');
  if(!w){if(window.toast)toast('Браузер заблокировал окно','error');return;}
@@ -1791,7 +1876,7 @@ function caseReport(cid){
  if(window.toast)toast('Сводка готова — Ctrl+P для PDF','success',3500);}
 
 async function caseSync(){
- try{_caseInc=(await jget('/api/incidents')).incidents||[];}catch(e){}
+ try{_caseInc=(await jget('/api/incidents')).incidents||[];}catch(e){uiErr('caseSync',e)}
  const ae=document.activeElement;
  if(ae&&ae.closest&&ae.closest('#v-cases')&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
  caseRender();}
@@ -1816,8 +1901,8 @@ async function rpLoad(force){
  if(_rpRaw&&!force){rpBuild();return;}
  const w=$('rpWrap');if(!w)return;
  let al=[],inc=[];
- try{al=(await jget('/api/alerts')).alerts||[];}catch(e){}
- try{inc=(await jget('/api/incidents')).incidents||[];}catch(e){}
+ try{al=(await jget('/api/alerts')).alerts||[];}catch(e){uiErr('rpLoad',e)}
+ try{inc=(await jget('/api/incidents')).incidents||[];}catch(e){uiErr('rpLoad',e)}
  _rpRaw={
   ev:al.map(a=>({t:rpTs(a.ts_sim),risk:a.risk||0,actor:a.actor||'',repo:a.project||'',
      tech:a.technique||'',tac:a.tactic||'',reason:a.reason||'',act:a.action||'',inc:a.incident}))
@@ -1934,7 +2019,7 @@ function rpSide(cur){
  if(st)st.innerHTML='<div class=rp-tiles>'+
    rpTile('детектов',seen.length)+rpTile('инцидентов',opened.length)+
    rpTile('критичных',crit)+rpTile('прошло',rpDur(Math.max(0,cur-_rp.first)))+'</div>'+
-  '<div class=ds-kv style=margin-top:14px>'+
+  '<div class="ds-kv mt-4">'+
    kvRow('Самый активный',esc(top(acts)))+
    kvRow('Ведущая тактика',esc(top(tacs)))+
    kvRow('Горячий репозиторий',esc(top(repos)))+
@@ -1943,12 +2028,12 @@ function rpSide(cur){
     '<div class=ds-ev-list>'+opened.slice(-6).reverse().map(i=>
      '<div class=case-inc><span class=case-inc-id>#'+i.id+'</span>'+sevBadge(i.sev)+
      '<span class=sub>@'+esc(i.actor)+' · '+i.n+' детектов</span><span class=grow></span>'+
-     '<button class="btn ghost xs" onclick="caseGoInc('+i.id+')">открыть</button></div>').join('')+'</div></div>'):'');}
+     '<button class="btn ghost xs" onclick="caseGoInc('+i.id+')">Открыть</button></div>').join('')+'</div></div>'):'');}
 
 function rpToggle(){
  if(!_rp){rpLoad(1);return;}
  _rpPlaying=!_rpPlaying;
- const b=$('rpPlay');if(b)b.textContent=_rpPlaying?'⏸ Пауза':'▶ Играть';
+ const b=$('rpPlay');if(b)b.innerHTML=_rpPlaying?('<svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg> Пауза'):('<svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Играть');
  if(_rpT){clearInterval(_rpT);_rpT=null;}
  if(!_rpPlaying)return;
  if(_rpPos>=1000)rpSeek(0);
@@ -1985,8 +2070,8 @@ function riskBadgeCls(v){return {critical:'b-crit',high:'b-high',medium:'b-med',
 
 async function pollRisk(){
  let al=[],inc=[];
- try{al=(await jget('/api/alerts')).alerts||[];}catch(e){}
- try{inc=(await jget('/api/incidents')).incidents||[];}catch(e){}
+ try{al=(await jget('/api/alerts')).alerts||[];}catch(e){uiErr('pollRisk',e)}
+ try{inc=(await jget('/api/incidents')).incidents||[];}catch(e){uiErr('pollRisk',e)}
  _riskAl=al;
  const byA={},byR={};
  const mk=()=>({n:0,sum:0,max:0,tech:{},tac:{},inc:{},peers:{},crit:0,last:''});
@@ -2029,7 +2114,7 @@ function riskTable(id,rows,c1,c2){
     '<b class="rk-n '+riskCls(d.score)+'">'+d.score+'</b></div></td>'+
    '<td class=num>'+d.n+'</td><td class=num>'+d.inc+'</td>'+
    '<td class=num>'+d.tech+'</td><td class=num>'+d.peers+'</td></tr>').join('')+
-  '</tbody></table></div><div class=sub style=margin-top:8px>Клик по строке — детали и последние детекты.</div>';}
+  '</tbody></table></div><div class="sub mt-2">Клик по строке — детали и последние детекты.</div>';}
 
 function riskStrip(inc){
  const box=$('riskStrip');if(!box)return;
@@ -2041,9 +2126,9 @@ function riskStrip(inc){
    (_riskDev.length?('<span style="font-size:15px;color:var(--text-3)"> из '+_riskDev.length+'</span>'):'')+
    '</div><div class=ds-covcard-l>в критической зоне</div></div>'+
   '<div class=ds-covcard><div class=ds-covcard-n>'+avg+'</div><div class=ds-covcard-l>средний риск команды</div></div>'+
-  '<div class=ds-covcard><div class=ds-covcard-n style=font-size:17px>'+esc(worstD?worstD.key:'—')+
+  '<div class=ds-covcard><div class="ds-covcard-n ds-covcard-n-sm">'+esc(worstD?worstD.key:'—')+
    '</div><div class=ds-covcard-l>наибольший риск</div></div>'+
-  '<div class=ds-covcard><div class=ds-covcard-n style=font-size:17px>'+esc(worstR?worstR.key:'—')+
+  '<div class=ds-covcard><div class="ds-covcard-n ds-covcard-n-sm">'+esc(worstR?worstR.key:'—')+
    '</div><div class=ds-covcard-l>самый затронутый репозиторий</div></div>'+
   '<div class=ds-covcard><div class="ds-covcard-n '+((inc||[]).length?'warn':'ok')+'">'+(inc||[]).length+
    '</div><div class=ds-covcard-l>инцидентов в работе</div></div>';}
@@ -2072,28 +2157,67 @@ function riskDrill(k){
      '<div class=ds-tl-desc>'+esc(a.reason||'')+(a.project?(' · '+esc(a.project)):'')+'</div></div>').join('')+'</div>')
     :'<div class=sub>нет записей</div>')+'</div>');}
 
+/* Каждая строка — один человек. По горизонтали общий для всех отрезок
+   времени от первого до последнего детекта, разбитый на 24 окна; высота
+   столбика — максимальный риск в этом окне (шкала 0…1, одна на все
+   строки, иначе ряды нельзя сравнивать между собой). Наведение
+   показывает точное значение и границы окна. */
 function riskDyn(al){
  const box=$('riskDyn');if(!box)return;
  const top=_riskDev.slice(0,5);
  const ts=al.map(a=>rpTs(a.ts_sim)).filter(x=>x>0);
  if(!top.length||!ts.length){
-  box.innerHTML='<div class="help empty">динамика появится, когда наберётся история детектов</div>';return;}
+  box.innerHTML='<div class="help empty">Динамика появится, когда наберётся история детектов.</div>';return;}
  const t0=Math.min.apply(null,ts),t1=Math.max.apply(null,ts);
- const N=24,span=Math.max(1,t1-t0),w=100/N;
- box.innerHTML='<div class=sub style=margin-bottom:12px>Пиковый риск по '+N+
-  ' интервалам от первого до последнего детекта ('+rpFmt(t0)+' → '+rpFmt(t1)+'). '+
-  'Столбик — максимум риска, который человек показал в этом окне.</div>'+
-  top.map(d=>{
+ const N=24,span=Math.max(1,t1-t0),w=100/N,step=span/N;
+ rkDynHoverInit();
+ box.innerHTML=
+  '<div class=rk-dyn-axis><span>Максимум риска по окнам</span>'+
+   '<span class=ax><span>'+esc(rpFmt(t0))+'</span><span>'+esc(rpFmt(t0+span/2))+'</span><span>'+esc(rpFmt(t1))+'</span></span>'+
+   '<span></span></div>'+
+  top.map(function(d){
    const buck=new Array(N).fill(0);
-   al.forEach(a=>{if(a.actor!==d.key)return;const t=rpTs(a.ts_sim);if(!t)return;
+   al.forEach(function(a){if(a.actor!==d.key)return;const t=rpTs(a.ts_sim);if(!t)return;
     const k=Math.min(N-1,Math.floor((t-t0)/span*N));
     buck[k]=Math.max(buck[k],a.risk||0);});
-   const bars=buck.map((v,i)=>v?('<rect x="'+(i*w).toFixed(2)+'" y="'+((1-v)*40).toFixed(2)+
-     '" width="'+(w*0.74).toFixed(2)+'" height="'+Math.max(1.5,v*40).toFixed(2)+
-     '" class="'+alSevOf(v)+'" />'):'').join('');
-   return '<div class=rk-dyn><span class=rk-dyn-n>'+esc(d.key)+'</span>'+
-    '<svg viewBox="0 0 100 40" preserveAspectRatio=none class=rk-dyn-svg>'+bars+'</svg>'+
-    '<b class="rk-n '+riskCls(d.score)+'">'+d.score+'</b></div>';}).join('');}
+   const bars=buck.map(function(v,i){
+    // пустое окно тоже рисуется — засечкой: иначе непонятно, что за
+    // промежутком стоит «риска не было», а не «нет данных»
+    const h=v?Math.max(2,v*40):1.5;
+    return '<rect x="'+(i*w).toFixed(2)+'" y="'+(40-h).toFixed(2)+
+     '" width="'+(w*0.74).toFixed(2)+'" height="'+h.toFixed(2)+
+     '" class="'+(v?alSevOf(v):'empty')+'" />';}).join('');
+   const meta={v:buck,t0:t0,step:step};
+   return '<div class=rk-dyn><span class=rk-dyn-n title="'+esc(d.key)+'">@'+esc(d.key)+'</span>'+
+    '<div class=rk-dyn-plot data-bars=\''+esc(JSON.stringify(meta))+'\'>'+
+     '<svg viewBox="0 0 100 40" preserveAspectRatio=none class=rk-dyn-svg>'+bars+'</svg>'+
+     '<div class=chart-tip></div></div>'+
+    '<b class="rk-n '+riskCls(d.score)+'" title="суммарная оценка риска">'+d.score+'</b></div>';}).join('');}
+
+function rkDynHoverInit(){
+ if(document._rkHover)return; document._rkHover=1;
+ document.addEventListener('mousemove',function(ev){
+  const plot=ev.target.closest&&ev.target.closest('.rk-dyn-plot');
+  if(!plot)return;
+  let m;try{m=JSON.parse(plot.dataset.bars||'null');}catch(x){return;}
+  if(!m)return;
+  const r=plot.getBoundingClientRect(),n=m.v.length;
+  const rel=Math.min(.999,Math.max(0,(ev.clientX-r.left)/(r.width||1)));
+  const i=Math.floor(rel*n), v=m.v[i]||0;
+  const tip=plot.querySelector('.chart-tip'); if(!tip)return;
+  const px=((i+0.5)/n)*r.width;
+  tip.style.display='block';
+  tip.innerHTML='<b class=tv>'+(v?('риск '+(Math.round(v*100)/100)):'без детектов')+'</b>'+
+   '<span class=tt>'+esc(rpFmt(m.t0+i*m.step))+' — '+esc(rpFmt(m.t0+(i+1)*m.step))+'</span>';
+  const tw=tip.offsetWidth||120;
+  tip.style.left=Math.min(r.width-tw/2-2,Math.max(tw/2+2,px))+'px';
+  tip.style.top=Math.max(4,r.height-(v*r.height)-6)+'px';
+ },true);
+ document.addEventListener('mouseout',function(ev){
+  const plot=ev.target.closest&&ev.target.closest('.rk-dyn-plot');
+  if(!plot||plot.contains(ev.relatedTarget))return;
+  const tip=plot.querySelector('.chart-tip');if(tip)tip.style.display='none';
+ },true);}
 
 async function refresh(){try{
  if(view==='overview'){renderPrompts();await pollOverview();}
@@ -2110,22 +2234,29 @@ async function refresh(){try{
  else if(view==='trends')await pollTrends();
  else if(view==='diag')await pollDiag();
  await pollOverview();
-}catch(e){}}
+}catch(e){uiErr('refresh',e)}}
 refresh();setInterval(refresh,2500);
-function fmtAge(s){if(s==null)return'';if(s<60)return s+' с назад';if(s<3600)return Math.floor(s/60)+' мин назад';return Math.floor(s/3600)+' ч назад';}
+// Возраст пишем коротко: «12 с», «4 мин». Слово «назад» в строке
+// состояния лишнее — там и так всё про «сейчас».
+function fmtAge(s){if(s==null)return'';if(s<60)return s+' с';if(s<3600)return Math.floor(s/60)+' мин';return Math.floor(s/3600)+' ч';}
 function setHp(id,cls,txt){const p=$(id);if(!p)return;p.className='hpill '+cls;$(id+'T').textContent=txt;}
 async function pollHealth(){let h;try{h=await jget('/api/health');}catch(e){return;}
  const ev=h.events||{};
- setHp('hWorld',h.world_alive?'ok':(ev.total>0?'warn':'bad'),h.world_alive?'пишет':'молчит');
- setHp('hEvents',ev.total>0?'ok':'bad',(ev.total||0)+(ev.last_age_s!=null?(' · '+fmtAge(ev.last_age_s)):''));
+ setHp('hWorld',h.world_alive?'ok':(ev.total>0?'warn':'bad'),h.world_alive?'идёт':'нет данных');
+ setHp('hEvents',ev.total>0?'ok':'bad',fmtNum(ev.total||0)+(ev.last_age_s!=null?(' · '+fmtAge(ev.last_age_s)):''));
  setHp('hOllama',h.ollama?'ok':'warn',h.ollama?'готова':'нет');
  setHp('hTriage',h.auto_triage?(h.ollama?'ok':'warn'):'',h.auto_triage?'вкл':'выкл');
  const w=$('worldWarn');if(w){const bad=!h.world_alive&&ev.total>0;w.style.display=bad?'block':'none';
-  if(bad)$('worldWarnAge').textContent=ev.last_age_s!=null?('уже '+fmtAge(ev.last_age_s).replace(' назад','')):'';}}
+  if(bad)$('worldWarnAge').textContent=ev.last_age_s!=null?('уже '+fmtAge(ev.last_age_s).replace(' назад','')):'';}
+ // Отказ хранилища и «данных ещё нет» внешне неотличимы: и там и там нули.
+ // Показываем причину отдельно, иначе поиск проблемы начинается с догадок.
+ const sw=$('storeWarn');
+ if(sw){const broken=(h.store_ok===false)||!!h.store_error;sw.style.display=broken?'block':'none';
+  if(broken)$('storeWarnMsg').textContent=h.store_error||'база не открыта';}}
 pollHealth();setInterval(pollHealth,5000);
 function goView(v){const a=document.querySelector('.nav a[data-v='+v+']');if(a)a.click();}
 function obToggle(){const b=$('obBody');const opening=b.style.display==='none';b.style.display=opening?'':'none';
- $('obToggle').textContent=opening?'свернуть':'развернуть';try{localStorage.setItem('pt_ob_min',opening?'':'1')}catch(e){}}
-try{if(localStorage.getItem('pt_ob_min')){$('obBody').style.display='none';$('obToggle').textContent='развернуть';}}catch(e){}
-try{if(location.hash){const v=location.hash.slice(1);if(document.querySelector('#nav a[data-v='+v+']'))goView(v);}}catch(e){}
+ $('obToggle').textContent=opening?'свернуть':'развернуть';try{localStorage.setItem('pt_ob_min',opening?'':'1')}catch(e){uiErr('obToggle',e)}}
+try{if(localStorage.getItem('pt_ob_min')){$('obBody').style.display='none';$('obToggle').textContent='развернуть';}}catch(e){uiErr('obToggle',e)}
+try{if(location.hash){const v=location.hash.slice(1);if(document.querySelector('#nav a[data-v='+v+']'))goView(v);}}catch(e){uiErr('obToggle',e)}
 </script></body></html>

@@ -5,6 +5,7 @@
 не участвует (он в отпуске/болеет).
 """
 import logging
+import config
 from config import PROJECTS, FEATURES
 from content import comments
 import simclock
@@ -17,7 +18,7 @@ class StandupActivity:
         self.agents = agents
         self.lead   = lead_agent
         self.state  = state
-        self.pid    = PROJECTS["soc-infra"]
+        self.pid    = config.repo_id("soc-infra")
 
     def run(self) -> bool:
         if not FEATURES.get("standup"):

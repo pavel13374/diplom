@@ -28,7 +28,7 @@ class BenignQuirk:
 
     def _repo(self, *names):
         if names:
-            return config.WORK_REPOS.get(names[0]) or PROJECTS[names[0]]
+            return config.repo_id(names[0])
         pool = [n for n in config.WORK_REPOS if n != "soc-secrets"]
         return config.WORK_REPOS[random.choice(pool)]
 

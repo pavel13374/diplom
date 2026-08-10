@@ -557,11 +557,11 @@ def get_rule_path(technique: dict) -> str:
 def generate_sigma_rule(technique: dict, author: str,
                          status: str = "experimental",
                          extra_filters: list = None) -> str:
-    simclock.content_date_iso()
-    generate_rule_id()
-    fps     = random.sample(FALSE_POSITIVES_POOL, k=random.randint(1, 3))
-    fps_str = "\n".join(f"    - {fp}" for fp in fps)
-    technique["tactic"].replace("_", "-")
+    today      = simclock.content_date_iso()
+    rule_id    = generate_rule_id()
+    fps        = random.sample(FALSE_POSITIVES_POOL, k=random.randint(1, 3))
+    fps_str    = "\n".join(f"    - {fp}" for fp in fps)
+    tag_tactic = technique["tactic"].replace("_", "-")
 
     # Строим detection блок в зависимости от техники
     cat = technique.get("logsource_cat", "process_creation")
@@ -575,21 +575,21 @@ def generate_sigma_rule(technique: dict, author: str,
         parent_block = ""
         if parent:
             parent_str = "\n".join(f'            - "{p}"' for p in parent)
-            parent_block = """    selection_parent:
+            parent_block = f"""    selection_parent:
         ParentImage|endswith:
 {parent_str}
 """
         filter_str = ""
         if extra_filters:
             for i, f in enumerate(extra_filters):
-                filter_str += """    filter_{i}:
+                filter_str += f"""    filter_{i}:
         {f}
 """
         filter_cond = " and not " + " and not ".join(
             f"filter_{i}" for i in range(len(extra_filters))
         ) if extra_filters else ""
 
-        detection = """detection:
+        detection = f"""detection:
     selection_tools:
         Image|endswith:
 {tools_str}
@@ -599,8 +599,8 @@ def generate_sigma_rule(technique: dict, author: str,
 {parent_block}{filter_str}    condition: (selection_tools or selection_cmdline){filter_cond}"""
 
     elif cat == "security":
-        technique.get("eventid", "4624")
-        detection = """detection:
+        eid = technique.get("eventid", "4624")
+        detection = f"""detection:
     selection:
         EventID: {eid}
         LogonType: 3
@@ -621,7 +621,7 @@ def generate_sigma_rule(technique: dict, author: str,
     elif cat in ("cloudtrail", "proxy", "webserver"):
         patterns = technique.get("patterns", technique.get("ua", ["suspicious"]))
         patterns_str = "\n".join(f'            - "{p}"' for p in patterns[:5])
-        detection = """detection:
+        detection = f"""detection:
     selection:
         RequestString|contains:
 {patterns_str}
@@ -630,7 +630,7 @@ def generate_sigma_rule(technique: dict, author: str,
     elif cat == "registry_set":
         keys = technique.get("keys", ["HKLM\\\\SOFTWARE\\\\suspicious"])
         keys_str = "\n".join(f'            - "{k}"' for k in keys)
-        detection = """detection:
+        detection = f"""detection:
     selection:
         TargetObject|startswith:
 {keys_str}
@@ -648,7 +648,7 @@ def generate_sigma_rule(technique: dict, author: str,
     elif status == "production":
         extra_note = "\n# Validated: 30 days production, 0 false positives"
 
-    return """title: {technique['title']}
+    return f"""title: {technique['title']}
 id: {rule_id}
 status: {status}
 author: {author}

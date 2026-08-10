@@ -39,10 +39,21 @@ _TPL_CACHE = {}
 
 def _tpl(name):
     """Прочитать шаблон (с кэшем в памяти)."""
-    if name not in _TPL_CACHE:
-        with open(_os_path.join(_TPL_DIR, name), encoding="utf-8") as f:
-            _TPL_CACHE[name] = f.read()
-    return _TPL_CACHE[name]
+    # Кэш сбрасывается при правке файла: перезагрузчик Flask следит
+    # только за .py, поэтому изменения вёрстки иначе не видны без
+    # ручного перезапуска процесса.
+    path = _os_path.join(_TPL_DIR, name)
+    try:
+        mtime = _os_path.getmtime(path)
+    except OSError:
+        mtime = 0
+    hit = _TPL_CACHE.get(name)
+    if hit and hit[0] == mtime:
+        return hit[1]
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    _TPL_CACHE[name] = (mtime, text)
+    return text
 import simclock
 import events
 import runlog
@@ -57,6 +68,21 @@ from scheduler import Scheduler
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+import re as _re
+
+# Werkzeug раскрашивает свои строки ANSI-кодами для терминала. В браузере
+# они выводились как текст: на экране было видно «[32mGET / HTTP/1.1[0m».
+_ANSI_RE = _re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+# Опрос собственного API интерфейсом — 90% строк журнала и ноль
+# продуктового смысла. Успешные запросы к /api/ в ленту не идут,
+# всё остальное (ошибки, редиректы, действия симуляции) остаётся.
+# Любая успешная строка доступа werkzeug: опрос API, статика, редирект
+# на форму входа. Продуктового смысла в них нет, а журнал они
+# занимают целиком. Ошибки (4xx/5xx) остаются.
+_NOISE_RE = _re.compile(r'"(?:GET|POST|HEAD|PUT|DELETE) /[^"]*" [23]\d\d ')
+
+
 class RingLogHandler(logging.Handler):
     def __init__(self, maxlen=4000):
         super().__init__()
@@ -69,6 +95,9 @@ class RingLogHandler(logging.Handler):
             msg = record.getMessage()
         except Exception:
             msg = str(record.msg)
+        msg = _ANSI_RE.sub("", msg).strip()
+        if not msg or _NOISE_RE.search(msg):
+            return
         with self._lock:
             self._id += 1
             self.buf.append({"id": self._id,
@@ -81,13 +110,32 @@ class RingLogHandler(logging.Handler):
 
 
 def _gitlab_status():
+    """Состояние связи с GitLab для статус-бара и диагностики.
+
+    `by_op` — РАЗБИВКА ОТКАЗОВ ПО ОПЕРАЦИЯМ. Общий счётчик ошибок сам по себе
+    бесполезен: «312 ошибок» ничего не говорит, а «create_branch: 357 из 3855»
+    сразу указывает, что систематически падает создание веток (конфликт имён
+    или нет прав в конкретном репозитории), и это надо чинить, а не листать лог.
+    """
     try:
         from agents.base import GITLAB_STATUS
+        by_op = dict(GITLAB_STATUS.get("by_op") or {})
+        ok_by_op = dict(GITLAB_STATUS.get("ok_by_op") or {})
+        worst = sorted(
+            ({"op": op,
+              "fail": n,
+              "ok": ok_by_op.get(op, 0),
+              "fail_pct": round(100.0 * n / max(1, n + ok_by_op.get(op, 0)), 1)}
+             for op, n in by_op.items()),
+            key=lambda d: -d["fail"])[:6]
         return {"errors": GITLAB_STATUS.get("errors", 0), "ok": GITLAB_STATUS.get("ok", 0),
                 "last_error": GITLAB_STATUS.get("last_error", ""),
-                "last_error_ts": GITLAB_STATUS.get("last_error_ts")}
+                "last_error_ts": GITLAB_STATUS.get("last_error_ts"),
+                "by_op": worst}
     except Exception:
-        return {"errors": 0, "ok": 0, "last_error": "", "last_error_ts": None}
+        logging.getLogger("webapp").error("не удалось прочитать статус GitLab", exc_info=True)
+        return {"errors": 0, "ok": 0, "last_error": "", "last_error_ts": None,
+                "by_op": []}
 
 
 def _last_event_ago():
@@ -97,6 +145,9 @@ def _last_event_ago():
             return None
         return int(time.time() - lr)
     except Exception:
+        logging.getLogger("webapp").error(
+            "не удалось определить возраст последнего события — статус «мир жив» "
+            "будет неверным", exc_info=True)
         return None
 
 
@@ -167,11 +218,18 @@ class Runner:
             fh.setLevel(logging.INFO)
             root.addHandler(fh)
         except Exception:
-            pass
+            # Ирония в том, что провал НАСТРОЙКИ ЛОГОВ раньше глушился молча:
+            # simulator.log просто не появлялся, и «почему нет логов» выяснять
+            # было нечем. Пишем хотя бы в stderr — он уже настроен выше.
+            logging.getLogger("webapp").error(
+                "не удалось подключить файловый лог — записи будут только в "
+                "консоли", exc_info=True)
         try:
             runlog.setup(BASE_DIR)
         except Exception:
-            pass
+            logging.getLogger("webapp").error(
+                "runlog не настроен — журнал прогонов вестись не будет",
+                exc_info=True)
         self.logger = logging.getLogger("webapp")
 
     def _build_agents(self):
@@ -683,6 +741,8 @@ def api_reset_state():
             os.remove(p)
         return jsonify({"ok": True, "msg": "состояние сброшено"})
     except Exception as e:
+        logging.getLogger("webapp").error("сброс состояния не удался",
+                                          exc_info=True)
         return jsonify({"ok": False, "msg": str(e)})
 
 
@@ -732,6 +792,8 @@ def api_reset_repos():
         return jsonify({"ok": True, "msg": f"очищено: MR {mr_n}, веток {br_n}, файлов {fl_n}. "
                         "Команда и репозитории сохранены."})
     except Exception as e:
+        logging.getLogger("webapp").error("сброс репозиториев не удался",
+                                          exc_info=True)
         return jsonify({"ok": False, "msg": str(e)})
 
 

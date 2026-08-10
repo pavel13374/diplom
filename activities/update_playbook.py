@@ -3,6 +3,8 @@
 """
 import random
 import logging
+from datetime import date
+
 import config
 from config import USERS, DELAYS
 from content import commit_messages as cm
@@ -133,7 +135,8 @@ class UpdatePlaybookActivity:
             return False
         self.author.think()
 
-        updated = existing + f"\n\n---\n\n## Обновление ({__import__('datetime').date.today().isoformat()})\n\n{update['desc']}\n\n*Автор: {self.author.name}*\n"
+        updated = existing + (f"\n\n---\n\n## Обновление ({date.today().isoformat()})\n\n"
+                              f"{update['desc']}\n\n*Автор: {self.author.name}*\n")
         msg = cm.playbook_message()
         if not self.author.push_file(self.pid, path, updated, msg, branch):
             return False
@@ -154,8 +157,8 @@ class UpdatePlaybookActivity:
         return self.lead.merge_mr(self.pid, mr_iid)
 
     def _generate_playbook(self, pb: dict) -> str:
-        random.choice(["High", "Critical", "Medium"])
-        return """# Playbook: {pb['title']}
+        severity = random.choice(["High", "Critical", "Medium"])
+        return f"""# Playbook: {pb['title']}
 
 **Severity:** {severity}
 **MITRE ATT&CK:** {pb['mitre']}

@@ -129,7 +129,7 @@ class TuneThresholdActivity:
         return "\n".join(result), what
 
     def _mr_desc(self, slug: str, what: str) -> str:
-        return """## Тюнинг правила `{slug}`
+        return f"""## Тюнинг правила `{slug}`
 
 **Что изменено:** {what}
 

@@ -1,254 +1,9 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Sentinel Env — Team &amp; GitLab</title>
-<style>
-
-*{box-sizing:border-box}
-body{margin:0;color:var(--ink);
- background:radial-gradient(900px 420px at 88% -12%,#e0e7ff70,transparent 60%),
-            radial-gradient(760px 380px at -8% 34%,#ccfbf14d,transparent 55%),var(--bg);
- font-family:'Inter',-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px}
-.app{display:grid;min-height:100vh}
-/* sidebar */
-.side{background:linear-gradient(176deg,var(--info),var(--info));color:var(--info);display:flex;flex-direction:column;padding:20px 16px;position:sticky;top:0;height:100vh}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;color:#fff;padding:6px 8px 18px}
-.brand .mk{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--info),var(--info));display:flex;align-items:center;justify-content:center;font-size:16px}
-.nav{display:flex;flex-direction:column;gap:4px;margin-top:6px}
-.nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;color:var(--info);
- text-decoration:none;font-weight:600;font-size:13.5px;cursor:pointer;transition:.15s}
-.nav a svg{width:18px;height:18px;opacity:.85}
-.nav a:hover{background:#ffffff14;color:#fff}
-.nav a.active{background:#ffffff1f;color:#fff}
-.nav a.active svg{opacity:1}
-.side-foot{margin-top:auto;border-top:1px solid #ffffff1f;padding-top:14px;font-size:12px;color:var(--info)}
-.side-foot .st{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.side-foot a{color:var(--info);text-decoration:none}.side-foot a:hover{color:#fff}
-.run-dot{width:9px;height:9px;border-radius:50%;background:var(--text-3)}.run-dot.on{background:var(--success);box-shadow:0 0 0 4px #34d39933}
-/* main */
-.main{padding:0}
-.topbar{position:sticky;top:0;z-index:10;background:#f4f5fbf2;backdrop-filter:blur(8px);
- border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:16px 28px}
-.topbar h1{font-size:18px;margin:0;font-weight:700}
-.grow{flex:1}
-.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid var(--line);background:#fff}
-.pill .d{width:7px;height:7px;border-radius:50%;background:var(--text-3)}
-.pill.ok .d{background:var(--ok)}.pill.bad .d{background:var(--bad)}
-.pill.warn{background:var(--warning-bg);border-color:var(--warning-border);color:var(--warning)}.pill.warn .d{background:var(--warn)}
-.pill.ok .d{animation:hpulse 2s ease infinite}
-@keyframes hpulse{0%,100%{opacity:1}50%{opacity:.45}}
-.pill b{font-weight:700}
-.banner{display:flex;align-items:center;flex-wrap:wrap;margin:14px 28px -8px;padding:11px 16px;border-radius:12px;
- background:linear-gradient(90deg,var(--warning-bg),var(--warning-bg));border:1px solid var(--warning-border);color:var(--warning);font-size:13px;
- box-shadow:var(--shadow);animation:bslide .3s ease}
-.banner .bsub{color:var(--warning);font-size:12px}
-@keyframes bslide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-.ctx{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:14px 28px -10px;padding:9px 15px;border-radius:11px;
- background:linear-gradient(90deg,var(--accent-bg),var(--info-bg));border:1px solid var(--accent-border);color:var(--accent-brand);font-size:12.5px;box-shadow:var(--shadow)}
-.ctx a{color:var(--accent-brand);font-weight:700}
-.ctx .x{margin-left:auto;cursor:pointer;color:var(--accent-brand);font-weight:800;padding:0 5px;border-radius:6px}
-.ctx .x:hover{background:#4f46e522}
-.pill.work{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent-brand)}.pill.work .d{background:var(--accent-brand)}
-.pill.rest{background:var(--warning-bg);border-color:var(--warning-border);color:var(--warning)}.pill.rest .d{background:var(--warning)}
-.btn{padding:9px 15px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);
- font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
-.btn:hover{border-color:var(--info-border)}
-.btn.primary{background:linear-gradient(135deg,var(--info),var(--info));border-color:transparent;color:#fff;box-shadow:0 2px 8px #5b5bd644;transition:all .16s ease}
-.btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px #5b5bd655;filter:brightness(1.04)}
-.btn.danger{background:#fff;border-color:var(--critical-border);color:var(--bad)}.btn.danger:hover{background:var(--critical-bg)}
-.dangerzone{border:1px solid var(--critical-border)!important;background:linear-gradient(180deg,var(--critical-bg),var(--critical-bg))!important}
-.freshbox{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:#fff;border:1px solid var(--critical-border);border-radius:12px;padding:14px 16px}
-.freshbox .btn.danger{background:linear-gradient(135deg,var(--critical),var(--critical));color:#fff;border-color:transparent;box-shadow:0 2px 8px #dc262644;white-space:nowrap}
-.freshbox .btn.danger:hover{filter:brightness(1.06);transform:translateY(-1px)}
-.dangerzone h2:before{background:linear-gradient(180deg,var(--critical),var(--critical))!important}
-.content{padding:24px 28px 60px;max-width:1180px}
-.view{display:none}.view.active{display:block;animation:vfade .3s ease}
-@keyframes vfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.section-title{font-size:11px;font-weight:500;color:var(--soft);letter-spacing:.02em;margin:26px 2px 12px}
-.sevdot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
-.hmcell{width:17px;height:17px;border-radius:3px;display:inline-block}
-.hmrow{display:flex;gap:2px;align-items:center;margin-bottom:2px}
-.hmlab{width:34px;font-size:11px;color:var(--text-3);text-align:right;padding-right:6px}
-.arnode{font-size:12px;fill:var(--line-strong)}
-.repogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:16px}
-.repocard{background:#fff;border:1px solid var(--line,var(--info-border));border-radius:16px;padding:16px 16px 14px;
-  box-shadow:0 6px 20px rgba(27,31,42,.05);display:flex;flex-direction:column;min-height:300px}
-.repocard.hot{box-shadow:0 0 0 2px var(--critical-border),0 6px 20px rgba(220,38,38,.12)}
-.rc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.rc-ava{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-weight:800;font-size:15px;flex:0 0 auto}
-.rc-name{font-weight:700;font-size:14px;color:var(--surface-3)}
-.rc-sub{font-size:11px;color:var(--text-3)}
-.rc-stats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.rc-stat{font-size:11px;color:var(--line-strong);background:var(--info-bg);border-radius:7px;padding:3px 8px}
-.rc-stat b{color:var(--surface-3)}
-.rc-coltitle{font-size:11px;font-weight:500;letter-spacing:.02em;color:var(--text-3);margin:8px 0 5px}
-.mritem{display:flex;align-items:center;gap:7px;font-size:12px;padding:5px 8px;border-radius:8px;
-  background:var(--accent-bg);border:1px solid var(--info-border);margin-bottom:5px;animation:popin .35s ease}
-.mritem .iid{font-family:ui-monospace,monospace;color:var(--accent-brand);font-weight:700}
-.mritem.anom{background:var(--critical-bg);border-color:var(--critical-border)}
-.rc-feed{display:flex;flex-direction:column;gap:4px;max-height:190px;overflow:hidden}
-.fchip{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:4px 8px;border-radius:7px;
-  background:var(--info-bg);animation:slidein .4s ease}
-.fchip .ic{width:16px;height:16px;border-radius:5px;flex:0 0 auto;display:flex;align-items:center;
-  justify-content:center;font-size:10px;color:#fff;font-weight:700}
-.fchip .txt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--line-strong)}
-.fchip .who{color:var(--text-3);font-size:10px}
-.fchip.anom{background:var(--critical-bg);outline:1px solid var(--critical-border)}
-.ic-push{background:var(--success)}.ic-open{background:var(--accent-brand)}.ic-merge{background:var(--accent-brand)}
-.ic-close{background:var(--critical)}.ic-branch{background:var(--info)}.ic-cmt{background:var(--info)}.ic-other{background:var(--info-bg);color:var(--info)}
-@keyframes slidein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-@keyframes popin{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
-.rc-tree{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.5;
-  max-height:170px;overflow:auto;background:var(--info-bg);border:1px solid var(--surface-3);border-radius:9px;padding:8px 10px}
-.tfolder{color:var(--text-3);margin-top:3px}
-.tfolder:first-child{margin-top:0}
-.tfile{color:var(--line-strong);padding-left:14px;display:flex;align-items:center;gap:6px}
-.tfile:before{content:'📄';font-size:10px}
-.tfile.new{color:var(--success);animation:popin .4s ease}
-.tfile.new:before{content:'🟢'}
-.tfile.del{color:var(--critical);text-decoration:line-through;opacity:.55;animation:fadedel 1s ease}
-.tfile.del:before{content:'🗑'}
-@keyframes fadedel{from{opacity:1;background:var(--critical-bg)}to{opacity:.55;background:transparent}}
-.tempty{color:var(--text-3)}
-/* cards */
-.clocks{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.clock{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);
- transition:transform .18s ease,box-shadow .18s ease}
-.clock:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(16,24,40,.06),0 14px 34px rgba(91,91,214,.12)}
-.clock .lab{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:8px}
-.clock .lab .ic{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent)}
-.clock .val{font-size:24px;font-weight:800;margin-top:12px;font-variant-numeric:tabular-nums;letter-spacing:.2px}
-.clock .sub{font-size:12px;color:var(--soft);margin-top:4px}
-.clock.sim{background:var(--info-bg);border:1px solid var(--info-border)}
-.clock.sim .lab{color:var(--muted)}.clock.sim .lab .ic{background:var(--accent-soft);color:var(--accent)}
-.clock.sim .val{color:var(--ink)}.clock.sim .sub{color:var(--soft)}
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-top:16px}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
-.kpi .n{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
-.kpi .l{font-size:11.5px;color:var(--muted);margin-top:3px;font-weight:600}
-.steps{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
-.step{display:flex;gap:10px;align-items:flex-start}
-.obck{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--success);flex:0 0 auto;font-size:12px}
-.obck.on{background:var(--success-bg);border-color:var(--success)}
-.obh{font-size:11.5px;color:var(--muted);margin-top:2px}
-.step a{color:var(--accent);font-size:11.5px;text-decoration:none}
-.insL{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-.insL .i{background:var(--accent-bg);border:1px solid var(--info-border);color:var(--info);border-radius:8px;padding:4px 10px;font-size:12px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
-.panel>h2{font-size:15px;margin:0 0 3px;font-weight:700}
-.panel>.sub{font-size:12.5px;color:var(--muted);margin:0 0 16px;line-height:1.5}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:11px 16px;font-size:13.5px}
-.kv b{color:var(--muted);font-weight:500}.kv span{text-align:right;font-weight:600}
-.members{display:flex;flex-direction:column;gap:9px}
-.member{display:flex;align-items:center;gap:12px;padding:9px 11px;border:1px solid var(--line);border-radius:11px}
-.avatar{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex:none}
-.m-name{font-weight:700}.m-role{font-size:12px;color:var(--muted)}
-.badge{margin-left:auto;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
-.badge.oc{background:var(--accent-bg);color:var(--accent-brand)}.badge.pt{background:var(--warning-bg);color:var(--warning)}
-.badge.wk{background:var(--success-bg);color:var(--success)}
-.acts{display:flex;flex-direction:column;gap:8px}
-.act{display:grid;grid-template-columns:1fr auto;gap:4px;font-size:13px}
-.act .bar{grid-column:1/3;height:6px;border-radius:6px;background:var(--surface-3);overflow:hidden}
-.act .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--info),var(--info));border-radius:6px}
-.banner{margin-top:16px;background:#fff;border:1px solid var(--line);border-left:3px solid var(--accent);
- border-radius:12px;padding:14px 16px;font-size:13px;color:var(--line-strong);line-height:1.6;box-shadow:var(--shadow)}
-.banner code{background:var(--info-bg);padding:1px 6px;border-radius:5px;font-size:12px}
-/* config */
-.cfg-intro{font-size:13.5px;color:var(--muted);margin:2px 2px 18px;line-height:1.6;max-width:780px}
-.group{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
-.group>summary{list-style:none;cursor:pointer;padding:16px 20px;display:flex;align-items:center;gap:12px}
-.group>summary::-webkit-details-marker{display:none}
-.group .g-ic{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}
-.group .g-tt{font-weight:700;font-size:15px}.group .g-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
-.group .g-chev{margin-left:auto;color:var(--soft);transition:.2s}.group[open] .g-chev{transform:rotate(180deg)}
-.group .body{padding:6px 20px 22px;border-top:1px solid var(--line)}
-.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px 26px;margin-top:16px}
-/* ПОЛЕ-СЛАЙДЕР.
-   Подпись и значение раньше стояли по краям строки, растянутой на всю ширину
-   колонки: между «Рабочий день за, минут» и «10 мин» зияла пустота, а
-   значение висело в отдельной цветной плашке далеко от того, к чему
-   относится. Теперь подпись и значение стоят рядом, значение выровнено по
-   базовой линии подписи и набрано моноширинным — при перетаскивании ручки
-   цифры не «прыгают» по ширине. */
-.field{display:flex;flex-direction:column;gap:6px}
-.field .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.field label{font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
-.field .val{font-size:13px;font-weight:700;color:var(--accent-text);
- font-family:'JetBrains Mono',Consolas,monospace;font-variant-numeric:tabular-nums;
- background:var(--accent-bg);border:1px solid var(--accent-border);
- padding:2px 8px;border-radius:6px;line-height:1.35}
-.field .help{font-size:12px;color:var(--muted);line-height:1.5;margin-top:2px}
-input[type=range]{accent-color:var(--accent);width:100%;height:6px;cursor:pointer;margin:2px 0}
-input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
-.tin,select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--info-bg);font-size:13px;width:100%;color:var(--ink)}
-.tin:focus,select:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 4px #5b5bd61a}
-.switch-field{flex-direction:row;align-items:center;justify-content:space-between;gap:14px}
-.sw-txt label{display:block}.sw-txt .help{margin-top:3px}
-.switch{position:relative;width:46px;height:26px;flex:none}
-.switch input{opacity:0;width:0;height:0}
-.track{position:absolute;inset:0;background:var(--info-bg);border-radius:30px;transition:.2s}
-.track:before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.switch input:checked+.track{background:var(--accent)}
-.switch input:checked+.track:before{transform:translateX(20px)}
-.days{display:flex;gap:7px;flex-wrap:wrap}
-.day{padding:8px 13px;border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;user-select:none;color:var(--muted)}
-.day input{display:none}.day.act{background:var(--accent);border-color:var(--accent);color:#fff}
-.presets{display:flex;gap:9px;flex-wrap:wrap;margin:4px 0 4px}
-.chip{padding:8px 14px;border:1px solid var(--line);border-radius:20px;background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s}
-.chip:hover{border-color:var(--accent);color:var(--accent)}
-.tlinfo{background:var(--info-bg);border:1px dashed var(--info-border);border-radius:11px;padding:12px 14px;font-size:13px;color:var(--line-strong);margin:14px 0 4px}
-.savebar{position:sticky;bottom:0;display:flex;gap:14px;align-items:center;background:#f4f5fbf2;backdrop-filter:blur(6px);
- border-top:1px solid var(--line);padding:14px 2px;margin-top:8px}
-.toast{color:var(--ok);font-size:13px;font-weight:600}
-.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px}
-.pcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
-.phead{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
-.phead:hover{background:var(--info-bg)}
-.pinfo{flex:1}.pinfo .m-name{font-weight:700}.pinfo .m-role{font-size:12px;color:var(--muted)}
-.pmeta{display:flex;gap:10px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
-.pmeta b{color:var(--ink)}
-.pchev{color:var(--soft);transition:.2s}.pcard.open .pchev{transform:rotate(180deg)}
-.pbody{display:none;border-top:1px solid var(--line);padding:12px 16px;background:var(--info-bg)}
-.pcard.open .pbody{display:block}
-.pcur{font-size:13px;margin-bottom:10px;color:var(--line-strong)}
-.feed{display:flex;flex-direction:column;gap:3px;max-height:320px;overflow:auto;font-size:12px}
-.frow{display:grid;grid-template-columns:44px 92px 120px 1fr auto;gap:8px;align-items:center;padding:5px 8px;border-radius:7px;background:#fff;border:1px solid var(--line)}
-.frow.anom{background:var(--critical-bg);border-color:var(--critical-border)}.frow.look{background:var(--warning-bg);border-color:var(--warning-border)}
-.frow .mono{font-family:'JetBrains Mono',Consolas,monospace;color:var(--muted)}
-.frow .path{color:var(--info)}.frow .atag{font-size:10px;font-weight:700;color:var(--critical)}
-.pbadge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
-.pbadge.oc{background:var(--accent-bg);color:var(--accent-brand)}.pbadge.pt{background:var(--warning-bg);color:var(--warning)}
-.pbadge.wk{background:var(--success-bg);color:var(--success)}.pbadge.idle{background:var(--info-bg);color:var(--text-3)}
-.evtable{display:flex;flex-direction:column;gap:4px;max-height:420px;overflow:auto;margin-top:12px;font-size:12.5px}
-.evrow{display:grid;grid-template-columns:120px 92px 132px 1fr auto;gap:10px;align-items:center;padding:6px 10px;border-radius:8px;background:var(--info-bg);border:1px solid var(--line)}
-.evrow.anom{background:var(--critical-bg);border-color:var(--critical-border)}
-.evrow.look{background:var(--warning-bg);border-color:var(--warning-border)}
-.evrow .mono{font-family:'JetBrains Mono',Consolas,monospace;color:var(--muted)}
-.evrow .atag{font-size:11px;font-weight:700;color:var(--critical)}
-/* КОНСОЛЬ ЖУРНАЛА — всегда тёмная подложка.
-   Цвета текста здесь НЕ берутся из темы. Раньше брались, и в светлой теме
-   получалось нечитаемо: метка времени набиралась --text-1 (почти чёрный) на
-   почти чёрном фоне — контраст 1.12:1, текст просто пропадал; уровни INFO и
-   WARNING давали 4.4:1. Тема рассчитана на светлый фон, а этот блок тёмный
-   всегда — значит, и палитра у него своя, зафиксированная. */
-.console{
-  --con-bg:#0B1120; --con-text:#E2E8F0; --con-dim:#94A3B8;
-  --con-info:#7DD3FC; --con-warn:#FCD34D; --con-error:#FCA5A5; --con-ok:#86EFAC;
-  background:var(--con-bg);border:1px solid var(--line);border-radius:var(--radius);
-  height:480px;overflow:auto;padding:14px 16px;color:var(--con-text);
-  font-family:'JetBrains Mono','Cascadia Code',Consolas,monospace;font-size:12.5px;line-height:1.6}
-.console .line{white-space:pre-wrap;word-break:break-word;color:var(--con-text)}
-.console .lt{color:var(--con-dim)}
-.console .l-INFO{color:var(--con-info)}
-.console .l-WARNING{color:var(--con-warn)}
-.console .l-ERROR{color:var(--con-error)}
-.console .l-DEBUG{color:var(--con-dim)}
-@media(max-width:1000px){.app{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap}.kpis{grid-template-columns:repeat(3,1fr)}.clocks,.grid2{grid-template-columns:1fr}}
-::-webkit-scrollbar{width:9px;height:9px}
-::-webkit-scrollbar-thumb{background:var(--info-bg);border-radius:6px;border:2px solid var(--surface-3)}
-::-webkit-scrollbar-thumb:hover{background:var(--info-bg)}
-::-webkit-scrollbar-track{background:transparent}
-</style><link rel="stylesheet" href="/static/design-system.css"><script src="/static/i18n.js" defer></script><script src="/static/ui.js" defer></script><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🌐</text></svg>"></head><body>
+<link rel=stylesheet href="/static/design-system.css">
+<link rel=icon href="/static/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/static/mark.png">
+<script src="/static/i18n.js" defer></script><script src="/static/ui.js" defer></script></head><body>
 <div class=app>
   <aside class=side>
     <div class=brand><span class=brand-mark></span><span class=brand-text><b>Sentinel Env</b><span class=sub>Team &amp; GitLab</span></span></div>
@@ -256,113 +11,120 @@ input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3
       <a class=active data-view=overview><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><rect x=3 y=3 width=7 height=7 rx=1 /><rect x=14 y=3 width=7 height=7 rx=1 /><rect x=14 y=14 width=7 height=7 rx=1 /><rect x=3 y=14 width=7 height=7 rx=1 /></svg> Обзор</a>
       <a data-view=config><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><line x1=4 y1=21 x2=4 y2=14 /><line x1=4 y1=10 x2=4 y2=3 /><line x1=12 y1=21 x2=12 y2=12 /><line x1=12 y1=8 x2=12 y2=3 /><line x1=20 y1=21 x2=20 y2=16 /><line x1=20 y1=12 x2=20 y2=3 /><line x1=1 y1=14 x2=7 y2=14 /><line x1=9 y1=8 x2=15 y2=8 /><line x1=17 y1=16 x2=23 y2=16 /></svg> Конфигурация</a>
       <a data-view=logs><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><polyline points="4 17 10 11 4 5"/><line x1=12 y1=19 x2=20 y2=19 /></svg> Журнал событий</a>
-      <a data-view=data><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><ellipse cx=12 cy=5 rx=9 ry=3 /><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg> Данные · датасет</a>
+      <a data-view=data><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><ellipse cx=12 cy=5 rx=9 ry=3 /><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg> Датасет</a>
       <a data-view=repos><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><path d="M3 7h18M3 12h18M3 17h18"/><circle cx=6 cy=7 r=0.6 fill=currentColor/><circle cx=6 cy=12 r=0.6 fill=currentColor/><circle cx=6 cy=17 r=0.6 fill=currentColor/></svg> Репозитории</a>
       <a data-view=insights><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><line x1=18 y1=20 x2=18 y2=10 /><line x1=12 y1=20 x2=12 y2=4 /><line x1=6 y1=20 x2=6 y2=14 /></svg> Аналитика</a>
-      <a data-view=people><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx=9 cy=7 r=4 /><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Сотрудники</a>
+      <a data-view=people><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx=9 cy=7 r=4 /><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Активность команды</a>
     </nav>
     <div class=side-foot>
-      <div class=st><span class="run-dot" id=runDot></span><span id=runText>остановлена</span></div>
-      <div>Вы вошли как <b style=color:#dfe1f5>admin</b></div>
-      <div style=margin-top:6px><a href="/logout">Выйти из панели →</a></div>
+      <div class=who>admin</div>
+      <div class=mt-2><a href="/logout">Выйти</a></div>
     </div>
   </aside>
 
   <main class=main>
+    <!-- Слева контекст раздела, справа состояние и управление прогоном.
+         Индикаторы разделены линиями, а не воздухом: раньше они
+         переносились внутри себя уже на 1568px. -->
     <div class=topbar>
       <h1 id=pageTitle>Обзор</h1>
       <span class=grow></span>
-      <span class="pill" id=hlGitlab title="Связь с GitLab"><span class=d></span><span>GitLab: <b id=hlGitlabT>—</b></span></span>
-      <span class="pill" id=hlWorld title="Движок мира"><span class=d></span><span>Мир: <b id=hlWorldT>—</b></span></span>
-      <span class="pill" id=hlEvents title="Событий в журнале и давность последнего"><span class=d></span><span>События: <b id=hlEventsT>—</b></span></span>
-      <span class="pill" id=hlOllama hidden title="LLM (Ollama) для триажа на :8788"><span class=d></span><span>Ollama: <b id=hlOllamaT>—</b></span></span>
-      <span class="pill rest" id=workPill><span class=d></span><span id=workTxt>—</span></span>
-      <button class="btn primary" id=btnStart>Запустить</button>
-      <button class="btn danger" id=btnStop>Остановить</button>
+      <div class=status-strip>
+        <span class="pill" id=hlGitlab title="Связь с GitLab"><span class=d></span><span>GitLab <b id=hlGitlabT>—</b></span></span>
+        <span class="pill" id=hlWorld title="Движок симуляции"><span class=d></span><span>Симуляция <b id=hlWorldT>—</b></span></span>
+        <span class="pill" id=hlEvents title="Событий в журнале и давность последнего"><span class=d></span><span>События <b id=hlEventsT>—</b></span></span>
+        <span class="pill" id=hlOllama hidden title="Локальная модель для триажа"><span class=d></span><span>Модель <b id=hlOllamaT>—</b></span></span>
+        <span class="pill rest" id=workPill><span class=d></span><span id=workTxt>—</span></span>
+      </div>
+      <div class=ds-toolbar style=margin:0>
+        <button class="btn" id=btnStart>Запустить</button>
+        <button class="btn ghost danger" id=btnStop>Остановить</button>
+      </div>
     </div>
 
     <div class=content>
 
       <!-- ОБЗОР -->
       <section class="view active" id=v-overview>
+        <!-- Строка часов и строка показателей — общий контекст прогона. -->
         <div class=clocks>
-          <div class=clock><div class=lab><span class=ic>◷</span>Реальное время</div>
-            <div class=val id=realTime>—</div><div class=sub>часы этого компьютера</div></div>
-          <div class="clock sim"><div class=lab><span class=ic>⟳</span>Время симуляции</div>
-            <div class=val id=simTime>—</div><div class=sub id=simSub>внутреннее время отдела</div></div>
-          <div class=clock><div class=lab><span class=ic>⎇</span>Время GitLab-сервера</div>
-            <div class=val id=glTime>—</div><div class=sub>им проставляются коммиты</div></div>
+          <div class="clock sim"><div class=lab>Время симуляции</div>
+            <div class=val id=simTime>—</div><div class=sub id=simSub>—</div></div>
+          <div class=clock><div class=lab>Реальное время</div>
+            <div class=val id=realTime>—</div><div class=sub>Часы этого компьютера</div></div>
+          <div class=clock><div class=lab>Время GitLab</div>
+            <div class=val id=glTime>—</div><div class=sub>Проставляется в коммиты</div></div>
         </div>
 
         <div class=kpis>
-          <div class=kpi><div class=n id=sSprint>—</div><div class=l>Спринт</div></div>
-          <div class=kpi><div class=n id=sRules>—</div><div class=l>Активных правил</div></div>
-          <div class=kpi><div class=n id=sRuns>—</div><div class=l>Действий</div></div>
-          <div class=kpi><div class=n id=sOk>—</div><div class=l>Успешно</div></div>
-          <div class=kpi><div class=n id=sFail>—</div><div class=l>С ошибкой</div></div>
-          <div class=kpi><div class=n id=sSkip>—</div><div class=l>Пропущено ночью</div></div>
+          <div class=kpi><div class=l>Спринт</div><div class="n is-empty" id=sSprint>—</div></div>
+          <div class=kpi><div class=l>Активных правил</div><div class="n is-empty" id=sRules>—</div></div>
+          <div class=kpi><div class=l>Действий</div><div class="n is-empty" id=sRuns>—</div></div>
+          <div class=kpi><div class=l>Успешно</div><div class="n is-empty" id=sOk>—</div></div>
+          <div class=kpi><div class=l>С ошибкой</div><div class="n is-empty" id=sFail>—</div></div>
+          <div class=kpi><div class=l>Пропущено</div><div class="n is-empty" id=sSkip>—</div></div>
         </div>
 
-        <div class=grid2>
-          <div class=panel><h2>Состояние режима</h2>
-            <div class=kv>
-              <b>Статус дня</b><span id=dayStatus>—</span>
-              <b>Рабочие часы</b><span id=workHours>—</span>
-              <b title="Таймлапс: время симуляции идёт быстрее реального (например, рабочий день за 10 минут). Выключено — 1:1 с реальным.">Сжатие времени</b><span id=tl>—</span>
-              <b title="off-hours: поведение ночью/в выходные. oncall — дежурный работает; idle — простой. Ночная активность = сигнал для детектора.">Вне рабочих часов</b><span id=ohm>—</span>
-              <b>Даты в GitLab</b><span id=gld>—</span>
-              <b>Текущее действие</b><span id=lastAct>—</span>
-              <b>Время работы</b><span id=uptime>—</span>
+        <!-- Две колонки со СТОПКАМИ панелей, а не сетка из ячеек: короткая
+             панель больше не тянется под высоту соседней и не оставляет
+             под собой полэкрана пустоты. -->
+        <div class=cols2>
+          <div class=col>
+            <div class=card><h2>Состояние режима</h2>
+              <div class=kv>
+                <b>Статус дня</b><span id=dayStatus>—</span>
+                <b>Рабочие часы</b><span id=workHours>—</span>
+                <b>Сжатие времени</b><span id=tl>—</span>
+                <b>Вне рабочих часов</b><span id=ohm>—</span>
+                <b>Даты в GitLab</b><span id=gld>—</span>
+                <b>Текущее действие</b><span id=lastAct>—</span>
+                <b>Время работы</b><span id=uptime>—</span>
+              </div>
+            </div>
+
+            <div class="card mt-3"><h2>Запись в GitLab<span class=grow></span>
+              <span class=sub id=dPctSub></span></h2>
+              <div class=kv>
+                <b>Успешных вызовов</b><span id=dPct>—</span>
+                <b>Успешно</b><span id=dOk>—</span>
+                <b>С ошибкой</b><span id=dFail>—</span>
+                <b>Событий в журнале</b><span id=dTot>—</span>
+              </div>
+              <div class=btrack><i id=dBar></i></div>
             </div>
           </div>
-          <div class=panel><h2>Команда</h2>
-            <div class=members id=team></div>
-            <div class=kv style=margin-top:14px>
-              <b>Дежурный (on-call)</b><span id=oncall>—</span>
-              <b>В отпуске</b><span id=pto>—</span></div>
-          </div>
-        </div>
 
-        <div class=grid2>
-          <div class=panel><h2>Поток событий по типам</h2>
-            <div class=acts id=evActs style=margin-top:10px><div class=help style=color:#9aa0ad>пока пусто</div></div></div>
-          <div class=panel><h2>Запись в GitLab</h2>
-            <div style="margin-top:16px">
-              <div style="display:flex;align-items:baseline;gap:10px">
-                <div id=dPct style="font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1">—</div>
-                <div class=sub style=margin:0>успешных вызовов</div>
-              </div>
-              <div class=btrack style="margin-top:10px;height:10px"><i id=dBar style="display:block;height:100%;width:0%"></i></div>
-              <div style="display:flex;gap:22px;margin-top:14px;flex-wrap:wrap;font-size:13px">
-                <div><div class=sub style=margin:0>успешно</div><b id=dOk style="font-size:19px;font-variant-numeric:tabular-nums">—</b></div>
-                <div><div class=sub style=margin:0>с ошибкой</div><b id=dFail style="font-size:19px;font-variant-numeric:tabular-nums">—</b></div>
-                <div style="border-left:1px solid var(--line);padding-left:22px"><div class=sub style=margin:0>событий в журнале</div><b id=dTot style="font-size:19px;font-variant-numeric:tabular-nums">—</b></div>
-                <div><div class=sub style=margin:0>из них аномалий</div><b id=dAnom style="font-size:19px;font-variant-numeric:tabular-nums">—</b></div>
-              </div>
-            </div></div>
-        </div>
+          <div class=col>
+            <div class=card><h2>Команда<span class=grow></span>
+              <span class=sub id=teamMeta></span></h2>
+              <div class=members id=team></div>
+            </div>
 
-        <div class=grid2>
-          <div class=panel><h2>Распределение действий</h2>
-            <div class=acts id=acts></div>
+            <div class="card mt-3"><h2>Действия за прогон<span class=grow></span>
+              <span class=sub>по типам</span></h2>
+              <div class=acts id=acts><div class="help empty">Действий пока нет.</div></div>
+            </div>
+
+            <div class="card mt-3"><h2>События журнала<span class=grow></span>
+              <span class=sub>по типам</span></h2>
+              <div class=acts id=evActs><div class="help empty">Событий пока нет.</div></div>
+            </div>
           </div>
         </div>
       </section>
 
       <!-- КОНФИГУРАЦИЯ -->
       <section class=view id=v-config>
-        <div class=cfg-intro>Параметры симуляции. Изменения сохраняются в файл
-          <code>web_config.json</code> и применяются немедленно — перезапуск не требуется.</div>
+        <p class=page-sub>Параметры симуляции. Применяются сразу, перезапуск не нужен.</p>
         <div id=cfg></div>
         <div class=savebar>
-          <button class="btn primary" id=btnSave>Сохранить изменения</button>
+          <button class=btn id=btnSave>Сохранить</button>
+          <button class="btn ghost" id=btnReload>Отменить изменения</button>
           <span class=toast id=saveToast></span>
-          <span class=grow></span>
-          <button class="btn" id=btnReload>Сбросить форму к сохранённому</button>
         </div>
 
-        <div class=panel style="margin-top:18px;border:1px solid #f2b8b3;background:#fef7f6">
-          <h2 style=color:#b42318>Сброс состояния репозиториев</h2>
+        <div class=panel style="margin-top:18px;border:1px solid var(--critical-border);background:var(--critical-bg)">
+          <h2>Сброс состояния репозиториев</h2>
           <div class=sub>Откат к чистому проекту: закрываются все открытые MR, удаляются все
             ветки кроме <code>main</code>, контент репозиториев очищается до <code>README</code>.
             <b>Команда и сами репозитории сохраняются</b> — удаляется только наработанный контент.
@@ -377,83 +139,109 @@ input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3
 
       <!-- ЖУРНАЛ -->
       <section class=view id=v-logs>
-        <div class=panel style=margin-bottom:16px>
+        <div class="panel mb-4">
           <h2>Журнал событий</h2>
           <div class=console id=console></div>
           <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
-            <a class="btn" id=btnRunlog href="/api/runlog">Скачать полный лог прогона</a>
-            <button class="btn primary" id=btnTg>Отправить отчёт в Telegram</button>
+            <a class="btn" id=btnRunlog href="/api/runlog">Скачать лог прогона</a>
+            <button class="btn ghost" id=btnTg>Отправить в Telegram</button>
             <span class=toast id=tgToast></span>
             <span class=grow></span>
-            <span class=sub id=logCounts style=margin:0></span>
+            <span class="sub mt-0" id=logCounts></span>
           </div>
         </div>
       </section>
 
       <section class=view id=v-people>
-        <div class=cfg-intro>Нажмите на сотрудника, чтобы раскрыть живую ленту — что и куда он заливает в реальном времени.<br>
-          <span class=sub>Статистика у карточки: ↑ — пуши (коммиты) · MR — merge request'ы · ⚠ — подозрительные (аномальные) действия. Считается по событиям, которые актор сгенерил с начала прогона.</span></div>
-        <div class=people id=people></div>
+        <!-- Активность команды — поток событий с иерархией по времени,
+             а не сетка одинаковых карточек с людьми. Состав команды
+             стоит рядом узкой колонкой: это справочник, а не главное. -->
+        <div class=dash>
+          <div class="card dash-main"><h2>Поток активности<span class=grow></span>
+            <span class=sub id=teamFeedSub></span></h2>
+            <div class=stream id=teamStream></div></div>
+          <div class=card><h2>Команда<span class=grow></span>
+            <span class=sub id=teamCount></span></h2>
+            <div class=people id=people></div></div>
+        </div>
       </section>
 
       <section class=view id=v-data>
-        <div class=kpis style=grid-template-columns:repeat(4,1fr)>
-          <div class=kpi><div class=n id=evTotal>—</div><div class=l>Событий записано</div></div>
-          <div class=kpi><div class=n id=evAnom>—</div><div class=l>Аномалий (метки)</div></div>
-          <div class=kpi><div class=n id=evRate>—</div><div class=l>Доля аномалий</div></div>
-          <div class=kpi><div class=n id=evTypes>—</div><div class=l>Типов аномалий</div></div>
+        <div class=kpis>
+          <div class=kpi><div class=l>Событий записано</div><div class="n is-empty" id=evTotal>—</div></div>
+          <div class=kpi><div class=l>Типов действий</div><div class="n is-empty" id=evTypes>—</div></div>
+          <div class=kpi><div class=l>Размер файла</div><div class="n is-empty" id=evSize>—</div></div>
         </div>
-        <div class=grid2>
-          <div class=panel><h2>Аномалии по типам</h2>
-            <div class=acts id=evByType></div></div>
-          <div class=panel><h2>Датасет</h2>
-            <div class=kv><b>Файл</b><span id=evFile>—</span><b>Запуск</b><span id=evRun>—</span></div>
-            <div style=margin-top:14px><a class="btn primary" id=btnDataset href=/api/dataset>Скачать events.jsonl</a></div>
-            <div class=sub style=margin-top:12px>Файл накапливается между запусками (каждая строка помечена run_id).</div></div>
+
+        <div class=card>
+          <h2>Файл датасета<span class=grow></span>
+            <a class="btn ghost xs" id=btnDataset href=/api/dataset download>Скачать events.jsonl</a></h2>
+          <div class=kv>
+            <b>Путь</b><span id=evFile class=mono>—</span>
+            <b>Идентификатор прогона</b><span id=evRun class=mono>—</span>
+          </div>
+          <div class=sub>Строки накапливаются между запусками, каждая помечена run_id.</div>
         </div>
-        <div class=panel style=margin-top:16px><h2>Последние события</h2>
-          <div class=evtable id=evList></div></div>
+
+        <div class="card mt-3"><h2>Последние события<span class=grow></span>
+          <span class=sub id=evCount></span></h2>
+          <div class=ds-tablewrap>
+            <table class=ds-table>
+              <thead><tr>
+                <th scope=col class=w-ts>Время</th>
+                <th scope=col class=w-actor>Актор</th>
+                <th scope=col class=w-layer>Действие</th>
+                <th scope=col>Объект</th>
+                <th scope=col class=w-repo>Репозиторий</th>
+              </tr></thead>
+              <tbody id=evList></tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <!-- РЕПОЗИТОРИИ (живая визуализация) -->
       <section class=view id=v-repos>
-        <div class=cfg-intro>Живая карта репозиториев. Видно, как появляются файлы (пуши),
-          как merge request'ы открываются и затем мёржатся или закрываются — каждое событие
-          подписано автором и сообщением. Аномалии подсвечены красным.</div>
-        <div class=repogrid id=repogrid></div>
+        <p class=page-sub>Файлы, merge request'ы и события по репозиториям. Аномалии отмечены красным.</p>
+        <div class=card>
+          <h2>Репозитории<span class=grow></span><span class=sub id=repoCount></span></h2>
+          <div class=ds-tablewrap>
+            <table class=ds-table id=repoTable>
+              <thead><tr>
+                <th scope=col>Репозиторий</th>
+                <th scope=col class=right>Файлов</th>
+                <th scope=col class=right>Пушей</th>
+                <th scope=col class=right>MR</th>
+                <th scope=col class=right>Смёржено</th>
+                <th scope=col class=right>Событий</th>
+                <th scope=col>Последнее</th>
+                <th scope=col>Автор</th>
+                <th scope=col>Состояние</th>
+              </tr></thead>
+              <tbody id=repogrid></tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <!-- АНАЛИТИКА -->
       <section class=view id=v-insights>
-        <div class=panel style=margin-bottom:16px>
-          <h2>Карта активности · часы × дни недели</h2>
-          <div id=heatmap style=margin-top:14px;overflow-x:auto></div>
-          <div style="display:flex;gap:14px;align-items:center;margin-top:10px;font-size:12px;color:#6b7180">
-            <span>меньше</span>
-            <span style="display:inline-flex;gap:3px">
-              <i style="width:14px;height:14px;border-radius:3px;background:#f1f4fa;border:1px solid #e3e8f0"></i>
-              <i style="width:14px;height:14px;border-radius:3px;background:#c7d2fe"></i>
-              <i style="width:14px;height:14px;border-radius:3px;background:#818cf8"></i>
-              <i style="width:14px;height:14px;border-radius:3px;background:#4f46e5"></i>
-              <i style="width:14px;height:14px;border-radius:3px;background:#3730a3"></i>
+        <p class=page-sub>Когда команда работает: активность по часам и дням недели.</p>
+        <div class=card>
+          <h2>Ритм активности<span class=grow></span>
+            <span class=ds-legend>
+              <span class=ds-leg>реже</span>
+              <span class=heat-scale><i class=h0></i><i class=h1></i><i class=h2></i><i class=h3></i><i class=h4></i></span>
+              <span class=ds-leg>чаще</span>
             </span>
-            <span>больше</span>
-            <span style="margin-left:14px"><i style="width:14px;height:14px;border-radius:3px;border:2px solid #ef4444;display:inline-block;vertical-align:middle"></i> в этот час была аномалия (красная рамка на клетке)</span>
-          </div>
+          </h2>
+          <div id=heatmap class=heatwrap></div>
         </div>
 
-        <div>
-          <div class=panel><h2>Таймлайн аномалий</h2>
-            <div id=anomTimeline style=margin-top:12px></div>
-            <div style="display:flex;gap:14px;margin-top:10px;font-size:12px;color:#6b7180;flex-wrap:wrap">
-              <span><i class=sevdot style=background:#dc2626></i> critical</span>
-              <span><i class=sevdot style=background:#f59e0b></i> high</span>
-              <span><i class=sevdot style=background:#eab308></i> medium</span>
-              <span><i class=sevdot style=background:#64748b></i> low</span>
-            </div>
-          </div>
+        <div class="card mt-3"><h2>Активность по часам<span class=grow></span>
+          <span class=sub id=hourSub></span></h2>
+          <div class=hours id=hoursBar></div>
         </div>
-
       </section>
 
     </div>
@@ -461,17 +249,34 @@ input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3
 </div>
 
 <script>
+/* ОШИБКИ ИНТЕРФЕЙСА
+   Циклы опроса раньше были обёрнуты в `catch(e){}`. Одна опечатка
+   внутри — например classList.add('') — тихо обрывала весь цикл, и
+   половина значений навсегда оставалась прочерками, без единого следа
+   в консоли. Теперь ошибка печатается с контекстом и один раз
+   показывается тостом. Функция объявлена здесь, а не в ui.js: тот
+   подключается с defer и выполняется позже этого скрипта. */
+var _uiErrSeen={};
+function uiErr(where,e){
+ var msg=((e&&(e.message||e))||'')+'';
+ var key=where+':'+msg;
+ if(_uiErrSeen[key])return; _uiErrSeen[key]=1;
+ try{console.error('[ui] '+where+': '+msg,e);}catch(x){}
+ try{if(window.toast)window.toast('Сбой в интерфейсе: '+where,'error',6000);}catch(x){}
+}
+
 const $=id=>document.getElementById(id);
 async function jget(u){const r=await fetch(u);return r.json();}
 async function jpost(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):null});return r.json();}
 function rid(k){return 'f_'+k.replace(/[^a-zA-Z0-9]/g,'_');}
 function fmtUptime(s){if(!s)return '—';const h=(s/3600|0),m=(s%3600/60|0),x=s%60;return h+'ч '+m+'м '+x+'с';}
-const PAL=['#5b5bd6','#0ea5a4','#e8590c','#7048e8','#1098ad','#d6336c'];
-function colorFor(n){let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%PAL.length;return PAL[h];}
+// Цвет в системе означает уровень серьёзности, поэтому у аватарок его нет:
+// различают инициалы, а не оттенок.
+function colorFor(){return 'var(--surface-4)';}
 function initials(n){return n.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();}
 
 /* навигация */
-const TITLES={overview:'Обзор',config:'Конфигурация',logs:'Журнал событий',data:'Данные · датасет для ML',repos:'Репозитории · живая карта',insights:'Аналитика',people:'Сотрудники · слежение'};
+const TITLES={overview:'Обзор',config:'Конфигурация',logs:'Журнал событий',data:'Датасет',repos:'Репозитории',insights:'Аналитика',people:'Активность команды'};
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>{
   document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));
   a.classList.add('active');
@@ -503,14 +308,43 @@ const PROB_HELP={
  emoji:"Частота реакций на события.",
  promote:"Доля стабильных правил, продвигаемых в продакшен."
 };
+const ROLE_RU={detection_engineer:'Инженер детектирования',ml_engineer:'ML-инженер',
+ threat_hunter:'Threat hunter',soc_analyst:'Аналитик SOC',devops:'DevOps',
+ lead:'Тимлид',bot:'Сервисный бот',engineer:'Инженер'};
+function roleRu(r){return ROLE_RU[r]||r;}
+
 const ACT_HELP={
  new_detection_rule:"Новое правило детектирования",fix_existing_rule:"Исправление правила",
- tune_threshold:"Донастройка порогов",refactor_rule:"Рефакторинг",update_parser:"Обновление парсера",
- update_playbook:"Обновление плейбука",add_test_sample:"Тестовый образец",threat_intel_update:"Threat intelligence",
- update_dashboard:"Обновление метрик",triage_false_positive:"Разбор ложного срабатывания",revert_bad_rule:"Откат правила",
- deprecate_rule:"Вывод правила из эксплуатации",recreate_fixed_rule:"Пересоздание правила",handle_incident:"Реагирование на инцидент",
- bulk_maintenance:"Массовое обслуживание",open_issue:"Заведение тикета",campaign:"Сюжетная кампания"
+ tune_threshold:"Донастройка порогов",refactor_rule:"Рефакторинг правила",
+ update_parser:"Обновление парсера",update_playbook:"Обновление плейбука",
+ add_test_sample:"Тестовый образец",threat_intel_update:"Обновление threat intelligence",
+ update_dashboard:"Обновление дашборда",triage_false_positive:"Разбор ложного срабатывания",
+ revert_bad_rule:"Откат правила",deprecate_rule:"Вывод правила из эксплуатации",
+ recreate_fixed_rule:"Пересоздание правила",handle_incident:"Реагирование на инцидент",
+ bulk_maintenance:"Массовое обслуживание",open_issue:"Заведение задачи",
+ campaign:"Сюжетная кампания",
+ api_browsing:"Обращения к API",automation_script:"Скрипт автоматизации",
+ benign_quirk:"Нетипичное, но безобидное действие",branch_cleanup:"Уборка веток",
+ ci_variable_update:"Правка переменных CI",cloud_detection:"Облачное правило",
+ dependency_audit:"Аудит зависимостей",dependency_bump:"Обновление зависимости",
+ deploy_key_rotation:"Ротация ключа деплоя",docs_wiki:"Документация",
+ edr_rule:"Правило EDR",hunt_query:"Запрос охоты за угрозами",
+ ir_runbook:"Плейбук реагирования",iterative_review:"Итеративное ревью",
+ membership_change:"Изменение состава участников",ml_engine_work:"Работа над ML-движком",
+ nightly_schedule:"Ночное расписание",pipeline_run:"Прогон конвейера",
+ production_deploy:"Деплой в production",rebase_force_push:"Перезапись истории веткой",
+ siem_content:"Контент SIEM",sprint_retro:"Ретроспектива спринта",
+ token_rotation:"Ротация токена",webhook_setup:"Настройка вебхука",
+ standup:"Дейли-встреча",release:"Релиз",
+ anomaly:"Аномальное действие",offhours_benign:"Активность вне часов"
 };
+// Незнакомый ключ не показываем сырым: превращаем snake_case в фразу.
+// Раньше на экране висели automation_script и membership_change.
+function actName(k){
+ if(ACT_HELP[k])return ACT_HELP[k];
+ const t=String(k||'').replace(/_/g,' ').trim();
+ return t?t.charAt(0).toUpperCase()+t.slice(1):'—';
+}
 
 /* ---- контролы ---- */
 function slider(k,label,help,min,max,step,unit,val){
@@ -531,9 +365,13 @@ function toggle(k,label,help,val){
  return '<div class="field switch-field"><div class=sw-txt><label>'+label+'</label><div class=help>'+help+'</div></div>'+
   '<label class=switch><input type=checkbox data-k="'+k+'" data-t=bool '+(val?'checked':'')+' onchange=recalc()><span class=track></span></label></div>';
 }
+// Варианты принимаются либо строкой, либо парой [значение, подпись]:
+// в интерфейсе не должно быть сырых enum-ов вроде «oncall» и «real».
 function sel(k,label,help,opts,val){
  return '<div class=field><label>'+label+'</label><select data-k="'+k+'" data-t=str onchange=recalc()>'+
-  opts.map(o=>'<option '+(o===val?'selected':'')+'>'+o+'</option>').join('')+'</select><div class=help>'+help+'</div></div>';
+  opts.map(function(o){var v=Array.isArray(o)?o[0]:o, t=Array.isArray(o)?o[1]:o;
+   return '<option value="'+v+'"'+(v===val?' selected':'')+'>'+t+'</option>';}).join('')+
+  '</select><div class=help>'+help+'</div></div>';
 }
 function txt(k,label,help,val){
  return '<div class=field><label>'+label+'</label><input class=tin data-k="'+k+'" data-t=str value="'+(val==null?'':val)+'"><div class=help>'+help+'</div></div>';
@@ -541,7 +379,7 @@ function txt(k,label,help,val){
 function group(ic,title,subtitle,inner,open){
  return '<details class=group '+(open?'open':'')+'><summary><span class=g-ic>'+ic+'</span>'+
   '<span><div class=g-tt>'+title+'</div><div class=g-sub>'+subtitle+'</div></span>'+
-  '<span class=g-chev>▾</span></summary><div class=body>'+inner+'</div></details>';
+  '<span class=g-chev><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m6 9 6 6 6-6"/></svg></span></summary><div class=body>'+inner+'</div></details>';
 }
 
 let CFG={};
@@ -552,22 +390,22 @@ function renderCfg(c){
    wn.map((d,i)=>'<label class="day '+((c.WORK_DAYS||[]).includes(i)?'act':'')+'"><input type=checkbox data-day='+i+' '+((c.WORK_DAYS||[]).includes(i)?'checked':'')+' onchange="this.parentNode.classList.toggle(\'act\',this.checked)">'+d+'</label>').join('')+
    '</div><div class=help>Дни, когда команда считается работающей.</div></div>';
 
- const tl=group('⏱','Сжатие времени','Насколько быстро идёт время внутри симуляции относительно реального.',
+ const tl=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=12 cy=12 r=9/><path d="M12 7v5l3 2"/></svg>','Сжатие времени','Насколько быстро идёт время внутри симуляции относительно реального.',
    '<div class=presets>'+
      '<button class=chip onclick="preset(\'real\')">Реальное время</button>'+
-     '<button class=chip onclick="preset(\'wd60\')">Рабочий день = 1 час</button>'+
-     '<button class=chip onclick="preset(\'wd30\')">Рабочий день = 30 минут</button>'+
-     '<button class=chip onclick="preset(\'wd10\')">Ускоренный = 10 минут</button>'+
-     '<button class=chip onclick="preset(\'week\')">Неделя = 1 час</button></div>'+
+     '<button class=chip onclick="preset(\'wd60\')">Рабочий день → 1 ч</button>'+
+     '<button class=chip onclick="preset(\'wd30\')">Рабочий день → 30 мин</button>'+
+     '<button class=chip onclick="preset(\'wd10\')">Рабочий день → 10 мин</button>'+
+     '<button class=chip onclick="preset(\'week\')">Неделя → 1 ч</button></div>'+
    '<div class=tlinfo id=tlInfo>—</div><div class=fields>'+
    toggle('TIMELAPSE_ENABLED','Сжатие времени включено','Время симуляции идёт быстрее реального. Выключено — один к одному.',c.TIMELAPSE_ENABLED)+
-   slider('SIM_WORKDAY_REAL_MINUTES','Рабочий день за, минут','Сколько реального времени занимает один рабочий день симуляции (10:00–18:00). Меньше — быстрее.',5,480,5,' мин',c.SIM_WORKDAY_REAL_MINUTES)+
-   sliderN('TIME_SCALE_OVERRIDE','Точный масштаб','Секунд симуляции за одну реальную секунду. 0 — рассчитать автоматически. 24 — сутки за час, 168 — неделя за час.',0,300,1,c.TIME_SCALE_OVERRIDE)+
+   slider('SIM_WORKDAY_REAL_MINUTES','Рабочий день за, минут','Сколько реального времени занимает рабочий день симуляции.',5,480,5,' мин',c.SIM_WORKDAY_REAL_MINUTES)+
+   sliderN('TIME_SCALE_OVERRIDE','Точный масштаб','Секунд симуляции за реальную секунду. 0 — рассчитать автоматически.',0,300,1,c.TIME_SCALE_OVERRIDE)+
    toggle('FAST_FORWARD_OFFHOURS','Пропускать ночи и выходные','Нерабочее время проматывается мгновенно; реальное время тратится только на рабочие часы.',c.FAST_FORWARD_OFFHOURS)+
-   txt('SIM_START','Начало отсчёта','Дата и время старта симуляции. Пусто — сегодня, 10:00. Формат: 2026-06-01 10:00.',c.SIM_START)+
+   txt('SIM_START','Начало отсчёта','Пусто — сегодня в 10:00. Формат: 2026-06-01 10:00.',c.SIM_START)+
    '</div>',true);
 
- const wd=group('🗓','Рабочий день и неделя','Когда команда активна.','<div class=fields>'+
+ const wd=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><rect x=3 y=4 width=18 height=18 rx=2/><path d="M16 2v4M8 2v4M3 10h18"/></svg>','Рабочий день и неделя','Когда команда активна.','<div class=fields>'+
    slider('WORK_HOURS_START','Начало рабочего дня, час','Час, с которого начинается рабочий день.',0,23,1,' ч',c.WORK_HOURS_START)+
    slider('WORK_HOURS_END','Конец рабочего дня, час','Час окончания рабочего дня. После — нерабочее время.',1,24,1,' ч',c.WORK_HOURS_END)+
    days+
@@ -576,38 +414,38 @@ function renderCfg(c){
    slider('LUNCH_BREAK.duration_min','Длительность обеда, минут','Продолжительность перерыва во внутреннем времени.',0,120,5,' мин',c.LUNCH_BREAK&&c.LUNCH_BREAK.duration_min)+
    '</div>');
 
- const oh=group('🌙','Нерабочее время','Поведение ночью и в выходные.','<div class=fields>'+
-   sel('OFF_HOURS_MODE','Режим вне рабочих часов','«oncall» — дежурный изредка реагирует на инциденты. «idle» — полная тишина до следующего рабочего дня.',['oncall','idle'],c.OFF_HOURS_MODE)+
+ const oh=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>','Нерабочее время','Поведение ночью и в выходные.','<div class=fields>'+
+   sel('OFF_HOURS_MODE','Режим вне рабочих часов','Дежурный реагирует на инциденты либо активности нет вовсе.',[['oncall','Дежурный на связи'],['idle','Активности нет']],c.OFF_HOURS_MODE)+
    slider('OFF_HOURS_ACTIVITY_PROBABILITY','Вероятность ночной активности','Шанс, что дежурный что-то выполнит ночью (для режима oncall). 0 — никогда.',0,1,0.01,'',c.OFF_HOURS_ACTIVITY_PROBABILITY)+
    slider('OFF_HOURS_POLL_SECONDS','Интервал проверки, секунд','Как часто проверять наступление рабочего дня (актуально без сжатия времени).',30,1800,30,' с',c.OFF_HOURS_POLL_SECONDS)+
    '</div>');
 
- const tempo=group('🏃','Темп работы','Частота и длительность действий.','<div class=fields>'+
-   slider('SCENARIO_INTERVAL.min','Пауза между действиями (мин), сек','Минимальная пауза во внутреннем времени. Реальная = делится на масштаб.',5,600,5,' с',c.SCENARIO_INTERVAL&&c.SCENARIO_INTERVAL.min)+
+ const tempo=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M12 21a9 9 0 1 0-9-9"/><path d="M12 12 8 8"/><path d="M3 12h3"/></svg>','Темп работы','Частота и длительность действий.','<div class=fields>'+
+   slider('SCENARIO_INTERVAL.min','Пауза между действиями (мин), сек','Минимальная пауза во внутреннем времени.',5,600,5,' с',c.SCENARIO_INTERVAL&&c.SCENARIO_INTERVAL.min)+
    slider('SCENARIO_INTERVAL.max','Пауза между действиями (макс), сек','Максимальная пауза во внутреннем времени.',5,600,5,' с',c.SCENARIO_INTERVAL&&c.SCENARIO_INTERVAL.max)+
    slider('SPEED_MULTIPLIER','Множитель длительности действий','Масштабирует внутренние паузы (ревью, обсуждения). 1.0 — стандарт.',0.1,5,0.1,'×',c.SPEED_MULTIPLIER)+
    slider('MAX_OPEN_MRS','Лимит открытых запросов слияния','При достижении лимита команда сначала разбирает очередь, а не открывает новые.',1,20,1,'',c.MAX_OPEN_MRS)+
    '</div>');
 
- const rhythm=group('🔁','Долгосрочные циклы','Спринты и отсутствия сотрудников.','<div class=fields>'+
+ const rhythm=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m17 2 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>','Долгосрочные циклы','Спринты и отсутствия сотрудников.','<div class=fields>'+
    slider('SPRINT_DAYS','Длина спринта, дней','По завершении спринта формируется релиз.',1,30,1,' дн',c.SPRINT_DAYS)+
    slider('PTO_PROBABILITY_PER_DAY','Вероятность отпуска в день','Шанс, что сотрудник отсутствует в конкретный день.',0,1,0.01,'',c.PTO_PROBABILITY_PER_DAY)+
    '</div>');
 
- const git=group('⎇','GitLab и время','Подключение и согласование дат.','<div class=fields>'+
+ const git=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=6 cy=6 r=3/><circle cx=6 cy=18 r=3/><path d="M18 9a9 9 0 0 1-9 9"/><circle cx=18 cy=6 r=3/></svg>','GitLab и время','Подключение и согласование дат.','<div class=fields>'+
    txt('GITLAB_URL','Адрес GitLab','URL сервера GitLab.',c.GITLAB_URL)+
    txt('ADMIN_TOKEN','Токен доступа','Personal access token со scope api.',c.ADMIN_TOKEN)+
-   sel('GITLAB_DATES','Даты, записываемые в GitLab','«real» — реальное время сервера, согласовано с коммитами (рекомендуется). «sim» — время симуляции; учитывается только для admin-токена и не для будущих дат. Отметки коммитов всегда ставит сам GitLab.',['real','sim'],c.GITLAB_DATES)+
+   sel('GITLAB_DATES','Даты, записываемые в GitLab','Реальное время сервера согласовано с коммитами и рекомендуется по умолчанию.',[['real','Реальное время сервера'],['sim','Время симуляции']],c.GITLAB_DATES)+
    '</div>');
 
- const feat=group('🧩','Элементы поведения','Какие части рабочего процесса включены.','<div class=fields>'+
+ const feat=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m12 2 9 5-9 5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>','Элементы поведения','Какие части рабочего процесса включены.','<div class=fields>'+
    Object.keys(c.FEATURES||{}).map(k=>toggle('FEATURES:'+k,k,FEATURE_HELP[k]||'',c.FEATURES[k])).join('')+'</div>');
 
- const probs=group('🎲','Частота нештатных ситуаций','Насколько часто возникают сбои и отклонения.','<div class=fields>'+
+ const probs=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m18 3 3 3-3 3"/><path d="M3 6h4l10 12h4"/><path d="m18 15 3 3-3 3"/><path d="M3 18h4l2.5-3"/></svg>','Частота нештатных ситуаций','Насколько часто возникают сбои и отклонения.','<div class=fields>'+
    Object.keys(c.PROBS||{}).map(k=>slider('PROBS:'+k,k,PROB_HELP[k]||'',0,1,0.01,'',c.PROBS[k])).join('')+'</div>');
 
- const weights=group('⚖','Частота типов действий','Относительная вероятность выбора каждого сценария.','<div class=fields>'+
-   Object.keys(c.ACTIVITY_WEIGHTS||{}).map(k=>slider('WEIGHT:'+k,(ACT_HELP[k]||k),'Внутренний ключ: '+k,0,0.4,0.01,'',c.ACTIVITY_WEIGHTS[k])).join('')+'</div>');
+ const weights=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>','Частота типов действий','Относительная вероятность выбора каждого сценария.','<div class=fields>'+
+   Object.keys(c.ACTIVITY_WEIGHTS||{}).map(k=>slider('WEIGHT:'+k,actName(k),'Внутренний ключ: '+k,0,0.4,0.01,'',c.ACTIVITY_WEIGHTS[k])).join('')+'</div>');
 
  $('cfg').innerHTML=tl+wd+oh+tempo+rhythm+git+feat+probs+weights;
  recalc();
@@ -658,66 +496,103 @@ async function save(){
 
 async function tick(){
  let s;try{s=await jget('/api/status');}catch(e){return;}
- $('runDot').className='run-dot'+(s.running?' on':'');
- $('runText').textContent=s.running?'работает':'остановлена';
  $('workPill').className='pill '+(s.is_work?'work':'rest');
- $('workTxt').textContent=s.is_work?'рабочее время':'нерабочее время';
- $('realTime').textContent=s.real_time;$('simTime').textContent=s.sim_time;$('glTime').textContent=s.gitlab_time||'—';
+ $('workTxt').textContent=s.is_work?'рабочее время':'нерабочее';
+ const DOW_RU={Mon:'Пн',Tue:'Вт',Wed:'Ср',Thu:'Чт',Fri:'Пт',Sat:'Сб',Sun:'Вс'};
+ const ruDow=t=>String(t||'').replace(/^([A-Z][a-z]{2})\b/,(m,d)=>DOW_RU[d]||d);
+ $('realTime').textContent=s.real_time;
+ $('simTime').textContent=ruDow(s.sim_time);
+ $('glTime').textContent=ruDow(s.gitlab_time||'—');
+ // Подпись под часами симуляции была пустым прочерком. Пишем в неё то,
+ // ради чего эти часы вообще отдельные: во сколько раз время сжато.
+ const ss=$('simSub');
+ if(ss){ss.textContent=s.timelapse?('быстрее реального в '+(s.scale||1)+' раз'):'один к одному';}
  $('dayStatus').textContent=s.is_work?'рабочий день':'нерабочее время';
  $('workHours').textContent=s.work_hours;
- $('tl').textContent=(s.time_mode||(s.timelapse?('×'+s.scale):'Реальное время 1:1'))+(s.ff_offhours?' · ⏩ промотка нерабочих часов':'')+(s.last_ff?(' · '+s.last_ff):'');
- $('ohm').textContent=s.offhours_mode;
- $('gld').textContent=s.gitlab_dates+(s.gitlab_dates==='real'?' (реальное)':' (симуляция)');
- $('lastAct').textContent=s.last_activity?((ACT_HELP[s.last_activity]||s.last_activity)+' · '+(s.last_actor||'')):'—';
+ // запоминаем окно, чтобы график часов подсветил рабочее время
+ const m=/^(\d{1,2}):\d{2}\D+(\d{1,2}):/.exec(s.work_hours||'');
+ if(m)window._workHours=[+m[1],+m[2]];
+ $('tl').textContent=(s.time_mode||(s.timelapse?('×'+s.scale):'Реальное время 1:1'))+(s.ff_offhours?' · промотка нерабочих часов':'')+(s.last_ff?(' · '+s.last_ff):'');
+ $('ohm').textContent={oncall:'Дежурный на связи',idle:'Активности нет'}[s.offhours_mode]||s.offhours_mode;
+ $('gld').textContent=s.gitlab_dates==='real'?'Реальное время сервера':'Время симуляции';
+ $('lastAct').textContent=s.last_activity?(actName(s.last_activity)+' · '+(s.last_actor||'')):'—';
  $('uptime').textContent=fmtUptime(s.uptime);
- $('sSprint').textContent=s.sprint??'—';$('sRules').textContent=s.rules;
- $('sRuns').textContent=s.total_runs;$('sOk').textContent=s.total_ok;
- $('sFail').textContent=s.total_fail;$('sSkip').textContent=s.offhours_skipped;
- if(s.runlog){const rl=s.runlog;const lc=$('logCounts');if(lc)lc.innerHTML='предупреждений: <b>'+(rl.warnings||0)+'</b> · ошибок: <b>'+(rl.errors||0)+'</b> · Telegram: '+(s.telegram?'вкл':'выкл');}
- $('oncall').textContent=s.oncall||'—';$('pto').textContent=s.pto||'никого';
- $('team').innerHTML=s.team.map(m=>{const st=m.stats||{};const la=st.last_action?((ACT_HELP[st.last_action]||st.last_action)+(st.last_project?(' · '+st.last_project):'')):'нет активности';
+ setNum('sSprint',s.sprint);setNum('sRules',s.rules);
+ setNum('sRuns',s.total_runs);setNum('sOk',s.total_ok);
+ setNum('sFail',s.total_fail);setNum('sSkip',s.offhours_skipped);
+ if(s.runlog){const rl=s.runlog;const lc=$('logCounts');if(lc)lc.textContent='Предупреждений '+(rl.warnings||0)+' · ошибок '+(rl.errors||0)+' · Telegram '+(s.telegram?'вкл':'выкл');}
+ const tm=$('teamMeta');
+ if(tm){const parts=[(s.team||[]).length+' человек'];
+  if(s.oncall)parts.push('дежурный @'+s.oncall);
+  if(s.pto&&s.pto!=='никого')parts.push('в отпуске '+s.pto);
+  tm.textContent=parts.join(' · ');}
+ $('team').innerHTML=s.team.map(m=>{const st=m.stats||{};const la=st.last_action?(actName(st.last_action)+(st.last_project?(' · '+st.last_project):'')):'нет активности';
    return '<div class=member><div class=avatar style="background:'+colorFor(m.name)+'">'+initials(m.name)+'</div>'+
-   '<div style=flex:1><div class=m-name>'+m.name+'</div><div class=m-role>'+m.role+' · '+la+'</div></div>'+
+   '<div class=grow><div class=m-name>'+m.name+'</div><div class=m-role>'+roleRu(m.role)+' · '+la+'</div></div>'+
    (m.oncall?'<span class="badge oc">дежурный</span>':(m.pto?'<span class="badge pt">отпуск</span>':(m.working?'<span class="badge wk">на смене</span>':'')))+'</div>';}).join('');
  renderPeople(s.team);
+ const tc=$('teamCount');if(tc)tc.textContent=(s.team||[]).length+' человек';
  const a=s.activities||{},keys=Object.keys(a).sort((x,y)=>a[y]-a[x]);const mx=Math.max(1,...keys.map(k=>a[k]));
- $('acts').innerHTML=keys.length?keys.map(k=>'<div class=act><span>'+(ACT_HELP[k]||k)+'</span><b>'+a[k]+'</b><div class=bar><i style=width:'+(a[k]/mx*100)+'%></i></div></div>').join(''):'<div class="help empty">пока нет данных — запустите симуляцию</div>';
+ $('acts').innerHTML=keys.length?keys.map(k=>'<div class=act><span>'+actName(k)+'</span><b>'+a[k]+'</b><div class=bar><i style=width:'+(a[k]/mx*100)+'%></i></div></div>').join(''):'<div class="help empty">пока нет данных — запустите симуляцию</div>';
  // поток событий по типам (event-store)
  const ev=(s.events&&s.events.by_action)||{};const ek=Object.keys(ev).sort((x,y)=>ev[y]-ev[x]).slice(0,10);
- if(ek.length){const em=Math.max(1,...ek.map(k=>ev[k]));const EVN={push:'push (коммит файла)',mr_open:'открыт MR',mr_merge:'смёржен MR',mr_comment:'комментарий MR',mr_approve:'апрув MR',mr_close:'закрыт MR',branch_create:'создана ветка',issue_open:'открыт issue',issue_comment:'комментарий issue',issue_close:'закрыт issue',file_delete:'удалён файл',pipeline:'пайплайн CI',token_create:'создан токен',settings_change:'изменены настройки'};
-  $('evActs').innerHTML=ek.map(k=>'<div class=act><span>'+(EVN[k]||k)+'</span><b>'+ev[k]+'</b><div class=bar><i style=width:'+(ev[k]/em*100)+'%></i></div></div>').join('');}
+ if(ek.length){const em=Math.max(1,...ek.map(k=>ev[k]));const EVN=ACT_WORD;
+  $('evActs').innerHTML=ek.map(function(k){
+    return '<div class=act><span class=act-n>'+esc(EVN[k]||actName(k))+'</span>'+
+      '<span class=act-bar><i style=width:'+(ev[k]/em*100)+'%></i></span>'+
+      '<b>'+fmtNum(ev[k])+'</b></div>';}).join('');}
  // донат успешности GitLab-вызовов
  const ok=s.total_ok||0,fail=s.total_fail||0,tot=ok+fail;
  const pctOk=tot?Math.round(ok/tot*100):0;
  const C=2*Math.PI*15.9155;
- const pb=$('dPct');if(pb){pb.textContent=tot?(pctOk+'%'):'—';pb.style.color=tot?(pctOk>=90?'#15803d':pctOk>=60?'#b45309':'#b42318'):'#6b7789';}
+ // Уровень задаётся классом карточки, а не подстановкой цвета в style:
+ // цвет остаётся в системе и переключается вместе с темой.
+ const pb=$('dPct');
+ if(pb){pb.textContent=tot?(pctOk+'%'):'—';
+  pb.classList.toggle('is-empty',!tot);
+  // Уровень задаётся классом, а не подстановкой цвета в style.
+  // Пустая строка в classList.add бросает исключение и обрывает весь
+  // цикл обновления — поэтому класс добавляется только когда он есть.
+  pb.classList.remove('lvl-bad','lvl-ok');
+  if(tot&&pctOk>=90)pb.classList.add('lvl-ok');
+  else if(tot&&pctOk<60)pb.classList.add('lvl-bad');}
+ const ps=$('dPctSub');if(ps)ps.textContent=tot?(fmtNum(tot)+' вызовов'):'';
  const bb=$('dBar');if(bb)bb.style.width=(tot?pctOk:0)+'%';
- $('dOk').textContent=ok;$('dFail').textContent=fail;
- $('dAnom').textContent=(s.events&&s.events.anomalies)!=null?s.events.anomalies:'—';
- $('dTot').textContent=(s.events&&s.events.total)!=null?s.events.total:'—';
+ setNum('dOk',ok);setNum('dFail',fail);
+
+ setNum('dTot',(s.events&&s.events.total));
 }
 
-function fmtAge(s){if(s==null)return'';if(s<60)return s+' с назад';if(s<3600)return Math.floor(s/60)+' мин назад';return Math.floor(s/3600)+' ч назад';}
+// Числа с разделителем разрядов и пометкой «нет данных».
+function fmtNum(n){if(n==null||n==='')return '—';
+ const m=String(n).match(/^(-?\d+)(\D*)$/);
+ if(!m)return String(n);
+ return m[1].replace(/\B(?=(\d{3})+(?!\d))/g,'\u2009')+m[2];}
+function setNum(id,v){const e=document.getElementById(id);if(!e)return;
+ const empty=(v==null||v===''); e.textContent=empty?'—':fmtNum(v);
+ e.classList.toggle('is-empty',empty);}
+
+function fmtAge(s){if(s==null)return'';if(s<60)return s+' с';if(s<3600)return Math.floor(s/60)+' мин';return Math.floor(s/3600)+' ч';}
 function setPill(id,cls,txt){const p=$(id);if(!p)return;p.className='pill '+cls;$(id+'T').textContent=txt;}
 async function pollHealth(){
  let h;try{h=await jget('/api/health');}catch(e){return;}
  const g=h.gitlab||{};
  if(h.offline_mode)setPill('hlGitlab','warn','offline');
- else if(g.state==='ok')setPill('hlGitlab','ok','на связи');
- else if(g.state==='error')setPill('hlGitlab','bad','ошибка');
+ else if(g.state==='ok')setPill('hlGitlab','ok','ok');
+ else if(g.state==='error')setPill('hlGitlab','bad','сбой');
  else setPill('hlGitlab','','—');
  $('hlGitlab').title='GitLab: '+(g.msg||'—')+(g.errors?(' · ошибок вызовов: '+g.errors):'');
- setPill('hlWorld',h.world.running?'ok':'',h.world.running?'работает':'остановлен');
+ setPill('hlWorld',h.world.running?'ok':'',h.world.running?'идёт':'стоп');
  const ev=h.events||{};
  const fresh=ev.last_age_s!=null&&ev.last_age_s<180;
- setPill('hlEvents',ev.total>0?(fresh?'ok':''):'bad',(ev.total||0)+(ev.last_age_s!=null?(' · '+fmtAge(ev.last_age_s)):''));
+ setPill('hlEvents',ev.total>0?(fresh?'ok':''):'bad',fmtNum(ev.total||0)+(ev.last_age_s!=null?(' · '+fmtAge(ev.last_age_s)):''));
  setPill('hlOllama',h.ollama?'ok':'warn',h.ollama?'готова':'нет');
 }
 /* ---------- профиль разработчика: риск-профиль в боковой панели ---------- */
 async function devProfile(u){
  if(!window.dsDrawer)return;
  dsDrawer('Профиль · @'+u,'<div class=ds-skeleton style="width:70%"></div>');
- let d={};try{d=await jget('/api/actor?u='+encodeURIComponent(u)+'&n=60');}catch(e){}
+ let d={};try{d=await jget('/api/actor?u='+encodeURIComponent(u)+'&n=60');}catch(e){uiErr('devProfile',e)}
  const s=d.summary||{},feed=d.feed||[];
  const anom=s.anomalies||0,total=s.total||0;
  const share=total?Math.round(anom/total*100):0;
@@ -725,7 +600,7 @@ async function devProfile(u){
  const LVL={critical:'высокий',high:'повышенный',medium:'умеренный',low:'обычный'};
  const M={critical:'b-crit',high:'b-high',medium:'b-med',low:'b-low'};
  const row=(k,v)=>'<div class=ds-kv-row><span class=ds-kv-k>'+k+'</span><span class=ds-kv-v>'+v+'</span></div>';
- const feedHtml=feed.length?feed.slice(0,25).map(function(e){
+ const feedHtml=feed.length?feed.slice(0,6).map(function(e){
    const bad=e.is_anomaly||e.anomaly_type;
    return '<div class="ds-tl-item '+(bad?'critical':'info')+'">'+
     '<div class=ds-tl-time>'+esc((e.ts_sim||'').replace('T',' '))+'</div>'+
@@ -745,7 +620,7 @@ async function devProfile(u){
    row('Когда',esc((s.last_ts||'').replace('T',' ')||'—'))+
   '</div>'+
   '<div class=ds-drawer-sec><div class=t-label>Лента действий</div>'+
-   '<div class=ds-timeline style=margin-top:10px>'+feedHtml+'</div></div>');}
+   '<div class="ds-timeline mt-3">'+feedHtml+'</div></div>');}
 
 /* ---------- здоровье репозитория ---------- */
 function repoHealth(name,r){
@@ -769,10 +644,45 @@ function repoHealth(name,r){
      return '<div class=ds-ev-item><span>!'+esc(''+(m.iid||''))+' '+esc(m.title||'')+'</span>'+
             '<span class=sub>@'+esc(m.author||'')+'</span></div>';}).join('')
     :'<div class=sub>нет открытых MR</div>')+'</div></div>'+
-  '<div class=ds-drawer-sec><div class=t-label>Последние файлы</div><div class=ds-ev-list>'+
-   ((r.tree||[]).length?(r.tree||[]).slice(0,20).map(function(f){
-     return '<div class=ds-ev-item><code>'+esc(f)+'</code></div>';}).join('')
-    :'<div class=sub>файлов пока нет</div>')+'</div></div>');}
+  '<div class=ds-drawer-sec><div class=t-label>Дерево файлов</div>'+repoTree(r)+'</div>'+
+  // Лента событий репозитория переехала сюда из карточки: в таблице
+  // ей места нет, а как деталь одной сущности она здесь уместна.
+  '<div class=ds-drawer-sec><div class=t-label>Последние события</div><div class=ds-ev-list>'+
+   ((r.recent||[]).length?(r.recent||[]).slice(0,14).map(function(e){
+     var what=e.action==='push'?(e.path||'push'):plainText(e.message||ACT_WORD[e.action]||actName(e.action)||'');
+     return '<div class="ds-ev-item'+(e.is_anomaly?' anom':'')+'">'+
+       '<span class=txt>'+esc(String(what))+'</span>'+
+       '<span class=sub>@'+esc(e.actor||'')+' · '+esc((e.ts_sim||'').slice(11,16))+'</span></div>';}).join('')
+    :'<div class="help empty">Событий пока нет.</div>')+'</div></div>');}
+
+/* Поток активности: время слева монофиршиной колонкой, автор и
+   действие — типографикой. Подряд идущие события одного человека
+   не повторяют имя: так виден ритм работы, а не список строк. */
+let _streamSig='';
+function renderStream(items){
+ const box=document.getElementById('teamStream'); if(!box) return;
+ const list=(items||[]).slice(-60).reverse();
+ const sig=list.length+':'+(list[0]?(list[0].ts_sim+list[0].actor):'');
+ if(sig===_streamSig) return; _streamSig=sig;
+ if(!list.length){
+   box.innerHTML='<div class="help empty">Запустите симуляцию — здесь пойдут события команды.</div>';
+   return; }
+ let prev='';
+ box.innerHTML=list.map(function(e){
+   const t=(e.ts_sim||'').slice(11,16);
+   const same=(e.actor===prev); prev=e.actor;
+   const act=ACT_WORD[e.action]||actName(e.action)||'';
+   const what=e.action==='push'?(e.path||''):plainText(e.message||'');
+   return '<div class="stream-row'+(e.is_anomaly?' anom':'')+'">'+
+     '<span class=stream-t>'+esc(t)+'</span>'+
+     '<span class=stream-who>'+(same?'':'@'+esc(e.actor||''))+'</span>'+
+     '<span class=stream-what>'+esc(act)+
+       (what?(' <span class=stream-obj>'+esc(String(what).slice(0,60))+'</span>'):'')+'</span>'+
+     '<span class=stream-repo>'+esc(e.project||'')+'</span></div>';
+ }).join('');
+ const sub=document.getElementById('teamFeedSub');
+ if(sub) sub.textContent=list.length+' событий';
+}
 
 function cssId(u){return 'p_'+u.replace(/[^a-zA-Z0-9]/g,'_');}
 const openUsers=new Set();let peopleSig='';
@@ -783,13 +693,12 @@ function renderPeople(team){
   document.getElementById('people').innerHTML=team.map(m=>{const id=cssId(m.username);
    return '<div class="pcard" data-u="'+m.username+'" id="card_'+id+'">'+
     '<div class=phead><div class=avatar style="background:'+colorFor(m.name)+'">'+initials(m.name)+'</div>'+
-    '<div class=pinfo><div class=m-name>'+m.name+'</div><div class=m-role>'+m.role+'</div></div>'+
+    '<div class=pinfo><div class=m-name>'+m.name+'</div><div class=m-role>'+roleRu(m.role)+'</div></div>'+
     '<div class=pmeta id="meta_'+id+'"></div><div id="bdg_'+id+'"></div>'+
-    '<button class="btn ghost ds-prof-btn" onclick="event.stopPropagation();devProfile(\''+escJs(m.username)+'\')">профиль</button>'+
-    '<span class=pchev>&#9662;</span></div>'+
+    '<span class=pchev><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m6 9 6 6 6-6"/></svg></span></div>'+
     '<div class=pbody id="body_'+id+'"></div></div>';}).join('');}
  team.forEach(m=>{const id=cssId(m.username);const st=m.stats||{};
-  const meta=document.getElementById('meta_'+id);if(meta)meta.innerHTML='<span title="пуши/коммиты">&#8593; <b>'+(st.pushes||0)+'</b></span> &middot; <span title="merge request-ы">MR <b>'+(st.mrs||0)+'</b></span> &middot; <span title="подозрительные (аномальные) действия">&#9888; <b>'+(st.anomalies||0)+'</b></span>';
+  const meta=document.getElementById('meta_'+id);if(meta)meta.innerHTML='<span title="пуши/коммиты"><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M12 19V5M5 12l7-7 7 7"/></svg> <b>'+(st.pushes||0)+'</b></span> &middot; <span title="merge request-ы">MR <b>'+(st.mrs||0)+'</b></span> &middot; <span title="подозрительные (аномальные) действия"><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> <b>'+(st.anomalies||0)+'</b></span>';
   const bdg=document.getElementById('bdg_'+id);if(bdg)bdg.innerHTML=statusBadge(m);
   const card=document.getElementById('card_'+id);if(card)card.classList.toggle('open',openUsers.has(m.username));});
 }
@@ -798,17 +707,21 @@ function togglePerson(u){if(openUsers.has(u))openUsers.delete(u);else{openUsers.
 document.addEventListener('click',e=>{const h=e.target.closest?e.target.closest('.phead'):null;if(h){const c=h.closest('.pcard');if(c)togglePerson(c.dataset.u);}});
 async function refreshActor(u){try{const d=await jget('/api/actor?u='+encodeURIComponent(u)+'&n=60');const id=cssId(u);
  const el=document.getElementById('body_'+id);if(!el)return;const s=d.summary||{};const feed=(d.feed||[]).slice().reverse();
- el.innerHTML='<div class=pcur>'+(s.last_action?('сейчас: <b>'+(ACT_HELP[s.last_action]||s.last_action)+'</b>'+(s.last_project?(' &#8594; '+s.last_project):'')+(s.last_path?(' / '+s.last_path):'')):'нет активности')+'</div>'+
-  '<div class=feed>'+(feed.length?feed.map(e=>'<div class="frow '+(e.is_anomaly?'anom':(e.lookalike?'look':''))+'"><span class=mono>'+((e.ts_sim||'').slice(11,16))+'</span><span class=mono>'+(e.action||'')+'</span><span>'+(e.project||'')+'</span><span class="mono path">'+((e.path||e.message||'')+'').slice(0,46).replace(/</g,'&lt;')+'</span>'+(e.anomaly_type?'<span class=atag>'+e.anomaly_type+'</span>':'')+'</div>').join(''):'<div class=help style=color:#9aa0ad>пока нет событий</div>')+'</div>';
- }catch(e){}}
+ // Подробный профиль вызывается из раскрытой карточки: в свёрнутой строке
+ // для отдельной кнопки нет места, а раскрытие и так первичное действие.
+ el.innerHTML='<div class="ds-toolbar mt-0"><span class=grow></span>'+
+   '<button class="btn ghost xs" onclick="event.stopPropagation();devProfile(\''+escJs(u)+'\')">Подробный профиль</button></div>'+
+  '<div class=pcur>'+(s.last_action?('сейчас: <b>'+actName(s.last_action)+'</b>'+(s.last_project?(' <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M5 12h14M12 5l7 7-7 7"/></svg> '+s.last_project):'')+(s.last_path?(' / '+s.last_path):'')):'нет активности')+'</div>'+
+  '<div class=feed>'+(feed.length?feed.map(e=>'<div class="frow '+(e.is_anomaly?'anom':(e.lookalike?'look':''))+'"><span class=mono>'+((e.ts_sim||'').slice(11,16))+'</span><span class=mono>'+(e.action||'')+'</span><span>'+(e.project||'')+'</span><span class="mono path">'+((e.path||e.message||'')+'').slice(0,46).replace(/</g,'&lt;')+'</span>'+(e.anomaly_type?'<span class=atag>'+e.anomaly_type+'</span>':'')+'</div>').join(''):'<div class="help muted-t">пока нет событий</div>')+'</div>';
+ }catch(e){uiErr('refreshActor',e)}}
 let lastLog=0;
 async function pollLogs(){
  try{const d=await jget('/api/logs?since='+lastLog);
   if(d.logs&&d.logs.length){const box=$('console');const atB=box.scrollHeight-box.scrollTop-box.clientHeight<60;
    for(const e of d.logs){lastLog=e.id;const div=document.createElement('div');div.className='line l-'+e.level;
-    div.innerHTML='<span class=lt>'+e.t+'</span>  '+e.msg.replace(/</g,'&lt;');box.appendChild(div);}
+    div.innerHTML='<span class=lt>'+esc(e.t||'')+'</span>  '+esc(String(e.msg||''));box.appendChild(div);}
    while(box.childNodes.length>1500)box.removeChild(box.firstChild);if(atB)box.scrollTop=box.scrollHeight;}
- }catch(e){}
+ }catch(e){uiErr('pollLogs',e)}
 }
 $('btnStart').onclick=async()=>{await jpost('/api/start');setTimeout(tick,300);};
 $('btnStop').onclick=async()=>{await jpost('/api/stop');setTimeout(tick,300);};
@@ -825,114 +738,147 @@ jget('/api/config').then(renderCfg);
 tick();setInterval(tick,1500);
 pollHealth();setInterval(pollHealth,5000);
 pollLogs();setInterval(pollLogs,1000);
-async function pollEvents(){try{const d=await jget('/api/events?n=120');const st=d.stats||{};
- $('evTotal').textContent=st.total||0;$('evAnom').textContent=st.anomalies||0;
- $('evRate').textContent=st.total?((st.anomalies/st.total*100).toFixed(1)+'%'):'0%';
- const bt=st.by_anomaly||{};const bk=Object.keys(bt);$('evTypes').textContent=bk.length;
- $('evFile').textContent=st.file||'—';$('evRun').textContent=st.run_id||'—';
- const mx=Math.max(1,...bk.map(k=>bt[k]));
- $('evByType').innerHTML=bk.length?bk.sort((a,b)=>bt[b]-bt[a]).map(k=>'<div class=act><span>'+k+'</span><b>'+bt[k]+'</b><div class=bar><i style="width:'+(bt[k]/mx*100)+'%;background:linear-gradient(90deg,#e8590c,#d6336c)"></i></div></div>').join(''):'<div class="help empty">аномалий пока нет</div>';
+function fmtBytes(n){
+ if(n==null)return '—';
+ if(n<1024)return n+' Б';
+ if(n<1024*1024)return (n/1024).toFixed(0)+' КБ';
+ return (n/1024/1024).toFixed(1)+' МБ';}
+
+async function pollEvents(){try{const d=await jget('/api/events?n=200');const st=d.stats||{};
+ setNum('evTotal',st.total);
+ setNum('evTypes',Object.keys(st.by_action||{}).length||null);
+ const sz=$('evSize');
+ if(sz){const v=st.size_bytes;sz.textContent=fmtBytes(v);sz.classList.toggle('is-empty',v==null);}
+ // Путь показываем от корня проекта: абсолютный путь до домашней папки
+ // на экране продукта не нужен.
+ const file=String(st.file||'');
+ $('evFile').textContent=file?file.replace(/^.*[\\/](?=data[\\/])/,''):'—';
+ $('evFile').title=file;
+ $('evRun').textContent=st.run_id||'—';
+
  const items=(d.items||[]).slice().reverse();
- $('evList').innerHTML=items.length?items.map(e=>{const cls=e.is_anomaly?'anom':(e.lookalike?'look':'');
-  return '<div class="evrow '+cls+'"><span class=mono>'+(e.ts_sim||'').replace('T',' ').slice(5)+'</span>'+
-   '<span>'+(e.actor||'')+'</span><span class=mono>'+(e.action||'')+'</span>'+
-   '<span class=mono>'+((e.path||e.project||'')+'').slice(0,60)+'</span>'+
-   '<span class=atag>'+(e.anomaly_type||(e.lookalike?'lookalike':''))+'</span></div>';}).join(''):'<div class=help style=color:#9aa0ad>событий пока нет — запустите симуляцию</div>';
-}catch(e){}}
+ renderStream(d.items||[]);   // тот же поток питает «Активность команды»
+ const cnt=$('evCount');
+ if(cnt)cnt.textContent=items.length?('последние '+items.length+' из '+(st.total||items.length)):'';
+ $('evList').innerHTML=items.length?items.map(function(e){
+   const obj=e.action==='push'?(e.path||''):plainText(e.message||'');
+   return '<tr>'+
+    '<td class=mono>'+esc((e.ts_sim||'').replace('T',' ').slice(5,16))+'</td>'+
+    '<td class=mono>'+esc(e.actor?('@'+e.actor):'')+'</td>'+
+    '<td>'+esc(ACT_WORD[e.action]||actName(e.action)||'')+'</td>'+
+    '<td class=mono>'+esc(String(obj).slice(0,80))+'</td>'+
+    '<td class=mono>'+esc(e.project||'')+'</td></tr>';}).join('')
+  :'<tr><td colspan=5><div class="help empty">Событий пока нет. Запустите симуляцию.</div></td></tr>';
+}catch(e){uiErr('pollEvents',e)}}
 pollEvents();setInterval(pollEvents,2000);
 setInterval(()=>openUsers.forEach(refreshActor),2000);
 
 // ---------- Аналитика ----------
 const DOW=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-const SEVCOL={critical:'#dc2626',high:'#f59e0b',medium:'#eab308',low:'#64748b'};
-function isDark(){return document.documentElement.getAttribute('data-theme')!=='light';}
-function heatColor(v,mx){const t=v/mx;
- if(isDark()){ // на тёмном: пусто = фон панели, больше активности = ярче
-  if(!v)return '#18212e';
-  return t>0.75?'#93c5fd':t>0.5?'#60a5fa':t>0.25?'#3b82f6':'#1e40af';}
- if(!v)return '#f1f4fa';
- return t>0.75?'#3730a3':t>0.5?'#4f46e5':t>0.25?'#818cf8':'#c7d2fe';}
+// Насыщенность клетки — пять ступеней одной шкалы, заданных классами.
+// Раньше ветки функции возвращали один и тот же цвет: карта была
+// равномерно синей и ничего не показывала.
+function heatLevel(v,mx){
+ if(!v) return 0;
+ const t=v/mx;
+ return t>0.75?4:(t>0.5?3:(t>0.25?2:1));}
 function drawHeat(grid,agrid){const el=$('heatmap');if(!el)return;
  let mx=1;grid.forEach(r=>r.forEach(v=>{if(v>mx)mx=v;}));
- let h='<div class=hmrow><div class=hmlab></div>'+Array.from({length:24},(_,x)=>'<div style="width:17px;font-size:9px;color:#9aa0ad;text-align:center">'+(x%3===0?x:'')+'</div>').join('')+'</div>';
+ let h='<div class=hmrow><div class=hmlab></div>'+Array.from({length:24},(_,x)=>'<div class=hmh>'+(x%3===0?x:'')+'</div>').join('')+'</div>';
  for(let d=0;d<7;d++){h+='<div class=hmrow><div class=hmlab>'+DOW[d]+'</div>';
   for(let x=0;x<24;x++){const v=grid[d][x],a=agrid[d][x];
-   h+='<div class=hmcell title="'+DOW[d]+' '+x+':00 — '+v+' действий'+(a?(', '+a+' аномал.'):'')+'" style="background:'+heatColor(v,mx)+(a?';box-shadow:0 0 0 2px #ef4444 inset':'')+'"></div>';}
+   h+='<div class="hmcell h'+heatLevel(v,mx)+(a?' anom':'')+'" title="'+DOW[d]+' '+x+':00 — '+v+' действий'+(a?(', '+a+' аномальных'):'')+'"></div>';}
   h+='</div>';}
  el.innerHTML=h;}
-function drawAnomTimeline(items){const el=$('anomTimeline');if(!el)return;
- if(!items||!items.length){el.innerHTML='<div class="help empty">аномалий пока нет</div>';return;}
- // ВАЖНО: ts_sim это ISO ("2026-07-21T08:59:06") — парсим КАК ЕСТЬ.
- // Раньше тут был .replace('T',' '), из-за чего Date.parse отдавал NaN и точки
- // не рисовались: оставалась только пустая линия.
- const ts=items.map(a=>{const v=Date.parse(a.ts_sim||'');return isNaN(v)?null:v;});
- const good=ts.filter(v=>v!==null);
- const mn=good.length?Math.min(...good):0, mx=good.length?Math.max(...good):1;
- const span=Math.max(1,mx-mn);
- const W=100,H=46;
- let dots='';
- items.forEach((a,i)=>{
-  // координаты — в единицах viewBox (не в процентах): проценты внутри
-  // растянутого viewBox вели себя непредсказуемо
-  const x=ts[i]===null?(items.length<2?W/2:2+(i/(items.length-1))*96)
-                      :2+((ts[i]-mn)/span)*96;
-  const cy=20+(i%3-1)*9;
-  const c=SEVCOL[a.severity]||'#eab308';
-  const tip=(a.ts_sim||'')+' · '+(a.anomaly_type||a.subtype||'')+' · '+(a.severity||'')+' · '+(a.actor||'');
-  dots+='<circle cx="'+x.toFixed(2)+'" cy="'+cy+'" r="2.6" fill="'+c+'" stroke="'+(isDark()?'#131a24':'#ffffff')+'" stroke-width="0.7"><title>'+tip+'</title></circle>';
- });
- el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:64px;overflow:visible">'+
-  '<line x1="2" y1="20" x2="98" y2="20" stroke="'+(isDark()?'#1f2a38':'#e3e8f0')+'" stroke-width="0.4"></line>'+dots+'</svg>'+
-  '<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7789"><span>'+
-  (items[0].ts_sim||'').replace('T',' ')+'</span><span>'+(items[items.length-1].ts_sim||'').replace('T',' ')+'</span></div>';}
+// Свод по часам: та же матрица, но сложенная по дням. Показывает
+// рабочее окно команды одним взглядом, без чтения 168 клеток.
+function drawHours(grid){
+ const el=document.getElementById('hoursBar'); if(!el) return;
+ const by=new Array(24).fill(0);
+ (grid||[]).forEach(function(row){(row||[]).forEach(function(v,h){by[h]+=v||0;});});
+ const mx=Math.max(1,...by), tot=by.reduce(function(a,b){return a+b;},0);
+ if(!tot){el.innerHTML='<div class="help empty">Данных пока нет.</div>';return;}
+ // Столбики рабочего окна подсвечиваются: график нужен, чтобы увидеть
+ // ритм смены, а не просто 24 одинаковых полоски.
+ const wh=(window._workHours||[10,18]);
+ el.innerHTML=by.map(function(v,h){
+   const pct=Math.round(v/mx*100);
+   const work=(h>=wh[0]&&h<wh[1])?' work':'';
+   return '<div class="hour'+work+'" title="'+h+':00 — '+fmtNum(v)+' действий">'+
+     '<div class=hour-bar><i style="height:'+Math.max(2,pct)+'%"></i></div>'+
+     '<div class=hour-l>'+(h%3===0?h:'')+'</div></div>';}).join('');
+ const peak=by.indexOf(mx);
+ const sub=document.getElementById('hourSub');
+ if(sub)sub.textContent='пик в '+peak+':00 · всего '+fmtNum(tot)+' действий';
+}
+
 async function pollInsights(){try{const d=await jget('/api/insights');
- drawHeat(d.heat||[],d.heat_anom||[]);drawAnomTimeline(d.anom_timeline||[]);
-}catch(e){}}
+ drawHeat(d.heat||[],d.heat_anom||[]);
+ drawHours(d.heat||[]);
+}catch(e){uiErr('pollInsights',e)}}
 pollInsights();setInterval(pollInsights,3000);
 
 // ---------- Репозитории (живая карта) ----------
-const ACT_ICON={push:['ic-push','+'],mr_open:['ic-open','MR'],mr_merge:['ic-merge','✓'],
- mr_close:['ic-close','✕'],branch_create:['ic-branch','⎇'],mr_comment:['ic-cmt','💬'],
- mr_approve:['ic-merge','👍'],issue_open:['ic-open','!'],issue_comment:['ic-cmt','💬'],issue_close:['ic-close','✕']};
-const ACT_WORD={push:'файл',mr_open:'MR открыт',mr_merge:'MR смержен',mr_close:'MR закрыт',
- branch_create:'ветка',mr_comment:'коммент',mr_approve:'approve',issue_open:'issue',issue_comment:'коммент',issue_close:'issue закрыт'};
+const ACT_ICON={push:['ic-push','+'],mr_open:['ic-open','MR'],mr_merge:['ic-merge','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M20 6 9 17l-5-5"/></svg>'],
+ mr_close:['ic-close','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M18 6 6 18M6 6l12 12"/></svg>'],branch_create:['ic-branch','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=6 cy=6 r=3/><circle cx=6 cy=18 r=3/><path d="M18 9a9 9 0 0 1-9 9"/><circle cx=18 cy=6 r=3/></svg>'],mr_comment:['ic-cmt','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>'],
+ mr_approve:['ic-merge','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M20 6 9 17l-5-5"/></svg>'],issue_open:['ic-open','!'],issue_comment:['ic-cmt','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>'],issue_close:['ic-close','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M18 6 6 18M6 6l12 12"/></svg>']};
+// Короткие имена типов событий для плотных таблиц. Полных фраз тут не
+// нужно: рядом стоит объект действия, он и уточняет смысл.
+const ACT_WORD={
+ push:'Файл', mr_open:'MR открыт', mr_merge:'MR смержен', mr_close:'MR закрыт',
+ mr_approve:'MR одобрен', mr_comment:'Комментарий MR',
+ branch_create:'Ветка создана', branch_delete:'Ветка удалена',
+ issue_open:'Задача открыта', issue_comment:'Комментарий к задаче',
+ issue_close:'Задача закрыта',
+ file_delete:'Файл удалён', activity:'Активность',
+ api_read:'Чтение API', pipeline_run:'Прогон конвейера',
+ deploy_key_add:'Ключ деплоя', membership_change:'Состав участников',
+ pipeline:'Конвейер CI', token_create:'Создан токен',
+ settings_change:'Изменены настройки'};
 /* Экранирование значений, попадающих в разметку. Закрываем не только
    угловые скобки, но и кавычки с амперсандом: те же значения
    подставляются в атрибуты (title, href, onclick), где одинарной
    кавычки достаточно, чтобы разорвать разметку. Данные приходят из
    журнала как обычный текст, поэтому двойного экранирования не будет. */
 const _ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+// Текст из симуляции приходит с markdown и значками статуса. В строке
+// таблицы разметка не рендерится, поэтому звёздочки и кружки видны как
+// есть — вырезаем их при выводе.
+function plainText(x){
+ return String(x==null?'':x)
+  .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F]/gu,'')
+  .replace(/\*\*(.+?)\*\*/g,'$1')
+  .replace(/`([^`]+)`/g,'$1')
+  .replace(/\s{2,}/g,' ')
+  .trim();}
 function esc(x){return (x==null?'':(''+x)).replace(/[&<>"']/g,c=>_ESC[c]);}
 /* Значение внутри inline-обработчика. Браузер декодирует HTML-сущности
    ДО того, как разберёт JS, поэтому одного esc() мало: сначала
    экранируем как строку JS, потом как атрибут. */
 function escJs(x){return esc(String(x==null?'':x).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));}
-function repoCard(name,d){
+/* Репозиторий — строка рабочей таблицы, а не карточка.
+   Шесть больших карточек показывали меньше данных, чем девять
+   колонок одной таблицы, и заставляли скроллить. Дерево файлов,
+   открытые MR и лента событий переехали в боковую панель по клику:
+   это детали одной сущности, им место в master/detail. */
+function repoRow(name,d){
  const hot=(d.recent||[]).some(e=>e.is_anomaly);
- const mrs=(d.open_mrs||[]).map(m=>'<div class="mritem'+(m.is_anomaly?' anom':'')+'"><span class=iid>!'+m.iid+'</span>'+
-   '<span class=txt style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(m.title||'merge request')+'</span>'+
-   '<span class=who style="color:#9aa0ad;font-size:10px">@'+esc(m.actor||'')+'</span></div>').join('')
-   || '<div class=rc-sub>нет открытых MR</div>';
- const feed=(d.recent||[]).map(e=>{const ic=ACT_ICON[e.action]||['ic-other','•'];
-   const what=e.action==='push'?(e.path||'файл'):(e.message||ACT_WORD[e.action]||e.action);
-   return '<div class="fchip'+(e.is_anomaly?' anom':'')+'"><span class="ic '+ic[0]+'">'+ic[1]+'</span>'+
-    '<span class=txt>'+esc(what)+'</span><span class=who>@'+esc(e.actor||'')+' · '+((e.ts_sim||'').slice(11,16))+'</span></div>';}).join('')
-   || '<div class=rc-sub>пока тихо</div>';
- return '<div class="repocard'+(hot?' hot':'')+'">'+
-   '<div class=rc-head><div class=rc-ava style="background:'+colorFor(name)+'">'+name.slice(0,1).toUpperCase()+'</div>'+
-     '<div><div class=rc-name>'+esc(name)+'</div><div class=rc-sub>'+(d.total||0)+' событий</div></div>'+
-     '<span class=grow></span>'+
-     '<button class="btn ghost ds-prof-btn" onclick="repoHealth(\''+escJs(name)+'\',_repoData[\''+escJs(name)+'\'])">здоровье</button>'+
-     '</div>'+
-   '<div class=rc-stats><span class=rc-stat>📄 <b>'+(d.files||0)+'</b> файлов</span>'+
-     '<span class=rc-stat>↑ <b>'+(d.pushes||0)+'</b> пушей</span>'+
-     '<span class=rc-stat>⇅ <b>'+(d.open_mrs||[]).length+'</b> откр. MR</span>'+
-     '<span class=rc-stat>✓ <b>'+(d.mr_merge||0)+'</b></span>'+
-     ((d.mr_close||0)?'<span class=rc-stat>✕ <b>'+d.mr_close+'</b></span>':'')+'</div>'+
-   '<div class=rc-coltitle>Дерево файлов <span style="color:#c5cad6">(в этой сессии)</span></div>'+repoTree(d)+
-   '<div class=rc-coltitle>Открытые merge request</div>'+mrs+
-   '<div class=rc-coltitle>Последние события</div><div class=rc-feed>'+feed+'</div>'+
-   '</div>';
+ const last=(d.recent||[])[0]||{};
+ const what=last.action==='push'?(last.path||'push'):plainText(ACT_WORD[last.action]||last.action||'');
+ const when=(last.ts_sim||'').slice(11,16);
+ const state=hot?'<span class="badge b-crit">аномалия</span>'
+                :((d.total||0)?'<span class="badge b-low">норма</span>'
+                              :'<span class=muted-t>тихо</span>');
+ return '<tr onclick="repoHealth(\''+escJs(name)+'\',_repoData[\''+escJs(name)+'\'])">'+
+  '<td class=mono>'+esc(name)+'</td>'+
+  '<td class="right num">'+(d.files||0)+'</td>'+
+  '<td class="right num">'+(d.pushes||0)+'</td>'+
+  '<td class="right num">'+(d.mr_open||0)+'</td>'+
+  '<td class="right num">'+(d.mr_merge||0)+'</td>'+
+  '<td class="right num">'+(d.total||0)+'</td>'+
+  '<td>'+(when?('<span class=mono>'+when+'</span> '):'')+esc(String(what).slice(0,44))+'</td>'+
+  '<td class=mono>'+(last.actor?('@'+esc(last.actor)):'')+'</td>'+
+  '<td>'+state+'</td></tr>';
 }
 function repoTree(d){
  const tree=d.tree||[]; const del=d.deleted_recent||[];
@@ -943,7 +889,7 @@ function repoTree(d){
    (groups[dir]=groups[dir]||[]).push([f,p]);});
  let html='';
  Object.keys(groups).sort().forEach(dir=>{
-   html+='<div class=tfolder>'+(dir==='/'?'(корень)':'📁 '+esc(dir))+'</div>';
+   html+='<div class=tfolder>'+(dir==='/'?'(корень)':'<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> '+esc(dir))+'</div>';
    groups[dir].forEach(([f,p])=>{ html+='<div class="tfile'+(newset.has(p)?' new':'')+'">'+esc(f)+'</div>'; });
  });
  del.forEach(x=>{ const p=x.path||''; const f=p.slice(p.lastIndexOf('/')+1);
@@ -960,7 +906,9 @@ async function pollRepos(){try{const d=await jget('/api/repos');const r=d.repos|
  const grid=$('repogrid');if(!grid)return;
  const sig=order.map(n=>n+':'+r[n].total+':'+(r[n].open_mrs||[]).length).join('|');
  if(sig===repoSig)return; repoSig=sig;
- grid.innerHTML=order.map(n=>repoCard(n,r[n])).join('')||'<div class=help style=color:#9aa0ad>запустите симуляцию — здесь появится живая карта</div>';
-}catch(e){}}
+ grid.innerHTML=order.map(n=>repoRow(n,r[n])).join('')||
+  '<tr><td colspan=9><div class="help empty">Запустите симуляцию — репозитории наполнятся событиями.</div></td></tr>';
+ const rc=$('repoCount');if(rc)rc.textContent=order.length+' всего · '+names.length+' с активностью';
+}catch(e){uiErr('pollRepos',e)}}
 pollRepos();setInterval(pollRepos,2500);
 </script></body></html>

@@ -78,11 +78,14 @@ class AnomalyActivity:
         return self.agents[random.choice(pool)]
 
     def _repo(self, name=None):
+        # Разрешение id — ТОЛЬКО через config.repo_id(): статическая карта
+        # PROJECTS хранит id первого инстанса GitLab и после пересоздания
+        # репозиториев устаревает (см. докстринг config.repo_id).
         if name:
-            return name, (config.WORK_REPOS.get(name) or PROJECTS.get(name))
+            return name, config.repo_id(name)
         pool = [n for n in config.WORK_REPOS if n != "soc-secrets"] or NORMAL_REPOS
         n = random.choice(pool)
-        return n, config.WORK_REPOS.get(n, PROJECTS.get(n))
+        return n, config.repo_id(n)
 
     def _pick(self):
         cfg = config.ANOMALIES
@@ -311,7 +314,7 @@ class AnomalyActivity:
         return ok
 
     def _a_weaken_protection(self, actor):
-        pid = PROJECTS["soc-infra"]
+        pid = config.repo_id("soc-infra")
         policy = ("# branch protection policy\n"
                   "main:\n  protected: false   # CHANGED: protection removed\n"
                   "  allow_force_push: true\n  required_approvals: 0\n")
@@ -323,7 +326,7 @@ class AnomalyActivity:
                                    "chore: update branch protection policy", branch)
 
     def _a_grant_secret_access(self, actor):
-        pid = PROJECTS["soc-infra"]
+        pid = config.repo_id("soc-infra")
         grantee = random.choice(["maria.ivanova", "dmitry.kozlov", "anna.smirnova"])
         members = ("# soc-secrets access control\n"
                    "owners:\n  - alex.petrov\n  - soc-bot\n"
@@ -433,7 +436,7 @@ class AnomalyActivity:
 
     def _a_commit_to_secrets_repo(self, actor):
         """Прямой коммит секрета в защищённый vault-репозиторий soc-secrets."""
-        pid = PROJECTS["soc-secrets"]
+        pid = config.repo_id("soc-secrets")
         stype, content = sb.secret_env_file()
         branch = actor.unique_branch("add/secret")
         if not actor.create_branch(pid, branch):
@@ -644,9 +647,18 @@ class AnomalyActivity:
 
     def _a_perm_discovery(self, actor):
         """Перечисление прав и групп. T1069.
-        Нормализовано в api_read /members по многим проектам подряд."""
+        Нормализовано в api_read /members по многим проектам подряд.
+
+        Число репозиториев — 5..8, а не 4. Правило `perm-discovery` требует
+        `burst_api_read_15m >= 5` И `distinct_projects_1h >= 4`; шаг же выдавал
+        РОВНО 4 запроса, то есть первое условие не выполнялось никогда.
+        Техника T1069 числилась покрытой правилом, которое физически не могло
+        сработать ни на одном прогоне (tests/test_rule_coverage.py).
+        """
+        n = random.randint(5, 8)
         with events.tag(is_decisive=True, detail="permission groups enumerated"):
-            for i, proj in enumerate(random.sample(list(config.WORK_REPOS), k=min(4, len(config.WORK_REPOS)))):
+            for i, proj in enumerate(random.sample(list(config.WORK_REPOS),
+                                                   k=min(n, len(config.WORK_REPOS)))):
                 events.emit("api_read", actor=actor.username, role=actor.role,
                             project=proj, message="GET /members",
                             extra={"api_path": "/members",

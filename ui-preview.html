@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang=ru data-theme=dark>
+<head>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Sentinel — витрина интерфейса</title>
+<!-- Страница подключает НАСТОЯЩИЙ файл стилей, а не копию: если система
+     разъедется, витрина разъедется вместе с ней. Открывается прямо с
+     диска, серверы для этого поднимать не нужно. -->
+<link rel=stylesheet href="static/design-system.css">
+<link rel=icon href="static/favicon.png">
+</head>
+<body>
+<div class=shell>
+  <header class=topbar>
+    <img src="static/mark.png" alt="" width=20 height=20>
+    <b>Sentinel — витрина интерфейса</b>
+    <span class=sub>дизайн-система как она есть в коде</span>
+    <span class=grow></span>
+    <button class="btn ghost" onclick="document.documentElement.dataset.theme=
+      document.documentElement.dataset.theme==='dark'?'light':'dark'">Сменить тему</button>
+  </header>
+
+  <main class=main>
+
+    <h1>Что изменилось</h1>
+    <p class=page-sub>Блоки разделены, у панели скругление и слабая тень, статусы получили цвет.</p>
+
+    <!-- ── ПОЛОСА МЕТРИК ─────────────────────────────────────────── -->
+    <h2 class=t-label>Полоса метрик — вместо слипшейся строки</h2>
+    <div class=metrics>
+      <div><span class=mk>Шагов</span><span class=mv>7</span></div>
+      <div><span class=mk>Тактик ATT&CK</span><span class=mv>4</span></div>
+      <div><span class=mk>Развитие</span><span class=mv>2 ч 14 мин</span></div>
+      <div><span class=mk>Правилами</span><span class="mv acc">5</span></div>
+      <div><span class=mk>Поведением</span><span class="mv warn">2</span></div>
+    </div>
+
+    <!-- ── ЖИЗНЕННЫЙ ЦИКЛ ────────────────────────────────────────── -->
+    <h2 class=t-label>Статус инцидента и вердикт</h2>
+    <div class=wfstatus>
+      <div class=wfline>
+        <div class=wftrack>
+          <button class="wfstep done">новый</button>
+          <button class="wfstep done">в работе</button>
+          <button class="wfstep on">локализовано</button>
+          <button class=wfstep>закрыто</button>
+        </div>
+        <span class=grow></span>
+        <div class=wfvgroup><span class=wfvlab>Вердикт</span>
+          <button class="wfv tp">TP</button>
+          <button class="wfv fp on">FP</button></div>
+      </div>
+      <div class="vbanner fp">
+        <span class=vt>Ложное срабатывание</span>
+        <span>Правилам инцидента засчитан FP. После третьего правило перестаёт поднимать инциденты.</span>
+        <span class=vtime>2026-08-10 11:42</span>
+      </div>
+    </div>
+
+    <div class="cols2 mt-4">
+      <div class=col>
+
+        <!-- ── ОЧЕРЕДЬ ТРИАЖА ──────────────────────────────────── -->
+        <div class=card><h2>Очередь триажа<span class=grow></span>
+          <span class=sub><kbd>J</kbd><kbd>K</kbd> навигация</span></h2>
+          <div class=wfq>
+            <div class="wfi sel">
+              <span class="badge b-crit">critical</span>
+              <div><div class=who>@irina.belova <span class="badge b-camp">campaign</span></div>
+                <div class=meta>риск 0.94 · 7 детектов · 4 тактики · Пётр Л.</div></div>
+              <span class=grow></span>
+              <span class="stpill investigating">в работе</span>
+              <span class="sla breach">42 мин</span>
+            </div>
+            <div class=wfi>
+              <span class="badge b-high">high</span>
+              <div><div class=who>@nikita.orlov</div>
+                <div class=meta>риск 0.71 · 3 детекта · 2 тактики</div></div>
+              <span class=grow></span>
+              <span class="vpill fp">FP</span>
+              <span class="stpill closed">закрыто</span>
+              <span class="sla ok">6 мин</span>
+            </div>
+            <div class=wfi>
+              <span class="badge b-med">medium</span>
+              <div><div class=who>@olga.novak</div>
+                <div class=meta>риск 0.48 · 2 детекта · 1 тактика</div></div>
+              <span class=grow></span>
+              <span class="vpill tp">TP</span>
+              <span class="stpill contained">локализовано</span>
+              <span class="sla warn">21 мин</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ЗАМЕТКА РАССЛЕДОВАНИЯ ───────────────────────────── -->
+        <div class="card mt-4"><h2>Заметка расследования — отдельный блок</h2>
+          <div>
+            <div class=ds-drawer-sec>
+              <div class=t-label>Заметка расследования</div>
+              <textarea class=tin rows=4 placeholder="Что установлено, почему такой вердикт, что сделано."></textarea>
+              <div class=ds-sec-foot>
+                <button class=btn>Сохранить заметку</button>
+                <span class=sub>сохранено 11:42</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class=col>
+        <!-- ── СТРУКТУРНЫЙ ЛОГ ─────────────────────────────────── -->
+        <div class=card><h2>Структурный лог — с границей и прокруткой</h2>
+          <div class="feed scrollbox h-sm">
+            <div class="logrow lg-err"><span class=lg-t>12:04:11</span><span class=lg-l>ERROR</span>
+              <span class=lg-m>console</span><span class=lg-e>необработанная ошибка в маршруте</span>
+              <span class=lg-c>{"route":"/api/entity","status":500}</span></div>
+            <div class="logrow lg-warn"><span class=lg-t>12:04:09</span><span class=lg-l>WARNING</span>
+              <span class=lg-m>detector</span><span class=lg-e>правило заглушено по трём FP</span></div>
+            <div class="logrow lg-info"><span class=lg-t>12:04:08</span><span class=lg-l>INFO</span>
+              <span class=lg-m>correlator</span><span class=lg-e>инцидент #41 собран из 7 детектов</span></div>
+            <div class="logrow lg-dbg"><span class=lg-t>12:04:07</span><span class=lg-l>DEBUG</span>
+              <span class=lg-m>ingest</span><span class=lg-e>пачка событий обработана</span>
+              <span class=lg-c>{"n":120,"cursor":4567}</span></div>
+            <div class="logrow lg-dbg"><span class=lg-t>12:04:06</span><span class=lg-l>DEBUG</span>
+              <span class=lg-m>ueba</span><span class=lg-e>профиль актора обновлён</span></div>
+            <div class="logrow lg-info"><span class=lg-t>12:04:05</span><span class=lg-l>INFO</span>
+              <span class=lg-m>detector</span><span class=lg-e>алерт поднят правилом deploy-tool-abuse</span></div>
+            <div class="logrow lg-dbg"><span class=lg-t>12:04:04</span><span class=lg-l>DEBUG</span>
+              <span class=lg-m>ingest</span><span class=lg-e>пачка событий обработана</span></div>
+          </div>
+        </div>
+
+        <!-- ── ВЫДЕЛЕНИЕ В КОДЕ ────────────────────────────────── -->
+        <div class="card mt-4"><h2>Выделение текста в трейсбеке — попробуйте выделить</h2>
+          <pre class="llmctx scrollbox h-sm">Traceback (most recent call last):
+  File "console.py", line 793, in _entity_profile
+    hours = sorted(prof["hours"].items())
+AttributeError: '_VonMisesHours' object has no attribute 'items'</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ГРАФИКИ ───────────────────────────────────────────────── -->
+    <h2 class="t-label mt-4">Графики — с осями, единицами и курсором</h2>
+    <div class=refresh-bar>
+      <span class="dot ok"></span>
+      <span>следующий пересчёт через 3 мин</span>
+      <span class=grow></span>
+      <span class=sub>28 точек · последняя 2026-08-10 11:40</span>
+      <button class="btn ghost">Пересчитать сейчас</button>
+    </div>
+    <div class=charts id=charts></div>
+
+    <!-- ── МАТРИЦА ATT&CK ────────────────────────────────────────── -->
+    <h2 class="t-label mt-4">Покрытие ATT&CK — по образцу MITRE Navigator</h2>
+    <div class=card>
+      <div class=mx-legend>
+        <span class=mx-leg><span class="mx-sw blind"></span>слепая зона</span>
+        <span class=mx-leg><span class="mx-sw cov"></span>покрыта правилом</span>
+        <span class=mx-leg>срабатывала
+          <span class=mx-ramp><i></i><i></i><i></i><i></i><i></i></span>
+          <span>1 — 18</span></span>
+        <span class=grow></span>
+        <span>11 из 16 техник покрыто · 7 срабатывало</span>
+      </div>
+      <div class=mx id=mx></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* Данные витрины — рядом с разметкой, чтобы страница оставалась одним
+   файлом и открывалась без сервера. */
+const SERIES=[
+ {t:'Доля обнаруженных атак',u:'% эпизодов',cls:'c-accent',pct:1,
+  v:[.41,.48,.44,.55,.61,.58,.66,.70,.69,.74,.78,.81]},
+ {t:'Покрытие ATT&CK',u:'% техник',cls:'c-success',pct:1,
+  v:[.44,.44,.50,.50,.56,.56,.56,.62,.62,.62,.69,.69]},
+ {t:'Доля ложных инцидентов',u:'% инцидентов',cls:'c-critical',pct:1,low:1,
+  v:[.38,.34,.36,.29,.27,.28,.22,.20,.21,.18,.16,.14]},
+ {t:'Время до обнаружения',u:'минут',cls:'c-medium',pct:0,low:1,
+  v:[14.2,12.8,13.4,11.1,9.7,10.2,8.4,7.9,8.1,6.6,5.9,5.2]}];
+
+function esc(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function labels(n){const out=[];for(let i=0;i<n;i++){const m=(i*5)%60,h=9+Math.floor(i*5/60);
+  out.push(String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'));}return out;}
+
+function chartBlock(o){
+ const vals=o.values,n=vals.length,hi=Math.max(...vals);
+ const top=o.pct?1:hi*1.15,W=100,H=40;
+ const X=i=>n<=1?W/2:(i/(n-1))*W, Y=v=>H-(v/(top||1))*H;
+ let line='';vals.forEach((v,i)=>{line+=(i?'L':'M')+X(i).toFixed(2)+' '+Y(v).toFixed(2)+' ';});
+ const area='M0 '+H+' L'+vals.map((v,i)=>X(i).toFixed(2)+' '+Y(v).toFixed(2)).join(' L')+' L'+W+' '+H+' Z';
+ const grid=[0,.5,1].map(g=>'<line class=chart-grid x1=0 x2='+W+' y1='+(g*H)+' y2='+(g*H)+'/>').join('');
+ const last=vals[n-1],first=vals[0],diff=last-first;
+ const dcls=(o.lowerBetter?diff<0:diff>0)?'up':'down';
+ const dtxt=(diff>0?'+':'')+(o.pct?(Math.round(diff*1000)/10+' п.п.'):(Math.round(diff*10)/10));
+ return '<div class="chart '+o.cls+'">'+
+  '<div class=chart-h><span class=chart-t>'+esc(o.title)+'</span>'+
+   '<span class=chart-u>'+esc(o.unit)+'</span>'+
+   '<span class=chart-v>'+esc(o.fmt(last))+'</span>'+
+   '<span class="chart-d '+dcls+'">'+esc(dtxt)+'</span></div>'+
+  '<div class=chart-body>'+
+   '<div class=chart-y><span>'+esc(o.fmt(top))+'</span><span>'+esc(o.fmt(top/2))+'</span><span>'+esc(o.fmt(0))+'</span></div>'+
+   '<div class=chart-plot data-chart=\''+esc(JSON.stringify({v:vals,l:o.labels,p:o.pct?1:0,u:o.unit}))+'\'>'+
+    '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio=none>'+grid+
+     '<path class=chart-area d="'+area+'"/><path class=chart-line d="'+line+'"/></svg>'+
+    '<i class=chart-cursor></i><i class=chart-dot></i><div class=chart-tip></div></div></div>'+
+  '<div class=chart-x><span>'+o.labels[0]+'</span><span>'+o.labels[Math.floor(n/2)]+'</span><span>'+o.labels[n-1]+'</span></div>'+
+ '</div>';}
+
+document.getElementById('charts').innerHTML=SERIES.map(s=>chartBlock({
+ title:s.t,unit:s.u,cls:s.cls,pct:s.pct,lowerBetter:s.low,values:s.v,labels:labels(s.v.length),
+ fmt:s.pct?(v=>Math.round(v*1000)/10+'%'):(v=>String(Math.round(v*10)/10))})).join('');
+
+document.addEventListener('mousemove',function(ev){
+ const plot=ev.target.closest&&ev.target.closest('.chart-plot');if(!plot)return;
+ let d;try{d=JSON.parse(plot.dataset.chart);}catch(x){return;}
+ const r=plot.getBoundingClientRect(),n=d.v.length;
+ const rel=Math.min(1,Math.max(0,(ev.clientX-r.left)/r.width));
+ const i=Math.round(rel*(n-1)),v=d.v[i];
+ const top=d.p?1:Math.max(...d.v)*1.15;
+ const px=(i/(n-1))*r.width, py=r.height-(v/top)*r.height;
+ const cur=plot.querySelector('.chart-cursor'),dot=plot.querySelector('.chart-dot'),tip=plot.querySelector('.chart-tip');
+ cur.style.display='block';cur.style.left=px+'px';
+ dot.style.display='block';dot.style.left=px+'px';dot.style.top=py+'px';
+ tip.style.display='block';
+ tip.innerHTML='<b class=tv>'+(d.p?(Math.round(v*1000)/10+'%'):(Math.round(v*100)/100+' '+d.u))+'</b><span class=tt>'+d.l[i]+'</span>';
+ const tw=tip.offsetWidth||120;
+ tip.style.left=Math.min(r.width-tw/2-2,Math.max(tw/2+2,px))+'px';
+ tip.style.top=Math.max(30,py-10)+'px';
+},true);
+document.addEventListener('mouseout',function(ev){
+ const plot=ev.target.closest&&ev.target.closest('.chart-plot');
+ if(!plot||plot.contains(ev.relatedTarget))return;
+ ['.chart-cursor','.chart-dot','.chart-tip'].forEach(s=>{const e=plot.querySelector(s);if(e)e.style.display='none';});
+},true);
+
+/* Матрица */
+const MX=[
+ ['Initial Access',[['T1078','Valid Accounts',18],['T1195','Supply Chain',0,1],['T1566','Phishing',0,0]]],
+ ['Execution',[['T1072','Deployment Tools',11],['T1059','Command Interpreter',3],['T1204','User Execution',0,0]]],
+ ['Persistence',[['T1098','Account Manipulation',6],['T1136','Create Account',0,1],['T1505','Server Component',0,0]]],
+ ['Defense Evasion',[['T1562','Impair Defenses',9],['T1070','Indicator Removal',1],['T1027','Obfuscation',0,0]]],
+ ['Collection',[['T1213','Info Repositories',4],['T1074','Data Staged',0,1]]],
+ ['Exfiltration',[['T1567','Over Web Service',2],['T1048','Alt Protocol',0,0]]]];
+const MXMAX=18;
+function lvl(n){if(!n)return '';const r=n/MXMAX;
+ return r>=.8?'f5':r>=.55?'f4':r>=.32?'f3':r>=.14?'f2':'f1';}
+document.getElementById('mx').innerHTML=MX.map(([tac,tt])=>{
+ const cov=tt.filter(t=>t[2]>0||t[3]===1).length;
+ return '<div class=mx-col><div class=mx-th><span class=mx-tac>'+tac+'</span>'+
+  '<span class=mx-cnt>'+cov+' из '+tt.length+' покрыто</span></div><div class=mx-cells>'+
+  tt.map(([id,nm,fired,covered])=>{
+   const cls=fired?lvl(fired):(covered===1?'cov':'blind');
+   return '<div class="mx-cell '+cls+'" title="'+id+' · '+nm+'"><span class=mx-nm>'+nm+'</span>'+
+    '<span class=mx-id>'+id+(fired?'<span class=mx-ct> · '+fired+'</span>':'')+'</span></div>';}).join('')+
+  '</div></div>';}).join('');
+</script>
+</body>
+</html>

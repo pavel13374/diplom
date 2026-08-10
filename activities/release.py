@@ -4,6 +4,7 @@
 """
 import random
 import logging
+import config
 from config import PROJECTS, USERS, FEATURES
 from activities import flow
 import simclock
@@ -15,7 +16,7 @@ class ReleaseActivity:
     def __init__(self, lead_agent, state=None):
         self.lead  = lead_agent
         self.state = state
-        self.pid   = PROJECTS["detection-rules"]
+        self.pid   = config.repo_id("detection-rules")
 
     def run(self) -> bool:
         if not FEATURES.get("releases"):

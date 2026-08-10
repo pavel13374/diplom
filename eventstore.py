@@ -23,7 +23,7 @@ import threading
 _log = logging.getLogger("eventstore")
 
 _LOCK = threading.Lock()
-_STATE = {"db": None, "path": None, "enabled": False}
+_STATE = {"db": None, "path": None, "enabled": False, "error": None}
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -101,18 +101,42 @@ def init(path=None, enabled=True):
     if not os.path.isabs(path):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
     with _LOCK:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        db = sqlite3.connect(path, check_same_thread=False, timeout=30)
-        db.execute("PRAGMA journal_mode=WAL;")
-        db.execute("PRAGMA synchronous=NORMAL;")
-        db.executescript(_SCHEMA)
-        db.commit()
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            db = sqlite3.connect(path, check_same_thread=False, timeout=30)
+            db.execute("PRAGMA journal_mode=WAL;")
+            db.execute("PRAGMA synchronous=NORMAL;")
+            db.executescript(_SCHEMA)
+            db.commit()
+        except Exception as ex:
+            # НЕДОСТУПНАЯ БАЗА ДОЛЖНА БЫТЬ ВИДНА.
+            #
+            # Раньше исключение улетало наверх и глушилось у вызывающего, а
+            # enabled() возвращал False. Внешне это неотличимо от «данных ещё
+            # нет»: /api/stats отдавал store_events = 0, интерфейс рисовал
+            # прочерки, и разобраться было нечем. Причина при этом бывает
+            # вполне конкретной — например «disk I/O error» на сетевом диске,
+            # где WAL не работает.
+            _STATE["db"] = None
+            _STATE["path"] = path
+            _STATE["enabled"] = False
+            _STATE["error"] = f"{type(ex).__name__}: {ex}"[:300]
+            _log.error("event-store НЕ открыт — защита не увидит ни одного "
+                       "события", exc_info=True,
+                       extra={"ctx": {"path": path, "error": _STATE["error"]}})
+            return path
         _STATE["db"] = db
         _STATE["path"] = path
         _STATE["enabled"] = bool(enabled and cfg.get("enabled", True))
+        _STATE["error"] = None
     _log.info("event-store открыт", extra={"ctx": {
         "path": path, "enabled": _STATE["enabled"]}})
     return path
+
+
+def last_error():
+    """Причина недоступности стора (или None). Отдаётся в /api/health."""
+    return _STATE.get("error")
 
 
 def enabled():
@@ -202,7 +226,7 @@ def set_cursor(name, pos):
 
 def stats():
     if not enabled():
-        return {"enabled": False}
+        return {"enabled": False, "error": _STATE.get("error")}
     with _LOCK:
         total = _STATE["db"].execute("SELECT COUNT(*) FROM events").fetchone()[0]
         anom = _STATE["db"].execute("SELECT COUNT(*) FROM events WHERE is_anomaly=1 AND meta=0").fetchone()[0]

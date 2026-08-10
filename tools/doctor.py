@@ -200,6 +200,88 @@ def main():
     except Exception as ex:
         line(False, "конвейер", str(ex)[:60])
 
+    print("\n  Обращения к GitLab:")
+    try:
+        import json as _json
+        import collections as _c
+        _jsonl = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                              "data", "events.jsonl")
+        # РАЗБИРАЕМ ТОЛЬКО ПОСЛЕДНИЙ ПРОГОН.
+        #
+        # Журнал копится между запусками, и отказы прошлых прогонов остаются в
+        # нём навсегда. Если считать по всему файлу, уже исправленная проблема
+        # продолжает гореть красным, и диагностика перестаёт что-либо значить.
+        # Смотрим последний run_id, а по всей истории даём только справку.
+        runs = []
+        rows = []
+        if os.path.exists(_jsonl):
+            with open(_jsonl, encoding="utf-8") as _f:
+                for _ln in _f:
+                    _ln = _ln.strip()
+                    if not _ln:
+                        continue
+                    try:
+                        _r = _json.loads(_ln)
+                    except Exception:
+                        continue
+                    if _r.get("gitlab_ok") is None:
+                        continue
+                    rows.append(_r)
+                    rid = _r.get("run_id")
+                    if rid and (not runs or runs[-1] != rid):
+                        runs.append(rid)
+        last_run = runs[-1] if runs else None
+
+        hist_bad = sum(1 for _r in rows if _r.get("gitlab_ok") is False)
+        cur = [_r for _r in rows if _r.get("run_id") == last_run] if last_run else rows
+
+        ok_op, bad_op = _c.Counter(), _c.Counter()
+        by_repo = _c.Counter(); tot_repo = _c.Counter()
+        for _r in cur:
+            _a = _r.get("action") or "?"
+            _p = str(_r.get("project"))
+            tot_repo[_p] += 1
+            if _r.get("gitlab_ok"):
+                ok_op[_a] += 1
+            else:
+                bad_op[_a] += 1
+                by_repo[_p] += 1
+
+        total_bad = sum(bad_op.values())
+        total_ok = sum(ok_op.values())
+        if last_run:
+            print(f"    последний прогон: {last_run}   "
+                  f"(в журнале всего прогонов: {len(runs)})")
+            if hist_bad > total_bad:
+                print(f"    за всю историю журнала отказов: {hist_bad} — "
+                      f"это прошлые прогоны, ниже только последний")
+        if total_ok + total_bad == 0:
+            line(True, "журнал обращений", "пуст — мир ещё не запускался")
+        else:
+            rate = total_bad / max(1, total_ok + total_bad)
+            line(rate < 0.05, "общая доля отказов",
+                 f"{total_bad} из {total_ok + total_bad} = {rate * 100:.1f}%"
+                 + ("" if rate < 0.05 else "  <- разбери по операциям ниже"))
+            # СИСТЕМАТИЧЕСКИЙ отказ одной операции важнее общего счётчика:
+            # «312 ошибок» ничего не говорит, «create_branch 357 из 3855»
+            # указывает на конкретную причину (обычно устаревший id репозитория,
+            # см. config.repo_id).
+            for _a, _n in bad_op.most_common(4):
+                _t = _n + ok_op[_a]
+                _r2 = _n / max(1, _t)
+                line(_r2 < 0.05, f"операция {_a}",
+                     f"{_n} отказов из {_t} = {_r2 * 100:.1f}%"
+                     + ("" if _r2 < 0.05 else "  <- систематический сбой"))
+            for _p, _n in by_repo.most_common(3):
+                _t = tot_repo[_p]
+                _r2 = _n / max(1, _t)
+                if _r2 >= 0.05:
+                    line(False, f"репозиторий {_p}",
+                         f"{_n} отказов из {_t} = {_r2 * 100:.1f}%"
+                         "  <- проверь, что id актуален (автодискавери)")
+    except Exception as ex:
+        line(False, "разбор отказов GitLab", str(ex)[:60])
+
     print("\n  Логи:")
     try:
         import soclog

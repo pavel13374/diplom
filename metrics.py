@@ -40,10 +40,23 @@ def compute():
     if not rows:
         return None
 
-    # прогон детектора по потоку (как делает защита)
+    # ПРОГОН ДЕТЕКТОРА — РОВНО ОДИН РАЗ ПО ПОТОКУ.
+    #
+    # Детектор — потоковый и с состоянием: Enricher копит оконную историю
+    # актора, UEBA — профили и резервуар для квантиля порога. Раньше compute()
+    # проходил по rows ДВАЖДЫ (второй раз — ради PR-AUC), причём тем же самым
+    # синглтоном run_defense._ENGINE. На втором проходе профили уже были
+    # «прогреты» всей выборкой, порог UEBA стоял на другом значении, а история
+    # каждого актора удваивалась. В итоге PR-AUC считался по риску, который
+    # НИКОГДА не выставлялся в бою, и в отчёте соседствовали две
+    # взаимно несогласованные цифры по одному и тому же прогону.
+    #
+    # Теперь риск каждого события запоминается на единственном проходе.
+    risks = []                 # риск события в порядке потока
     alerts = []                # (row, det)
     for r in rows:
         det = run_defense.process(r)
+        risks.append(det.get("risk", 0.0))
         if det.get("alert"):
             alerts.append((r, det))
 
@@ -66,15 +79,29 @@ def compute():
     for r, det in alerts:
         alerts_by_actor[r.get("actor")].append((_parse(r.get("ts_sim")), det["risk"]))
 
-    detected = 0; mttd_vals = []
+    # СТРОГИЙ детект: алерт пришёл НА СОБЫТИЕ ЭТОГО ЖЕ ЭПИЗОДА.
+    # Раньше засчитывалось любое срабатывание того же актора в окне эпизода —
+    # включая алерт на его СОСЕДНЕЕ ДОБРОКАЧЕСТВЕННОЕ действие. Атакующий в
+    # рабочее время делает и обычную работу, поэтому такое совпадение случайно
+    # и завышает detection rate. Считаем обе величины: строгую (в отчёт) и
+    # мягкую (для сравнения — насколько велика была накрутка).
+    alerted_eids = {}
+    for r, det in alerts:
+        eid = r.get("episode_id")
+        t = _parse(r.get("ts_sim"))
+        if eid and t and (eid not in alerted_eids or t < alerted_eids[eid]):
+            alerted_eids[eid] = t
+
+    detected = 0; detected_loose = 0; mttd_vals = []
     for eid, ep in episodes.items():
         actor = ep["events"][0].get("actor")
         first = ep["first"]
-        last = max((_parse(e.get("ts_sim")) for e in ep["events"] if _parse(e.get("ts_sim"))), default=first)
-        hit = None
-        for (t, risk) in alerts_by_actor.get(actor, []):
-            if t and first and first <= t <= (last or first):
-                hit = t if (hit is None or t < hit) else hit
+        last = max((_parse(e.get("ts_sim")) for e in ep["events"] if _parse(e.get("ts_sim"))),
+                   default=first)
+        if any(t and first and first <= t <= (last or first)
+               for (t, _risk) in alerts_by_actor.get(actor, [])):
+            detected_loose += 1
+        hit = alerted_eids.get(eid)
         if hit is not None:
             detected += 1
             if first:
@@ -82,7 +109,12 @@ def compute():
 
     n_ep = len(episodes)
     det_rate = detected / n_ep if n_ep else 0.0
+    # MTTD усредняется ТОЛЬКО по пойманным эпизодам — у непойманных времени
+    # обнаружения не существует. Это цензурированная выборка, и число надо
+    # читать как «медиана/среднее среди пойманных», а не «среднее по атакам».
+    # Ниже отдаём и долю, по которой оно посчитано.
     mttd = sum(mttd_vals) / len(mttd_vals) if mttd_vals else 0.0
+    mttd_median = (sorted(mttd_vals)[len(mttd_vals) // 2] if mttd_vals else 0.0)
 
     # --- ATT&CK coverage: покрытые правилами техники / ВСЯ матрица.
     #     Тот же честный знаменатель, что на странице «Покрытие» в консоли
@@ -97,23 +129,40 @@ def compute():
     covered_in_matrix = covered_rules & matrix
     cov = len(covered_in_matrix) / len(matrix) if matrix else 0.0
 
-    # --- FP-rate среди ДЕЙСТВЕННЫХ инцидентов (после корреляции) — то, что
-    #     реально эскалируется аналитику. «Действенный» = подкреплён правилом
-    #     (слой rules) ИЛИ риск >= 0.6 (medium+). Низкорисковые одиночные
-    #     UEBA-срабатывания ниже порога действия и не считаются ложными
-    #     тревогами, которые SOC «гоняет». Инцидент ложный, если его окно не
-    #     пересекается ни с одним размеченным эпизодом атаки того же актора.
-    #     (Раньше FP считался по всем сырым детектам и полз к ~75%, потом по
-    #     всем инцидентам — но большинство инцидентов это доброкачественный
-    #     поведенческий шум, не доходящий до эскалации.) ---
+    # --- ДОЛЯ ЛОЖНЫХ ПО ТРЁМ ЗНАМЕНАТЕЛЯМ -------------------------------
+    #
+    # Одна цифра «FP-rate» здесь невозможна честно, потому что «ложная тревога»
+    # значит разное на разных уровнях конвейера:
+    #
+    #   по СОБЫТИЯМ      — сколько сырых детектов пришлось на нормальные
+    #                      события. Самая пессимистичная и наименее полезная
+    #                      величина: детект — не единица работы, аналитик их
+    #                      поштучно не разбирает.
+    #   по ИНЦИДЕНТАМ    — сколько склеенных инцидентов не пересеклись ни с
+    #                      одним эпизодом атаки. Ближе к делу, но включает
+    #                      низкорисковый поведенческий шум, который до очереди
+    #                      не доходит.
+    #   по ДЕЙСТВЕННЫМ   — то же среди инцидентов выше порога действия. Ровно
+    #                      то, что реально попадёт к человеку.
+    #
+    # Раньше печаталась ТОЛЬКО третья, и это выглядело как выбор удобного
+    # знаменателя: порог 0.6 ничем не обоснован, а от него цифра меняется в
+    # разы. Теперь печатаются все три, и видно, что именно чем оплачено.
+    # Рецензенту нужен не самый красивый показатель, а понятная шкала.
     import correlator
     cor = correlator.Correlator()
     for r, det in alerts:
         cor.add(r, det)
     incidents = list(cor.incidents.values())
 
+    ACTION_THRESHOLD = 0.6
+
     def _actionable(inc):
-        if inc.get("max_risk", 0) >= 0.6:
+        # Порог берётся от СЛИТОГО риска инцидента, а не от максимума по
+        # событиям: свидетельства разных слоёв в многошаговой кампании
+        # приходят на РАЗНЫХ шагах, и максимум их не складывает
+        # (см. correlator.Correlator._incident_risk).
+        if inc.get("risk", inc.get("max_risk", 0)) >= ACTION_THRESHOLD:
             return True
         return any(a.get("layer") == "rules" for a in inc.get("alerts", []))
 
@@ -125,24 +174,44 @@ def compute():
         l = max([t for t in lst if t], default=f)
         if f:
             ep_windows[a].append((f, l or f))
-    actionable = [inc for inc in incidents if _actionable(inc)]
-    inc_fp = 0
-    for inc in actionable:
+
+    def _inc_is_fp(inc):
         a = inc.get("actor")
         s = _parse(inc.get("start_ts")); e = _parse(inc.get("last_ts")) or s
-        tp = any(s and wf and s <= wl and (e or s) >= wf
-                 for (wf, wl) in ep_windows.get(a, []))
-        if not tp:
-            inc_fp += 1
-    fp_rate = inc_fp / len(actionable) if actionable else 0.0
-    # для обратной совместимости оставляем и сырой счётчик
+        return not any(s and wf and s <= wl and (e or s) >= wf
+                       for (wf, wl) in ep_windows.get(a, []))
+
+    actionable = [inc for inc in incidents if _actionable(inc)]
+    inc_fp = sum(1 for inc in actionable if _inc_is_fp(inc))
+    all_inc_fp = sum(1 for inc in incidents if _inc_is_fp(inc))
     fp = sum(1 for r, _ in alerts if not r.get("is_anomaly"))
 
+    fp_rate = inc_fp / len(actionable) if actionable else 0.0
+    fp_rate_incidents = all_inc_fp / len(incidents) if incidents else 0.0
+    fp_rate_events = fp / len(alerts) if alerts else 0.0
+
+    # Кривая «доля ложных от порога действия» — чтобы выбор 0.6 не выглядел
+    # подогнанным: видно, как цифра ведёт себя на всём диапазоне.
+    fp_by_threshold = []
+    for thr in (0.2, 0.4, 0.6, 0.8, 0.9):
+        sel = [inc for inc in incidents
+               if inc.get("risk", inc.get("max_risk", 0)) >= thr]
+        nfp = sum(1 for inc in sel if _inc_is_fp(inc))
+        fp_by_threshold.append({
+            "threshold": thr, "incidents": len(sel),
+            "fp": nfp, "fp_rate": round(nfp / len(sel), 3) if sel else 0.0})
+
     # --- alerts/day (sim) ---
-    times = [_parse(r.get("ts_sim")) for r, _ in alerts]
-    times = [t for t in times if t]
-    span_days = ((max(times) - min(times)).total_seconds() / 86400.0) if len(times) > 1 else 1.0
-    per_day = len(alerts) / max(span_days, 1e-6)
+    # Знаменатель — длительность ВСЕГО ПОТОКА, а не отрезка между первым и
+    # последним алертом. Раньше делили на разброс времён самих алертов: если
+    # все алерты пришлись на один час двухнедельного прогона, метрика выдавала
+    # «240 алертов в день» вместо честных 0.7. Чем ТИШЕ детектор, тем сильнее
+    # завышался показатель его шумности — знак ошибки был обратный смыслу.
+    ev_times = [t for t in (_parse(r.get("ts_sim")) for r in rows) if t]
+    span_days = ((max(ev_times) - min(ev_times)).total_seconds() / 86400.0
+                 if len(ev_times) > 1 else 0.0)
+    span_days = max(span_days, 1.0 / 24)          # не меньше часа, иначе делим на шум
+    per_day = len(alerts) / span_days
 
     # --- статистика: интервалы вместо точечных оценок ---
     # Detection rate 74.5% на 55 эпизодах — это на самом деле «где-то между 61 и
@@ -159,9 +228,7 @@ def compute():
     #     при таком дисбалансе ROC-AUC выглядит отлично даже у слабого
     #     детектора (знаменатель FPR — огромное число нормальных событий). ---
     risk_pos, risk_neg = [], []
-    for r in rows:
-        det = run_defense.process(r)
-        s = det.get("risk", 0.0)
+    for r, s in zip(rows, risks):          # риски с ЕДИНСТВЕННОГО прогона выше
         (risk_pos if r.get("is_anomaly") else risk_neg).append(s)
     pr = stats.pr_auc(risk_pos, risk_neg)
     roc = stats.roc_auc(risk_pos, risk_neg)
@@ -170,11 +237,21 @@ def compute():
     return {
         "events": len(rows), "anomaly_episodes": n_ep, "alerts": len(alerts),
         "detection_rate": round(det_rate, 3), "detected_episodes": detected,
+        # мягкий критерий (любой алерт актора в окне) — для сравнения, НЕ в отчёт
+        "detection_rate_loose": round(detected_loose / n_ep, 3) if n_ep else 0.0,
         "attack_coverage": round(cov, 3),
         "mttd_sim_min": round(mttd, 1),
+        "mttd_median_sim_min": round(mttd_median, 1),
+        "mttd_measured_on": len(mttd_vals),      # цензурирование: сколько эпизодов
         "mttd_ci": [round(mttd_lo, 1), round(mttd_hi, 1)],
         "fp_rate": round(fp_rate, 3), "fp_incidents": inc_fp,
         "fp_rate_ci": [round(fp_lo, 3), round(fp_hi, 3)],
+        # ТРИ ЗНАМЕНАТЕЛЯ — см. комментарий в compute()
+        "fp_rate_events": round(fp_rate_events, 3),
+        "fp_rate_incidents": round(fp_rate_incidents, 3),
+        "fp_incidents_all": all_inc_fp,
+        "fp_by_threshold": fp_by_threshold,
+        "action_threshold": ACTION_THRESHOLD,
         "incidents": len(incidents), "actionable_incidents": len(actionable),
         "fp_alerts": fp,
         "precision": round(prec_tp / len(alerts), 3) if alerts else 0.0,
@@ -211,13 +288,46 @@ def main():
     print("-" * 68)
     print(f"  Detection rate:          {m['detection_rate']*100:.1f}% {ci('detection_rate_ci')}  "
           f"({m['detected_episodes']}/{m['anomaly_episodes']})")
+    print(f"    строгий критерий: алерт НА СОБЫТИИ эпизода. Мягкий (любой алерт")
+    print(f"    того же актора в окне) дал бы {m['detection_rate_loose']*100:.1f}% — разница и есть")
+    print(f"    величина случайных совпадений.")
     print(f"  Precision (события):     {m['precision']*100:.1f}% {ci('precision_ci')}")
     print(f"  ATT&CK coverage:         {m['attack_coverage']*100:.1f}%  "
           f"({m['techniques_covered']}/{m['techniques_in_matrix']} техник матрицы)")
-    print(f"  MTTD (sim-минуты):       {m['mttd_sim_min']} "
-          f"[{m['mttd_ci'][0]}–{m['mttd_ci'][1]}]")
-    print(f"  FP-rate (действ. инц.):  {m['fp_rate']*100:.1f}% {ci('fp_rate_ci')}  "
-          f"({m['fp_incidents']}/{m['actionable_incidents']} действенных инц.)")
+    print(f"  MTTD (sim-минуты):       среднее {m['mttd_sim_min']} "
+          f"[{m['mttd_ci'][0]}–{m['mttd_ci'][1]}], медиана {m['mttd_median_sim_min']}")
+    print(f"    цензурировано: посчитано по {m['mttd_measured_on']} пойманным эпизодам из "
+          f"{m['anomaly_episodes']}; у непойманных времени обнаружения не существует.")
+    print(f"  Доля ложных — ТРИ знаменателя (одной честной цифры не бывает):")
+    print(f"    по событиям:           {m['fp_rate_events']*100:5.1f}%  "
+          f"({m['fp_alerts']}/{m['alerts']} сырых детектов на норме)")
+    print(f"    по инцидентам:         {m['fp_rate_incidents']*100:5.1f}%  "
+          f"({m['fp_incidents_all']}/{m['incidents']} после корреляции)")
+    print(f"    по ДЕЙСТВЕННЫМ:        {m['fp_rate']*100:5.1f}% {ci('fp_rate_ci')}  "
+          f"({m['fp_incidents']}/{m['actionable_incidents']} дошли бы до аналитика)")
+    print(f"    зависимость от порога действия (сейчас {m['action_threshold']}):")
+    for _t in m["fp_by_threshold"]:
+        print(f"      risk >= {_t['threshold']:.1f}:  {_t['fp']:>4}/{_t['incidents']:<5} = "
+              f"{_t['fp_rate']*100:5.1f}%")
+    print(f"    Цифра сильно зависит от порога, поэтому приводить одну без")
+    print(f"    остальных некорректно — это и есть выбор удобного знаменателя.")
+    # ЧТО ЭТА ЦИФРА ЗНАЧИТ ПРИ ТАКОМ ДИСБАЛАНСЕ.
+    #
+    # «60% ложных» звучит провально ровно до того момента, пока не сравнить с
+    # базовой частотой. Если атаки составляют 0.4% потока, то случайно взятый
+    # инцидент верен в 0.4% случаев; 40% верных — это в сто раз лучше случайного.
+    # Для SOC решающим является не ДОЛЯ, а ЧИСЛО тревог в день: разобрать три
+    # инцидента, из которых один настоящий, — рабочая нагрузка; разобрать
+    # триста при той же доле — невозможная.
+    _base = m["pr_baseline"] or 0.0
+    _prec_inc = 1.0 - m["fp_rate"]
+    if _base > 0:
+        print(f"    Точность действенных инцидентов {_prec_inc*100:.0f}% при базовой "
+              f"частоте атак {_base*100:.2f}%")
+        print(f"    — выигрыш над случайным в {_prec_inc/_base:.0f} раз. При "
+              f"{m['alerts_per_sim_day']} алертах в сим-день это посильная нагрузка;")
+        print(f"    решает не доля, а абсолютное число тревог "
+              f"(см. research/workload_curve.py).")
     print(f"  Alerts / sim-день:       {m['alerts_per_sim_day']}")
     print("-" * 68)
     print(f"  PR-AUC:                  {m['pr_auc']:.3f}  "

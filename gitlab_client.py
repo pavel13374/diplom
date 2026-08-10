@@ -72,6 +72,8 @@ class GitLabClient:
             r = self.session.get(f"{self.url}/api/v4/version", timeout=10)
             return r.headers.get("Date")
         except Exception:
+            logger.warning("не удалось получить время сервера GitLab", exc_info=True,
+                           extra={"ctx": {"url": self.url}})
             return None
 
     # ------------------------------------------------------------------
@@ -95,6 +97,9 @@ class GitLabClient:
             import base64
             return base64.b64decode(r.json().get("content", "")).decode("utf-8")
         except Exception:
+            logger.warning("не удалось прочитать файл из GitLab", exc_info=True,
+                           extra={"ctx": {"project_id": project_id, "path": path,
+                                          "ref": ref}})
             return None
 
     def push_file(self, project_id: int, path: str, content: str,
@@ -132,8 +137,13 @@ class GitLabClient:
                 params=params, timeout=20)
             if r.status_code == 200:
                 return [f["path"] for f in r.json() if f.get("type") == "blob"]
+            logger.warning("листинг дерева отклонён",
+                           extra={"ctx": {"project_id": project_id, "path": path,
+                                          "status": r.status_code,
+                                          "body": r.text[:200]}})
         except Exception:
-            pass
+            logger.warning("листинг дерева не удался", exc_info=True,
+                           extra={"ctx": {"project_id": project_id, "path": path}})
         return []
 
     # ------------------------------------------------------------------
@@ -217,6 +227,10 @@ class GitLabClient:
             try:
                 _mr = self.get_mr(project_id, mr_iid) or {}
             except Exception:
+                logger.warning("не удалось дождаться mergeability — пробуем мержить "
+                               "как есть", exc_info=True,
+                               extra={"ctx": {"project_id": project_id,
+                                              "mr_iid": mr_iid}})
                 break
             if str(_mr.get("merge_status") or "") not in ("checking", "unchecked", ""):
                 break
@@ -246,7 +260,10 @@ class GitLabClient:
                             return True
                         last = r3.text[:150]
                 except Exception:
-                    pass
+                    logger.warning("повторный merge после rebase не удался",
+                                   exc_info=True,
+                                   extra={"ctx": {"project_id": project_id,
+                                                  "mr_iid": mr_iid}})
             elif r.status_code not in (401, 403, 406, 409, 422):
                 break  # иные ошибки повтором не лечатся
         why = ""
@@ -256,8 +273,13 @@ class GitLabClient:
                    f", draft={d.get('draft') or d.get('work_in_progress')}"
                    f", conflicts={d.get('has_conflicts')}, src={d.get('source_branch')}]")
         except Exception:
-            pass
-        logger.warning(f"merge_mr !{mr_iid} failed: {last}{why}")
+            logger.debug("не удалось дочитать состояние MR для диагностики",
+                         exc_info=True,
+                         extra={"ctx": {"project_id": project_id, "mr_iid": mr_iid}})
+        logger.warning("merge_mr не удался",
+                       extra={"ctx": {"project_id": project_id, "mr_iid": mr_iid,
+                                      "последняя_ошибка": str(last)[:200],
+                                      "состояние": why}})
         return False
 
     def rebase_mr(self, project_id: int, mr_iid: int) -> bool:
@@ -313,7 +335,10 @@ class GitLabClient:
                 if cur.json().get("access_level", 0) >= access_level:
                     return True
             except Exception:
-                pass
+                logger.warning("не удалось разобрать текущий уровень доступа — "
+                               "выставляем заново", exc_info=True,
+                               extra={"ctx": {"project_id": project_id,
+                                              "user_id": user_id}})
             # повысить уровень
             r = self.session.put(
                 f"{self.url}/api/v4/projects/{project_id}/members/{user_id}",
@@ -385,6 +410,9 @@ class GitLabClient:
                 "description": description, "visibility": "private"})
             return r.get("id") if isinstance(r, dict) else None
         except Exception:
+            logger.error("не удалось создать группу — репозитории будут создаваться "
+                         "вне группы или не создадутся вовсе", exc_info=True,
+                         extra={"ctx": {"path": path, "name": name}})
             return None
 
     def unblock_user(self, uid):
@@ -394,6 +422,8 @@ class GitLabClient:
                                   headers={"PRIVATE-TOKEN": self.token}, timeout=15)
             return r.status_code in (200, 201, 204)
         except Exception:
+            logger.warning("не удалось разблокировать пользователя", exc_info=True,
+                           extra={"ctx": {"user_id": uid}})
             return False
 
     def restore_group(self, gid):
@@ -403,6 +433,8 @@ class GitLabClient:
                                   headers={"PRIVATE-TOKEN": self.token}, timeout=15)
             return r.status_code in (200, 201, 204)
         except Exception:
+            logger.warning("не удалось восстановить группу", exc_info=True,
+                           extra={"ctx": {"group_id": gid}})
             return False
 
     def restore_project(self, pid):
@@ -411,6 +443,8 @@ class GitLabClient:
                                   headers={"PRIVATE-TOKEN": self.token}, timeout=15)
             return r.status_code in (200, 201, 204)
         except Exception:
+            logger.warning("не удалось восстановить проект", exc_info=True,
+                           extra={"ctx": {"project_id": pid}})
             return False
 
     def ensure_group(self, namespace, name=None, description=""):

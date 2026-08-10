@@ -44,6 +44,58 @@ class Correlator:
         self.incidents = {}            # iid -> incident dict
         self._open_by_actor = {}       # actor -> iid (последний открытый)
 
+    @staticmethod
+    def _incident_risk(inc):
+        """Риск ИНЦИДЕНТА — слияние по слоям, а не максимум по событиям.
+
+        Почему максимума недостаточно
+        -----------------------------
+        Слияние рисков (detector.fuse) работает ПОСОБЫТИЙНО: оно складывает
+        свидетельства слоёв, сработавших на ОДНОМ И ТОМ ЖЕ событии. Но
+        многошаговая кампания по построению растянута по событиям: правило
+        срабатывает на шаге «push секрета», поведенческий слой — на шаге
+        «ночной доступ к чужому репозиторию», модель — на шаге «выгрузка».
+        Пособытийное слияние эти свидетельства НИКОГДА не встретит.
+
+        Практическое следствие было измерено в research/ablation.py: слой L1
+        находил эпизоды, которых не находили правила, но ни одно его
+        срабатывание в одиночку не дотягивало до порога действия 0.6, а
+        `max_risk` по определению не умеет складывать. Вклад слоя выходил
+        статистически неотличимым от нуля — не потому, что слой слеп, а
+        потому, что его свидетельство некуда было положить.
+
+        Как считается
+        -------------
+        Внутри инцидента берётся МАКСИМУМ по каждому слою отдельно, и эти
+        максимумы сливаются той же формулой, что и пособытийно:
+
+            logit R = logit π + Σ_i γ^i · (logit r_i − logit π)
+
+        Максимум внутри слоя, а не сумма: два срабатывания одного правила на
+        соседних шагах — это одно свидетельство, повторённое дважды, и считать
+        его дважды значило бы вернуть ту же ошибку двойного учёта приора,
+        из-за которой формула слияния переписывалась.
+
+        Инцидент из одного слоя получает ровно свой риск — совместимо с
+        прежним поведением там, где сливать нечего.
+        """
+        best = {}
+        for a in inc.get("alerts", []):
+            layer = a.get("layer") or "unknown"
+            best[layer] = max(best.get(layer, 0.0), float(a.get("risk", 0.0)))
+        # свидетельства слоёв, не породившие тревогу (см. add())
+        for layer, r in (inc.get("evidence") or {}).items():
+            best[layer] = max(best.get(layer, 0.0), float(r))
+        if not best:
+            return float(inc.get("max_risk", 0.0))
+        try:
+            import detector
+            return detector.fuse([{"risk": r} for r in best.values()])
+        except Exception:
+            log.error("не удалось слить риск инцидента — беру максимум",
+                      exc_info=True, extra={"ctx": {"incident_id": inc.get("id")}})
+            return max(best.values())
+
     def add(self, ev, det):
         """ev — наблюдаемое событие (с ts_sim/actor/...); det — результат
         detector.process() (alert=True). Возвращает incident_id."""
@@ -70,7 +122,8 @@ class Correlator:
                 iid += 1
             inc = {
                 "id": iid, "actor": actor, "start_ts": ts, "last_ts": ts,
-                "max_risk": 0.0, "alerts": [], "tactics": [], "techniques": [],
+                "max_risk": 0.0, "alerts": [], "evidence": {},
+                "tactics": [], "techniques": [],
                 "repos": [], "chain": [], "seen_real": _time.time(),
             }
             self.incidents[iid] = inc
@@ -81,6 +134,27 @@ class Correlator:
         proj = ev.get("project")
         if proj and proj not in inc["repos"]:
             inc["repos"].append(proj)
+
+        # СВИДЕТЕЛЬСТВА БЕЗ ТРЕВОГИ.
+        #
+        # Слой ML участвует в решении двумя способами: собственной тревогой
+        # (выше порога FP-бюджета) и «свидетельством» — когда его вероятность
+        # заметно выше приора, но до порога не дотягивает. Свидетельство входит
+        # в ПОСОБЫТИЙНОЕ слияние, но в очередь аналитика не попадает.
+        #
+        # Раньше корреляция читала только det["alerts"], поэтому риск инцидента
+        # считался без свидетельств и оказывался НИЖЕ риска события, из которого
+        # инцидент состоит. На ablation это было видно как потеря четырёх
+        # эпизодов при переходе от пособытийной оценки к инцидентной — величина,
+        # которая по построению не может быть отрицательной.
+        #
+        # Свидетельства складываем в inc["evidence"] — они учитываются в риске,
+        # но не показываются как отдельные детекты в таймлайне.
+        for e in det.get("evidence", []):
+            layer = e.get("layer") or "evidence"
+            prev = inc.setdefault("evidence", {}).get(layer, 0.0)
+            inc["evidence"][layer] = max(prev, float(e.get("risk", 0.0)))
+
         for a in det.get("alerts", []):
             inc["alerts"].append({
                 "ts_sim": ts, "action": ev.get("action"), "project": proj,
@@ -97,14 +171,19 @@ class Correlator:
             inc["chain"].append({"ts": ts, "tactic": tac, "technique": tech,
                                  "action": ev.get("action"), "risk": a["risk"]})
         inc["is_campaign"] = len([x for x in inc["tactics"] if x != "Behavioral"]) >= 2
-        inc["severity"] = ("critical" if inc["max_risk"] >= 0.85 else
-                           "high" if inc["max_risk"] >= 0.6 else
-                           "medium" if inc["max_risk"] >= 0.4 else "low")
+        inc["risk"] = self._incident_risk(inc)
+        inc["severity"] = ("critical" if inc["risk"] >= 0.85 else
+                           "high" if inc["risk"] >= 0.6 else
+                           "medium" if inc["risk"] >= 0.4 else "low")
         log.log(logging.INFO if _new else logging.DEBUG,
                 "инцидент открыт" if _new else "инцидент продлён",
                 extra={"ctx": {"incident_id": iid, "actor": actor,
                                "severity": inc["severity"],
+                               "risk": round(inc["risk"], 3),
                                "max_risk": round(inc["max_risk"], 3),
+                               "layers": sorted({a.get("layer")
+                                                 for a in inc["alerts"]
+                                                 if a.get("layer")}),
                                "alerts": len(inc["alerts"]),
                                "tactics": inc["tactics"],
                                "is_campaign": inc["is_campaign"],
@@ -115,7 +194,7 @@ class Correlator:
 
     def list(self, limit=50):
         out = sorted(self.incidents.values(),
-                     key=lambda i: (-i["max_risk"], -len(i["alerts"])))
+                     key=lambda i: (-i.get("risk", i["max_risk"]), -len(i["alerts"])))
         return out[:limit]
 
     def get(self, iid):

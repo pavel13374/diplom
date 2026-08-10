@@ -4,6 +4,9 @@
 """
 import random
 import logging
+from datetime import datetime, timezone
+
+import config
 from config import PROJECTS, USERS, DELAYS
 from content import commit_messages as cm, comments
 
@@ -23,7 +26,7 @@ class RevertRuleActivity:
         self.state  = state
         self.target_slug = target_slug   # отложенный revert из стейта
         self.preset_reason = reason
-        self.pid    = PROJECTS["detection-rules"]
+        self.pid    = config.repo_id("detection-rules")
 
     def run(self) -> bool:
         # Отложенный revert по конкретному правилу из стейта
@@ -99,10 +102,10 @@ class RevertRuleActivity:
 
     def _revert_note(self, title: str, sha: str,
                      reason: str, followup: str) -> str:
-        return """# Revert Note: {title[:60]}
+        return f"""# Revert Note: {title[:60]}
 
 **Commit SHA:** `{sha[:12]}`
-**Date:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+**Date:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
 **Author:** {self.lead.name}
 
 ## Причина отката

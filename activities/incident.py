@@ -7,6 +7,7 @@ containment → investigation → eradication, lead закрывает с lesson
 import random
 import logging
 from datetime import datetime
+import config
 from config import PROJECTS, USERS, DELAYS
 from content import commit_messages as cm, comments
 
@@ -19,7 +20,7 @@ class IncidentActivity:
     def __init__(self, author_agent, lead_agent):
         self.author = author_agent
         self.lead   = lead_agent
-        self.pid    = PROJECTS["playbooks"]
+        self.pid    = config.playbook_repo_id()
 
     def run(self) -> bool:
         title = comments.incident_title()
@@ -73,7 +74,7 @@ class IncidentActivity:
 
     def _incident_report(self, inc_id: str, title: str, sev: str) -> str:
         host = f"WORKSTATION-{random.randint(1,40):02d}"
-        return """# Incident Report {inc_id}
+        return f"""# Incident Report {inc_id}
 
 **Заголовок:** {title}
 **Severity:** {sev}

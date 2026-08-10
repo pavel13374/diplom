@@ -324,7 +324,9 @@ class Scheduler:
                     try:
                         self.gl.mark_mr_ready(pid, iid)
                     except Exception:
-                        pass
+                        logger.warning("не удалось снять draft с MR — merge "
+                                       "почти наверняка не пройдёт", exc_info=True,
+                                       extra={"ctx": {"project_id": pid, "mr_iid": iid}})
                 if lead.merge_mr(pid, iid):
                     merged += 1
                 else:
@@ -332,7 +334,9 @@ class Scheduler:
                         if self.gl.close_mr(pid, iid):
                             closed += 1
                     except Exception:
-                        pass
+                        logger.warning("не удалось закрыть MR — он останется висеть "
+                                       "в очереди открытых", exc_info=True,
+                                       extra={"ctx": {"project_id": pid, "mr_iid": iid}})
                 if merged + closed >= LIMIT:
                     break
             if merged + closed >= LIMIT:
@@ -491,7 +495,8 @@ class Scheduler:
         from activities.extra_ops        import CiVariableUpdate, DependencyBump, DocsWiki
         from activities.quirks           import BenignQuirk
         from activities.repo_scenarios   import (HuntQueryActivity, CloudDetectionActivity,
-            SiemContentActivity, EdrRuleActivity, AutomationActivity, IrRunbookActivity)
+            SiemContentActivity, EdrRuleActivity, AutomationActivity, IrRunbookActivity,
+            MlEngineActivity)
         from activities.dev_workflows    import (IterativeReviewActivity,
             DependencyAuditActivity, SprintRetroActivity)
         from activities.ops_admin        import BENIGN_ADMIN
@@ -587,6 +592,9 @@ class Scheduler:
             elif activity == "ir_runbook":
                 eng = self._pick_role("soc_analyst") or (lead if random.random()<0.4 else author)
                 return IrRunbookActivity(eng, lead).run()
+            elif activity == "ml_engine_work":
+                eng = self._pick_role("ml_engineer") or author
+                return MlEngineActivity(eng, lead).run()
             elif activity == "benign_quirk":
                 return BenignQuirk(author, lead, state=st).run()
             elif activity in BENIGN_ADMIN:

@@ -6,6 +6,7 @@ SOC живёт в тикетах: баг-репорты на FP, фич-рекв
 """
 import random
 import logging
+import config
 from config import PROJECTS, USERS, DELAYS, FEATURES
 from content import rules as rc, comments, commit_messages as cm
 from activities import flow
@@ -61,7 +62,7 @@ class IssueActivity:
         self.author = author_agent
         self.lead   = lead_agent
         self.state  = state
-        self.pid    = PROJECTS["detection-rules"]
+        self.pid    = config.repo_id("detection-rules")
 
     def run(self) -> bool:
         if not FEATURES.get("issues"):

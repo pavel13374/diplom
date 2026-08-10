@@ -99,7 +99,12 @@ def close():
             try:
                 _STATE["fh"].flush(); _STATE["fh"].close()
             except Exception:
-                pass
+                # Незакрытый буфер = ХВОСТ ЖУРНАЛА ПОТЕРЯН. Именно на этих
+                # событиях обычно и заканчивается прогон, то есть теряется
+                # самое свежее.
+                _log.error("не удалось закрыть журнал событий — хвост записей "
+                           "может быть потерян", exc_info=True,
+                           extra={"ctx": {"file": _STATE.get("file")}})
         _STATE["fh"] = None
 
 
@@ -143,6 +148,43 @@ def _project_name(project_id):
         return str(project_id)
 
 
+def _norm_project(project, project_id):
+    """Привести поле `project` к ИМЕНИ репозитория.
+
+    Проблема, которую это чинит. Часть вызовов передаёт `project=<имя>`, часть —
+    `project=<pid>` (число). Прежняя строка
+
+        project or (_project_name(project_id) if project_id is not None else None)
+
+    нормализовала только `project_id`: число, пришедшее в `project`, было
+    истинным и попадало в журнал как есть. В накопленном журнале так записано
+    60 событий с проектами «1», «3», «5», «6».
+
+    Последствия не косметические:
+      • признак ML `proj_secrets` сравнивает project == "soc-secrets" — для
+        события с project == 6 он равен нулю, хотя это тот самый репозиторий;
+      • UEBA считает «6» и «soc-secrets» РАЗНЫМИ репозиториями, поэтому
+        обращение к хранилищу секретов выглядит как визит в новый репозиторий
+        (лишние биты неожиданности) либо, наоборот, размывает профиль;
+      • правила с условием по project молча не срабатывают;
+      • в интерфейсе вместо названия виден голый id.
+
+    Возвращает (имя, признак_странного_значения).
+    """
+    import config
+    if project is None:
+        return (_project_name(project_id) if project_id is not None else None), False
+    if isinstance(project, bool):
+        return str(project), True
+    if isinstance(project, int):
+        return _project_name(project), False
+    s = str(project)
+    if s.isdigit():
+        return _project_name(int(s)), False
+    known = set(getattr(config, "WORK_REPOS", {})) | set(getattr(config, "PROJECTS", {}))
+    return s, (s not in known)
+
+
 def emit(action, actor=None, role=None, project=None, project_id=None,
          path=None, branch=None, mr_iid=None, message=None, target=None,
          extra=None, anomaly_type=None, severity=None, is_anomaly=None,
@@ -157,7 +199,42 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
     if anom is None:
         anom = bool(a_type)
 
+    # СТОРОЖ СЛОВАРЯ ДЕЙСТВИЙ.
+    #
+    # taxonomy.validate() был написан ровно для того, чтобы «говорящее» имя
+    # действия нельзя было добавить незаметно, — но НЕ ВЫЗЫВАЛСЯ НИГДЕ. Из-за
+    # этого в журнале сохранились steal_oauth, perm_discovery, mass_delete,
+    # exfil_altproto: имена, которых у обычного сотрудника не бывает, то есть
+    # фактические метки. Обучение и оценка на таком журнале недействительны.
+    #
+    # По умолчанию не бросаем исключение (поток мира важнее строгости), но
+    # пишем предупреждение и помечаем запись. TAXONOMY_STRICT=True превращает
+    # это в ошибку — полезно в тестах и в CI.
+    try:
+        import taxonomy
+        _known = action in taxonomy.ALL
+    except Exception:
+        _known = True
+    if not _known:
+        import config as _c
+        if getattr(_c, "TAXONOMY_STRICT", False):
+            raise ValueError(
+                f"действие '{action}' вне нормализованного словаря (taxonomy.ALL). "
+                "Добавь его в taxonomy.CORE/ADMIN и убедись, что обычная работа "
+                "тоже его порождает — иначе имя действия станет меткой.")
+        _log.error("действие вне словаря taxonomy — имя действия работает меткой",
+                   extra={"ctx": {"action": action, "actor": actor,
+                                  "подсказка": "см. taxonomy.py"}})
+
     now_sim = simclock.now()
+    proj_name, proj_odd = _norm_project(project, project_id)
+    if proj_odd:
+        # Не исключение: поток важнее строгости. Но в журнале это должно быть
+        # ВИДНО — так в поле project оказывались имена веток
+        # («incident-response-deletion_scheduled-18»), и никто этого не замечал.
+        _log.warning("нераспознанный репозиторий в событии",
+                    extra={"ctx": {"project": proj_name, "action": action,
+                                   "actor": actor}})
     rec = {
         "run_id":    _STATE["run_id"],
         "session_id":  _STATE["session_id"],
@@ -171,7 +248,7 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
         "actor":     actor,
         "role":      role,
         "action":    action,
-        "project":   project or (_project_name(project_id) if project_id is not None else None),
+        "project":   proj_name,
         "branch":    branch,
         "path":      path,
         "mr_iid":    mr_iid,
@@ -300,16 +377,29 @@ def _work_end():
 # ----------------------------------------------------------------------
 def stats():
     with _LOCK:
-        return {
+        path = _STATE["file"]
+        total = _STATE["total"]
+        out = {
             "enabled": _STATE["enabled"],
-            "file": _STATE["file"],
+            "file": path,
             "run_id": _STATE["run_id"],
-            "total": _STATE["total"],
+            "total": total,
             "last_real": _STATE["last_real"],
             "anomalies": _STATE["anomalies"],
             "by_action": dict(_STATE["counts"].most_common()),
             "by_anomaly": dict(_STATE["anom_counts"].most_common()),
         }
+    # Размер файла датасета: страница «Датасет» показывает, сколько уже
+    # накоплено на диске. Читается вне замка — обращение к ФС может
+    # подвиснуть, а держать общий замок на это время нельзя.
+    size = None
+    if path:
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            size = None
+    out["size_bytes"] = size
+    return out
 
 
 def tail(n=80):

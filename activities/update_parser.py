@@ -3,6 +3,8 @@
 """
 import random
 import logging
+from datetime import date
+
 import config
 from config import USERS, DELAYS
 from content import commit_messages as cm, comments
@@ -216,7 +218,7 @@ class UpdateParserActivity:
         return "\n".join(lines)
 
     def _changelog_entry(self, source: str, what: str) -> str:
-        return """# Changelog: {source} parser
+        return f"""# Changelog: {source} parser
 
 ## {date.today().isoformat()}
 
@@ -231,7 +233,7 @@ class UpdateParserActivity:
 """
 
     def _mr_desc(self, source: str, what: str) -> str:
-        return """## Обновление парсера `{source}`
+        return f"""## Обновление парсера `{source}`
 
 ### Изменения
 - Добавлена поддержка: **{what}**

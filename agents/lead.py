@@ -4,8 +4,11 @@ SOC Lead агент — Alex Petrov.
 """
 import random
 import logging
+from datetime import date
+
 from agents.base import BaseAgent
 from content import comments, commit_messages
+import config
 from config import PROJECTS, DELAYS
 from activities import flow
 
@@ -134,7 +137,7 @@ class LeadAgent(BaseAgent):
 
     def update_soc_infra(self) -> bool:
         """Lead периодически обновляет soc-infra конфиги."""
-        pid    = PROJECTS["soc-infra"]
+        pid    = config.repo_id("soc-infra")
         branch = self.unique_branch("chore/infra-update")
 
         updates = [
@@ -174,8 +177,8 @@ class LeadAgent(BaseAgent):
         return bool(mr_iid)
 
     def _runner_config(self) -> str:
-        random.choice([4, 6, 8])
-        return """concurrent = {concurrent}
+        concurrent = random.choice([4, 6, 8])
+        return f"""concurrent = {concurrent}
 check_interval = 0
 shutdown_timeout = 0
 
@@ -207,7 +210,7 @@ shutdown_timeout = 0
 """
 
     def _onboarding_doc(self) -> str:
-        return """# SOC Team Onboarding Guide
+        return f"""# SOC Team Onboarding Guide
 
 **Обновлено:** {date.today().isoformat()}
 **Автор:** {self.name}

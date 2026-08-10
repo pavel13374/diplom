@@ -2,30 +2,31 @@
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>Вход · Консоль защиты</title>
 <link rel=stylesheet href="/static/design-system.css">
-<style>
- body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
- form{background:var(--surface-1,#161a21);padding:32px;border-radius:12px;
-      border:1px solid var(--border,#2a3038);min-width:320px}
- h1{font-size:18px;margin:0 0 4px}
- p.sub{margin:0 0 20px;color:var(--text-muted,#8b95a5);font-size:13px}
- label{display:block;font-size:12px;margin:14px 0 4px;color:var(--text-muted,#8b95a5)}
- input{width:100%;padding:9px 11px;border-radius:7px;box-sizing:border-box;
-       border:1px solid var(--border,#2a3038);background:var(--surface-2,#1d222a);
-       color:var(--text,#e6e9ef);font-size:14px}
- button{width:100%;margin-top:20px;padding:10px;border-radius:7px;border:0;
-        background:var(--accent,#3b82f6);color:#fff;font-size:14px;cursor:pointer}
- .err{color:var(--danger,#f87171);font-size:13px;margin-top:14px;min-height:18px}
- .hint{color:var(--text-muted,#8b95a5);font-size:11px;margin-top:14px}
-</style></head><body>
-<form method=post>
-  <h1>Консоль защиты</h1>
-  <p class=sub>Рабочее место аналитика SOC</p>
-  <label for=u>Логин</label>
-  <input id=u name=username autocomplete=username autofocus>
-  <label for=p>Пароль</label>
-  <input id=p name=password type=password autocomplete=current-password>
-  <button type=submit>Войти</button>
-  <div class=err>{{ERROR}}</div>
-  <div class=hint>пароль печатается в консоли при старте
-    (или задан через SOC_ADMIN_PASS)</div>
-</form></body></html>
+<link rel=icon href="/static/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/static/mark.png">
+</head><body class=auth>
+<div class=wrap>
+  <div class=left>
+    <img class=auth-logo src="/static/logo.png" alt="" width=112 height=112>
+    <div class=logo>Sentinel SOC</div>
+    <div class=tag>Обнаружение и разбор атак в конвейере разработки.</div>
+    <ul>
+      <li>Алерты, инциденты и очередь триажа</li>
+      <li>Покрытие по матрице MITRE ATT&amp;CK</li>
+      <li>Запуск сценариев и разбор результата</li>
+    </ul>
+  </div>
+  <form class=right method=post>
+    <h1>Консоль защиты</h1>
+    <div class=sub>Рабочее место аналитика SOC</div>
+    <label for=u>Логин</label>
+    <input id=u name=username autocomplete=username autofocus>
+    <label for=p>Пароль</label>
+    <input id=p name=password type=password autocomplete=current-password>
+    <button type=submit>Войти</button>
+    <div class=err>{{ERROR}}</div>
+    <div class=hint>Пароль печатается в консоли при старте или задаётся
+      переменной <code>SOC_ADMIN_PASS</code>.</div>
+  </form>
+</div>
+</body></html>

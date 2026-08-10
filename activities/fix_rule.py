@@ -123,7 +123,7 @@ class FixRuleActivity:
     def _mr_desc(self, slug: str, fix_type: str,
                  fix_what: str, is_hotfix: bool) -> str:
         urgency = "🔥 **HOTFIX — требует срочного merge**\n\n" if is_hotfix else ""
-        return """{urgency}## Фикс правила `{slug}`
+        return f"""{urgency}## Фикс правила `{slug}`
 
 **Тип изменения:** {fix_type.replace('_', ' ')}
 **Причина:** {fix_what} вызывают ложные срабатывания в prod

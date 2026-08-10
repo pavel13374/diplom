@@ -32,7 +32,7 @@ def _repo(name, *fallbacks):
     for fb in fallbacks:
         if fb in config.WORK_REPOS:
             return config.WORK_REPOS[fb]
-    return config.PROJECTS["detection-rules"]
+    return config.repo_id("detection-rules")
 
 
 def _slug(s):
@@ -552,3 +552,221 @@ class IrRunbookActivity(_MixinCycle):
             f"## {'Postmortem' if make_pm else 'Runbook'} `{title_i}`\n\n"
             f"**MITRE:** {tech}\n\nДокумент реагирования на инцидент.",
             cmt, emoji="rotating_light")
+
+
+# =======================================================================
+#  ML-ANOMALY-ENGINE
+# =======================================================================
+class MlEngineActivity(_MixinCycle):
+    """Работа ML-инженера в ml-anomaly-engine.
+
+    Зачем добавлено. Репозиторий числился в PROJECTS и в онбординг-документе
+    как «ML-система (anna.smirnova)», но НИ ОДНА активность в него не писала:
+    единственное упоминание в коде — фолбэк в activities/quirks.py. На живом
+    прогоне он получил 1.3% событий против 14-15% у соседних репозиториев, то
+    есть выглядел заброшенным — при том, что тема ML заявлена ключевой.
+
+    Что делает: полный цикл ML-инженера — спецификация признаков, ноутбук
+    обучения, model card, отчёт об оценке, конфиг дрейфа. Это ровно те
+    артефакты, которые лежат в настоящем репозитории детекционной ML-модели,
+    и они дают контентные признаки (высокая энтропия в весах, .env-подобные
+    конфиги), на которых детектору есть чему учиться.
+    """
+
+    TASKS = [
+        ("feature-spec", "Спецификация признаков события"),
+        ("training", "Обучение модели аномалий"),
+        ("evaluation", "Оценка качества на holdout"),
+        ("model-card", "Model card выпущенной версии"),
+        ("drift-monitor", "Мониторинг дрейфа признаков"),
+        ("threshold-tuning", "Пересчёт порога под бюджет тревог"),
+        ("feature-importance", "Разбор вкладов признаков"),
+        ("data-quality", "Проверки качества датасета"),
+    ]
+
+    FAMILIES = ["secret_leak", "mass_deletion", "recon", "exfiltration",
+                "priv_escalation", "supply_chain", "pipeline_abuse"]
+
+    def __init__(self, author, lead):
+        self.author = author
+        self.lead = lead
+        self.pid = _repo("ml-anomaly-engine", "detection-rules")
+
+    def _metrics(self):
+        """Правдоподобные метрики: PR-AUC заметно ниже ROC-AUC при дисбалансе."""
+        roc = round(random.uniform(0.86, 0.97), 3)
+        base = round(random.uniform(0.004, 0.03), 4)
+        pr = round(min(roc - 0.2, base * random.uniform(8, 30)), 3)
+        return roc, pr, base
+
+    def run(self):
+        kind, title_t = random.choice(self.TASKS)
+        ver = f"v{random.randint(1, 4)}.{random.randint(0, 9)}"
+        roc, pr, base = self._metrics()
+        today = date.today().isoformat()
+        files = []
+
+        if kind == "feature-spec":
+            rows = "\n".join(
+                f"| `{n}` | {t} | {d} |" for n, t, d in [
+                    ("hour_norm", "float", "час события / 23"),
+                    ("is_night", "bool", "вне рабочих часов"),
+                    ("n_regex_hits", "int", "сработавших secret-сигнатур"),
+                    ("entropy_norm", "float", "энтропия Шеннона / 8"),
+                    ("burst_any_30m", "int", "событий актора за 30 минут"),
+                    ("distinct_projects_1h", "int", "разных репозиториев за час"),
+                    ("token_scope_api", "bool", "scope токена api|sudo"),
+                ])
+            files.append((
+                "docs/feature_spec.md",
+                f"# Feature spec {ver}\n\n**Обновлено:** {today} · **Автор:** {self.author.name}\n\n"
+                "Вектор признаков события. Порядок ЗАФИКСИРОВАН и сохраняется вместе\n"
+                "с моделью: при загрузке список сверяется, иначе слой выключается.\n\n"
+                "| Признак | Тип | Смысл |\n|---------|-----|-------|\n" + rows +
+                "\n\n## Анти-лик\nНа вход подаются только наблюдаемые поля события.\n"
+                "Метки мира (is_anomaly, family, episode_id) в вектор не попадают —\n"
+                "проверяется тестом на взаимную информацию.\n",
+                f"docs(features): spec {ver}"))
+
+        elif kind == "training":
+            files.append((
+                "notebooks/train_anomaly.py",
+                '"""Обучение детектора аномалий. Запуск: python notebooks/train_anomaly.py"""\n'
+                "import json\nimport numpy as np\nfrom sklearn.linear_model import LogisticRegression\n"
+                "from sklearn.metrics import average_precision_score, roc_auc_score\n\n"
+                "SEED = 42\n"
+                f"TARGET_FP = {round(random.uniform(0.0005, 0.005), 4)}\n\n\n"
+                "def load(path):\n"
+                "    with open(path, encoding='utf-8') as f:\n"
+                "        return [json.loads(line) for line in f if line.strip()]\n\n\n"
+                "def split_by_time(rows, tr=0.6, va=0.2):\n"
+                '    """Хронологический сплит: события эпизода идут подряд,\n'
+                '    случайное перемешивание завысило бы качество."""\n'
+                "    n = len(rows)\n"
+                "    i1, i2 = int(n * tr), int(n * (tr + va))\n"
+                "    return rows[:i1], rows[i1:i2], rows[i2:]\n\n\n"
+                "def main():\n"
+                "    rows = load('data/events.jsonl')\n"
+                "    train, val, test = split_by_time(rows)\n"
+                "    clf = LogisticRegression(class_weight='balanced', max_iter=2000,\n"
+                "                             random_state=SEED)\n"
+                "    clf.fit([r['x'] for r in train], [r['y'] for r in train])\n"
+                "    p = clf.predict_proba([r['x'] for r in test])[:, 1]\n"
+                "    y = [r['y'] for r in test]\n"
+                "    print('PR-AUC ', round(average_precision_score(y, p), 4))\n"
+                "    print('ROC-AUC', round(roc_auc_score(y, p), 4))\n\n\n"
+                "if __name__ == '__main__':\n    main()\n",
+                f"feat(training): pipeline {ver}"))
+
+        elif kind == "evaluation":
+            fam = "\n".join(f"| {f} | {random.randint(3,20)} | {random.randint(40,95)}% |"
+                            for f in random.sample(self.FAMILIES, k=4))
+            files.append((
+                f"reports/eval_{ver}.md",
+                f"# Оценка модели {ver}\n\n**Дата:** {today} · **Автор:** {self.author.name}\n\n"
+                "## Метрики на holdout\n\n"
+                f"| Метрика | Значение | Комментарий |\n|---------|----------|-------------|\n"
+                f"| PR-AUC | {pr} | база = доля класса {base} |\n"
+                f"| ROC-AUC | {roc} | при дисбалансе льстит модели |\n"
+                f"| Brier | {round(random.uniform(0.004, 0.02), 4)} | сравнивать с константой |\n"
+                f"| ECE | {round(random.uniform(0.003, 0.04), 4)} | калибровка по 10 бинам |\n\n"
+                "> ROC-AUC приводится только для сравнимости с литературой. Решение\n"
+                "> принимается по PR-AUC: при доле атак меньше процента знаменатель\n"
+                "> FPR огромен, и ROC остаётся высоким даже у бесполезной модели.\n\n"
+                "## Эпизодный recall по семействам\n\n"
+                "| Семейство | Эпизодов | Recall |\n|-----------|----------|--------|\n" + fam +
+                "\n\n## Выводы\n- Порог подобран под бюджет тревог, а не по F1.\n"
+                "- Интервалы — Уилсон 95%; точечная оценка без интервала вводит в заблуждение.\n",
+                f"docs(eval): holdout report {ver}"))
+
+        elif kind == "model-card":
+            files.append((
+                f"models/CARD_{ver}.md",
+                f"# Model card — anomaly-detector {ver}\n\n"
+                f"**Выпущена:** {today} · **Владелец:** {self.author.name}\n\n"
+                "## Назначение\nПриоритизация событий git/CI по вероятности вредоносности.\n"
+                "Слой L2 детекционного конвейера; сама по себе тревог не создаёт —\n"
+                "поднимает приоритет, когда согласна с правилом или поведенческим слоем.\n\n"
+                "## Данные\nЖурнал событий стенда, хронологический сплит.\n"
+                f"Доля положительного класса: {base}.\n\n"
+                f"## Качество\nPR-AUC {pr} (база {base}), ROC-AUC {roc}.\n\n"
+                "## Ограничения\n"
+                "- Обучена на одном контуре; на другом наборе репозиториев требуется переобучение.\n"
+                "- Не различает намерение: легитимная миграция и массовое удаление выглядят похоже.\n"
+                "- Калибровка действительна, пока базовая частота атак не изменилась.\n\n"
+                "## Переобучение\nПри дрейфе признаков или падении PR-AUC ниже базовой линии.\n",
+                f"docs(model): card {ver}"))
+
+        elif kind == "drift-monitor":
+            files.append((
+                "monitoring/drift.yml",
+                f"# Мониторинг дрейфа признаков\nversion: {ver}\nupdated: {today}\n"
+                f"owner: {self.author.name}\n\n"
+                "reference_window: 14d\ncurrent_window: 1d\n\nchecks:\n"
+                "  - feature: entropy_norm\n    test: population_stability_index\n"
+                f"    warn: {round(random.uniform(0.1, 0.2), 2)}\n"
+                f"    alert: {round(random.uniform(0.25, 0.4), 2)}\n"
+                "  - feature: burst_any_30m\n    test: kolmogorov_smirnov\n"
+                "    warn: 0.05\n    alert: 0.01\n"
+                "  - feature: act_push\n    test: chi_square\n    warn: 0.05\n    alert: 0.01\n\n"
+                "on_alert:\n  - notify: soc-ml\n  - action: retrain_candidate\n",
+                f"feat(monitoring): drift checks {ver}"))
+
+        elif kind == "threshold-tuning":
+            files.append((
+                "configs/threshold.json",
+                json.dumps({
+                    "version": ver, "updated": today, "owner": self.author.username,
+                    "policy": "alert_budget",
+                    "target_fp_rate": round(random.uniform(0.0005, 0.003), 5),
+                    "rationale": ("Порог задаётся бюджетом тревог аналитика, а не "
+                                  "максимумом F1: F1 неявно приравнивает цену FP и FN, "
+                                  "что для SOC неверно."),
+                    "threshold": round(random.uniform(0.4, 0.9), 4),
+                    "expected_alerts_per_day": random.randint(2, 12),
+                }, ensure_ascii=False, indent=2) + "\n",
+                f"chore(threshold): recalibrate {ver}"))
+
+        elif kind == "feature-importance":
+            rows = "\n".join(
+                f"| `{n}` | {round(random.uniform(-1.2, 1.2), 3):+} |" for n in
+                random.sample(["entropy_norm", "burst_any_30m", "n_regex_hits",
+                               "is_night", "token_scope_api", "self_merged",
+                               "distinct_projects_1h", "path_secretdir",
+                               "obfuscation_sig", "net_sink_sig"], k=7))
+            files.append((
+                f"reports/importance_{ver}.md",
+                f"# Вклады признаков — {ver}\n\n**Дата:** {today} · **Автор:** {self.author.name}\n\n"
+                "Модель линейная, поэтому вклад признака в маржу равен `w·z` и\n"
+                "раскладывает скор ТОЧНО, а не приближённо.\n\n"
+                "| Признак | Вес (станд. шкала) |\n|---------|--------------------|\n" + rows +
+                "\n\n> Отрицательный вес — признак СНИЖАЕТ риск. Это не ошибка:\n"
+                "> модель обязана уметь оправдывать событие, иначе она детектор шума.\n",
+                f"docs(explain): feature importance {ver}"))
+
+        else:  # data-quality
+            files.append((
+                "tests/test_dataset.py",
+                '"""Проверки качества датасета перед обучением."""\n'
+                "import json\nimport collections\n\n"
+                "LEAKY = {'is_anomaly', 'family', 'episode_id', 'anomaly_type'}\n\n\n"
+                "def test_no_label_columns(rows):\n"
+                "    bad = [k for r in rows[:200] for k in r.get('x_named', {}) if k in LEAKY]\n"
+                "    assert not bad, f'метка в признаках: {sorted(set(bad))}'\n\n\n"
+                "def test_class_balance(rows):\n"
+                "    p = sum(r['y'] for r in rows) / max(1, len(rows))\n"
+                "    assert 0.0001 < p < 0.2, f'подозрительная доля класса: {p}'\n\n\n"
+                "def test_no_duplicate_events(rows):\n"
+                "    c = collections.Counter(json.dumps(r['x']) for r in rows)\n"
+                "    top = c.most_common(1)[0][1] if c else 0\n"
+                "    assert top < len(rows) * 0.1, 'дубликаты вектора признаков'\n",
+                f"test(data): dataset quality checks {ver}"))
+
+        return self._do(
+            f"ml/{kind}-{ver}", files,
+            f"ml({kind}): {title_t} {ver}",
+            f"## {title_t}\n\n**Версия:** {ver}\n\n"
+            f"Метрики на holdout: PR-AUC {pr} (база {base}), ROC-AUC {roc}.\n\n"
+            "Обрати внимание на PR-AUC, а не на ROC: при доле атак меньше процента\n"
+            "ROC-AUC высок даже у слабой модели.",
+            "Метрики честные, база класса указана. Approve.", emoji="brain")

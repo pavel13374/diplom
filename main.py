@@ -65,6 +65,22 @@ def _h_simlog():
 
 # -----------------------------------------------------------------------
 def setup_logging():
+    """Логи процесса «мир».
+
+    Три приёмника, у каждого своя роль:
+      • консоль            — INFO, чтобы за прогоном было видно, что происходит;
+      • simulator.log      — то же самое в файл с ротацией;
+      • soclog (logs/*.jsonl, logs/errors*.log) — СТРУКТУРНЫЕ записи с
+        контекстом и полные трейсбеки.
+
+    Третьего не было. soclog.install() вызывался в console.py, webapp.py и
+    run_defense.py, но НЕ в main.py — то есть ровно в том процессе, который
+    ходит в GitLab и порождает события. Все ошибки записи в репозиторий,
+    отказы API и сбои активностей падали в плоский simulator.log без контекста
+    и без трейсбека, а страница «Диагностика» их не видела вовсе. Из-за этого
+    357 отказов create_branch и 193 отказа по playbooks за прогон никак не
+    проявились: счётчик ошибок в интерфейсе показывал ноль.
+    """
     fmt = "%(asctime)s %(levelname)-8s %(message)s"
     datefmt = "%Y-%m-%d %H:%M:%S"
     logging.basicConfig(
@@ -76,6 +92,14 @@ def setup_logging():
             _h_simlog(),
         ],
     )
+    try:
+        import soclog
+        paths = soclog.install()
+        logging.getLogger(__name__).info(
+            "структурные логи: %s", paths, extra={"ctx": {"paths": paths}})
+    except Exception:
+        logging.getLogger(__name__).error(
+            "soclog не установлен — ошибки будут без контекста", exc_info=True)
 
 
 logger = logging.getLogger(__name__)
@@ -198,7 +222,11 @@ def main():
     try:
         state.save()
     except Exception:
-        pass
+        # Несохранённое состояние = потерянные правила, спринт и счётчики.
+        # Следующий запуск начнёт с устаревшего файла и «забудет» прогон.
+        logger.error("не удалось сохранить состояние симуляции — прогресс "
+                     "прогона потерян", exc_info=True,
+                     extra={"ctx": {"file": config.STATE_FILE}})
     if _scheduler:
         _scheduler.print_stats()
     logger.info("=" * 60)

@@ -66,23 +66,51 @@ def test_fuse():
     check("fuse single == risk", abs(f([{"risk": 0.42}], mode="noisy_or") - 0.42) < 1e-3)
     check("fuse capped < 1", f([{"risk": 0.99}, {"risk": 0.99}, {"risk": 0.99}], mode="noisy_or") <= 0.99)
 
-    # logodds (режим по умолчанию): тоже растёт от согласия слоёв, но с
-    # затуханием — поправка на то, что слои НЕ независимы.
+    # --- logodds (режим по умолчанию) -----------------------------------
+    # Формула: logit P = logit π + Σ γ^i·(logit pᵢ − logit π).
+    # Складываются СВИДЕТЕЛЬСТВА слоёв, а не их апостериорные риски.
     lo = f([{"risk": 0.7}, {"risk": 0.6}], mode="logodds")
     check("fuse logodds > max", lo > 0.7)
-    check("fuse logodds < noisy_or (учёт зависимости)",
-          lo < f([{"risk": 0.7}, {"risk": 0.6}], mode="noisy_or"))
-    # сигнал ровно 0.5 неинформативен и не должен ничего добавлять —
-    # у лог-шансов это свойство встроено, у noisy-OR его нет
-    check("logodds: сигнал 0.5 ничего не добавляет",
-          abs(f([{"risk": 0.6}, {"risk": 0.5}], mode="logodds") - 0.6) < 1e-3)
+
+    # (1) ОДИН слой проходит НАСКВОЗЬ без искажения — при i = 0 вклад равен
+    #     ровно (logit p − logit π), и приор сокращается.
+    for p in (0.05, 0.2, 0.42, 0.75, 0.93):
+        check(f"logodds: одиночный слой {p} проходит без искажения",
+              abs(f([{"risk": p}], mode="logodds") - p) < 1e-3)
+
+    # (2) СОГЛАСИЕ НЕ МОЖЕТ ПОНИЖАТЬ РИСК. Это главное свойство, ради которого
+    #     формула переписана: в прежней версии складывались апостериорные
+    #     лог-шансы без вычитания приора, и слой с p < 0.5 ТЯНУЛ РИСК ВНИЗ.
+    #     Правило 0.70 + подтверждение модели 0.033 давало 0.30.
+    import random as _r
+    _r.seed(11)
+    bad = []
+    for _ in range(3000):
+        rs = [_r.uniform(0.02, 0.97) for _ in range(_r.randint(1, 4))]
+        extra = _r.uniform(0.05, 0.97)          # заведомо выше приора 0.01
+        if f([{"risk": x} for x in rs + [extra]], mode="logodds") < \
+           f([{"risk": x} for x in rs], mode="logodds") - 1e-9:
+            bad.append((rs, extra))
+    check(f"logodds: дополнительный слой НЕ понижает риск ({len(bad)} нарушений)",
+          not bad)
+
+    # (3) Конкретный регресс, найденный на ревью.
+    check("logodds: правило 0.70 + ML 0.033 не проваливается ниже 0.70",
+          f([{"risk": 0.70}, {"risk": 0.033}], mode="logodds") >= 0.70)
+    check("logodds: два слабых правила 0.4 дают больше каждого",
+          f([{"risk": 0.4}, {"risk": 0.4}], mode="logodds") > 0.4)
+
+    # (4) Слой с p ниже приора — свидетельство ПРОТИВ, и риск обязан падать.
+    check("logodds: сигнал ниже приора снижает риск",
+          f([{"risk": 0.6}, {"risk": 0.002}], mode="logodds") < 0.6)
+
     check("noisy_or: сигнал 0.5 всё равно поднимает риск (почему и не годится)",
           f([{"risk": 0.6}, {"risk": 0.5}], mode="noisy_or") > 0.6)
-    check("fuse logodds single == risk",
-          abs(f([{"risk": 0.42}], mode="logodds") - 0.42) < 1e-2)
     check("fuse logodds монотонен",
           f([{"risk": 0.8}, {"risk": 0.7}], mode="logodds") >
           f([{"risk": 0.6}, {"risk": 0.5}], mode="logodds"))
+    check("fuse logodds ограничен сверху",
+          f([{"risk": 0.99}] * 5, mode="logodds") <= 0.99)
 
 
 def test_enricher():

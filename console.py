@@ -19,6 +19,7 @@ PURPLE TEAM CONSOLE (контур «ЗАЩИТА») — порт 8788.
 import sys
 import time
 import threading
+from datetime import datetime, timedelta
 import collections
 import json
 
@@ -49,11 +50,25 @@ _TPL_CACHE = {}
 
 
 def _tpl(name):
-    """Прочитать шаблон (с кэшем в памяти)."""
-    if name not in _TPL_CACHE:
-        with open(_os_path.join(_TPL_DIR, name), encoding="utf-8") as f:
-            _TPL_CACHE[name] = f.read()
-    return _TPL_CACHE[name]
+    """Прочитать шаблон. Кэш в памяти, но сбрасывается при правке файла.
+
+    Раньше кэш был вечным: перезагрузчик Flask перезапускает процесс
+    только на изменение .py, поэтому правки вёрстки не появлялись в
+    браузере до ручного перезапуска — и это выглядело так, будто
+    правка не сработала.
+    """
+    path = _os_path.join(_TPL_DIR, name)
+    try:
+        mtime = _os_path.getmtime(path)
+    except OSError:
+        mtime = 0
+    hit = _TPL_CACHE.get(name)
+    if hit and hit[0] == mtime:
+        return hit[1]
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    _TPL_CACHE[name] = (mtime, text)
+    return text
 import eventstore
 import run_defense
 import correlator as correlator_mod
@@ -311,6 +326,14 @@ def _replay_history(pos):
                 try:
                     det = run_defense.process(ev)
                 except Exception:
+                    # Раньше событие просто пропускалось. Если детектор падает
+                    # систематически (например после смены схемы признаков),
+                    # консоль показывала бы «алертов нет» и ни одной ошибки.
+                    _flog.error("детектор упал на событии — пропускаю",
+                                exc_info=True,
+                                extra={"ctx": {"event_id": ev.get("_id"),
+                                               "actor": ev.get("actor"),
+                                               "action": ev.get("action")}})
                     continue
                 seen += 1
                 if not det.get("alert"):
@@ -482,7 +505,8 @@ def api_incidents():
         out.append({
             "status": _s.get("status") or "new", "verdict": _s.get("verdict"),
             "id": i["id"], "actor": i["actor"], "severity": i["severity"],
-            "max_risk": round(i["max_risk"], 2), "alerts": len(i["alerts"]),
+            "max_risk": round(i.get("risk", i["max_risk"]), 2),
+            "peak_event_risk": round(i["max_risk"], 2), "alerts": len(i["alerts"]),
             "tactics": i["tactics"], "techniques": i["techniques"][:8],
             "repos": i["repos"], "is_campaign": i.get("is_campaign", False),
             "start_ts": i["start_ts"], "last_ts": i["last_ts"],
@@ -506,7 +530,7 @@ def _incident_ctx(iid, i):
     return {
         "incident_id": iid, "title": f"\u0418\u043d\u0446\u0438\u0434\u0435\u043d\u0442 @{i['actor']}",
         "actor": i["actor"], "repos": i["repos"],
-        "risk_score": round(i["max_risk"], 2),
+        "risk_score": round(i.get("risk", i["max_risk"]), 2),
         "shannon_entropy": round(g.get("max_entropy", 0.0), 2),
         "regex_hits": sorted(g.get("regex", set())),
         "n_regex_hits": len(g.get("regex", set())),
@@ -608,7 +632,7 @@ def _triage_worker():
     while True:
         try:
             for iid, i in list(_COR.incidents.items()):
-                if i.get("is_campaign") or i.get("max_risk", 0) >= min_risk:
+                if i.get("is_campaign") or i.get("risk", i.get("max_risk", 0)) >= min_risk:
                     sig = (len(i.get("techniques", [])), len(i.get("alerts", [])))
                     if i.get("_triage_sig") != sig:
                         _run_triage(iid)
@@ -668,7 +692,8 @@ def api_incident(iid):
                         i["_resp_error"] = res.replace("failed:", "").strip() or "не удалось"
                     break
         except Exception:
-            pass
+            _flog.error("не удалось прочитать результат команды реагирования",
+                        exc_info=True, extra={"ctx": {"incident_id": i.get("id")}})
     data["responded"] = i.get("responded")
     data["resp_error"] = i.get("_resp_error")
     data["resp_pending"] = bool(i.get("_resp_cid") and not i.get("responded") and not i.get("_resp_error"))
@@ -897,7 +922,9 @@ def api_red_result():
             if str(c.get("id")) == str(cid):
                 cmd_status = c.get("status"); cmd_result = c.get("result"); break
     except Exception:
-        pass
+        _flog.error("не удалось прочитать очередь команд — статус запуска "
+                    "красной команды не обновится", exc_info=True,
+                    extra={"ctx": {"command_id": cid}})
     incs = []
     for i in _COR.list(200):
         if (i.get("seen_real") or 0) >= ts - 1:
@@ -986,7 +1013,9 @@ def api_ask():
             if out and not llm_client._has_cjk(out):
                 answer = out.strip()
     except Exception:
-        pass
+        # LLM необязателен: ниже отдаётся ответ без него. Но молча — значит
+        # «почему-то не работает» останется незамеченным.
+        _flog.warning("LLM недоступен — отвечаем без него", exc_info=True)
     ev_out = [{"ts_sim": r.get("ts_sim"), "actor": r.get("actor"), "action": r.get("action"),
                "project": r.get("project"), "path": r.get("path"),
                "is_night": bool(r.get("is_night"))} for r in matched[-30:]][::-1]
@@ -1050,13 +1079,14 @@ def api_workflow():
                 sla = "warn"
         items.append({
             "id": i["id"], "actor": i["actor"], "severity": i["severity"],
-            "max_risk": round(i["max_risk"], 2), "alerts": len(i["alerts"]),
+            "max_risk": round(i.get("risk", i["max_risk"]), 2),
+            "peak_event_risk": round(i["max_risk"], 2), "alerts": len(i["alerts"]),
             "is_campaign": i.get("is_campaign", False),
             "tactics": i["tactics"], "repos": i["repos"],
             "status": s["status"], "verdict": s.get("verdict"), "owner": s.get("owner"),
             "age_s": age, "sla": sla,
             "triage": (i.get("triage") or {}).get("severity"),
-            "_sort": (sev_rank, i["max_risk"]),
+            "_sort": (sev_rank, i.get("risk", i["max_risk"])),
         })
     items.sort(key=lambda x: x["_sort"], reverse=True)
     for x in items:
@@ -1160,23 +1190,40 @@ def api_roi():
 # === Тренды метрик: снапшот + история + аннотации + CSV =====================
 @app.route("/api/metrics/snapshot", methods=["POST"])
 def api_metrics_snapshot():
+    """Пересчитать метрики немедленно, не дожидаясь фонового цикла."""
+    if _SNAP.get("running"):
+        return jsonify({"ok": True, "saved": False, "note": "пересчёт уже идёт"})
     if _EXECM["data"]:
         m = _EXECM["data"]
         eventstore.add_metrics_snapshot({
             "detection_rate": m.get("detection_rate"), "mttd": m.get("mttd_sim_min"),
             "fp_rate": m.get("fp_rate"), "coverage": m.get("attack_coverage"),
             "alerts": m.get("alerts"), "incidents": None})
+        _SNAP["last"] = datetime.now().isoformat(timespec="seconds")
+        _SNAP["count"] += 1
         return jsonify({"ok": True, "saved": True})
-    if not _EXECM["running"]:
-        _EXECM["running"] = True
-        threading.Thread(target=_metrics_worker, daemon=True).start()
-    return jsonify({"ok": True, "saved": False, "note": "метрики считаются, повтори через 20с"})
+    threading.Thread(target=_take_metrics_snapshot, daemon=True).start()
+    return jsonify({"ok": True, "saved": False, "note": "метрики считаются"})
 
 
 @app.route("/api/trends")
 def api_trends():
+    # Вместе с историей отдаём состояние фонового пересчёта: когда цифры
+    # обновлялись в последний раз и когда обновятся снова.
+    nxt = _SNAP.get("next")
+    left = None
+    if nxt:
+        try:
+            left = max(0, int((datetime.fromisoformat(nxt) - datetime.now()).total_seconds()))
+        except ValueError:
+            left = None
     return jsonify({"history": eventstore.metrics_history(1000),
-                    "annotations": eventstore.annotations(200)})
+                    "annotations": eventstore.annotations(200),
+                    "snapshot": {"last": _SNAP.get("last"), "next_in_s": left,
+                                 "period_s": SNAPSHOT_PERIOD_S,
+                                 "running": _SNAP.get("running"),
+                                 "error": _SNAP.get("error"),
+                                 "count": _SNAP.get("count", 0)}})
 
 
 @app.route("/api/trends.csv")
@@ -1194,25 +1241,57 @@ def api_trends_csv():
                     headers={"Content-Disposition": "attachment; filename=metrics_trends.csv"})
 
 
-def _metrics_snapshot_worker():
-    """Фоновый снапшот метрик раз в N минут — для трендов."""
+# Период пересчёта метрик и состояние последнего прогона. Состояние
+# отдаётся в /api/trends, чтобы на экране было видно, когда цифры
+# обновлялись и когда обновятся снова: без этого «70%» на графике
+# невозможно ни с чем соотнести — может, посчитано минуту назад, а может,
+# висит с прошлого запуска.
+SNAPSHOT_PERIOD_S = 300
+_SNAP = {"last": None, "next": None, "running": False, "error": None, "count": 0}
+
+
+def _take_metrics_snapshot():
+    """Один прогон metrics.py и запись результата в историю."""
     import subprocess
     import os
     import json as _json
     base = os.path.dirname(os.path.abspath(__file__))
+    _SNAP["running"] = True
+    try:
+        p = subprocess.run([sys.executable, os.path.join(base, "metrics.py"), "--json"],
+                           cwd=base, capture_output=True, text=True, timeout=180)
+        if p.returncode != 0:
+            _SNAP["error"] = (p.stderr or "").strip()[-200:] or "metrics.py завершился с ошибкой"
+            return False
+        m = _json.loads(p.stdout)
+        eventstore.add_metrics_snapshot({
+            "detection_rate": m.get("detection_rate"), "mttd": m.get("mttd_sim_min"),
+            "fp_rate": m.get("fp_rate"), "coverage": m.get("attack_coverage"),
+            "alerts": m.get("alerts"), "incidents": None})
+        _SNAP["last"] = datetime.now().isoformat(timespec="seconds")
+        _SNAP["count"] += 1
+        _SNAP["error"] = None
+        return True
+    except Exception as e:
+        _SNAP["error"] = str(e)[:200]
+        _flog.warning("фоновый снапшот метрик не удался", exc_info=True)
+        return False
+    finally:
+        _SNAP["running"] = False
+
+
+def _metrics_snapshot_worker():
+    """Фоновый пересчёт метрик — для трендов.
+
+    Первый снапшот снимается почти сразу, а не через пять минут: раньше
+    экран трендов первые пять минут после запуска показывал «снапшотов
+    пока нет», и выглядело это как неработающий раздел.
+    """
+    time.sleep(20)
     while True:
-        time.sleep(300)
-        try:
-            p = subprocess.run([sys.executable, os.path.join(base, "metrics.py"), "--json"],
-                               cwd=base, capture_output=True, text=True, timeout=180)
-            if p.returncode == 0:
-                m = _json.loads(p.stdout)
-                eventstore.add_metrics_snapshot({
-                    "detection_rate": m.get("detection_rate"), "mttd": m.get("mttd_sim_min"),
-                    "fp_rate": m.get("fp_rate"), "coverage": m.get("attack_coverage"),
-                    "alerts": m.get("alerts"), "incidents": None})
-        except Exception:
-            _flog.warning("фоновый снапшот метрик не удался", exc_info=True)
+        _take_metrics_snapshot()
+        _SNAP["next"] = (datetime.now() + timedelta(seconds=SNAPSHOT_PERIOD_S)).isoformat(timespec="seconds")
+        time.sleep(SNAPSHOT_PERIOD_S)
 
 
 def _describe_alert(actor, a):
@@ -1262,8 +1341,12 @@ def _incident_report_html(iid, i):
                       for x in iocs) or "<tr><td>—</td><td>нет</td></tr>"
     chain = " → ".join(f"{esc(c.get('tactic'))}/{esc(c.get('technique'))}"
                        for c in i.get("chain", [])) or "—"
-    esc(tr.get("narrative") or "разбор не выполнялся")
-    esc((i.get("severity") or "").upper())
+    # Раздел «Краткий разбор» печатался всегда — в том числе с текстом
+    # «разбор не выполнялся». Пустой раздел в отчёте хуже отсутствующего:
+    # он занимает место оглавления и выглядит как недоделка.
+    narr = esc(tr.get("narrative") or "")
+    narr_block = f"<h2>Краткий разбор</h2><p>{narr}</p>" if narr else ""
+    sev = esc((i.get("severity") or "").upper())
     # вердикт и заметка аналитика — из журнала статусов инцидента
     try:
         _wf = eventstore.all_incident_status().get(iid) or {}
@@ -1272,41 +1355,60 @@ def _incident_report_html(iid, i):
     _VN = {"tp": "TRUE POSITIVE — подтверждённая атака",
            "fp": "FALSE POSITIVE — ложное срабатывание"}
     _SN = {"new": "новый", "investigating": "в работе",
-           "contained": "сдержано", "closed": "закрыто"}
+           "contained": "локализовано", "closed": "закрыто"}
     verdict = esc(_VN.get(_wf.get("verdict"), "вердикт не выставлен"))
     status = esc(_SN.get(_wf.get("status"), _wf.get("status") or "новый"))
     owner = esc(_wf.get("owner") or "—")
     note = esc(_wf.get("reason") or "заметка не заполнена")
+    vclass = {"tp": "v tp", "fp": "v fp"}.get(_wf.get("verdict"), "v")
     analyst_block = (
-        "<h2>2. Заключение аналитика</h2>"
-        f"<table><tr><th scope=row>Вердикт</th><td><b>{verdict}</b></td></tr>"
-        f"<tr><th scope=row>Статус</th><td>{status}</td></tr>"
+        "<h2>Заключение аналитика</h2>"
+        f'<p><span class="{vclass}">{verdict}</span></p>'
+        f"<table><tr><th scope=row>Статус</th><td>{status}</td></tr>"
         f"<tr><th scope=row>Аналитик</th><td>{owner}</td></tr></table>"
-        f"<p style='margin-top:10px;white-space:pre-wrap'>{note}</p>")
-    return """<!doctype html><html lang=ru><head><meta charset=utf-8>
+        f'<p class=note>{note}</p>')
+    return f"""<!doctype html><html lang=ru><head><meta charset=utf-8>
 <title>Инцидент #{iid}</title><style>
-body{{font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:900px;margin:24px auto;color:var(--info);padding:0 16px}}
-h1{{font-size:22px}} h2{{font-size:15px;margin-top:26px;border-bottom:2px solid var(--info-border);padding-bottom:5px}}
-.meta{{color:var(--text-3);font-size:13px}} table{{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}}
-th,td{{text-align:left;padding:7px 9px;border-bottom:1px solid var(--info-border);vertical-align:top}}
-th{{background:var(--surface-3);font-size:11px;text-transform:uppercase;color:var(--text-3)}}
-.mono{{font-family:ui-monospace,Consolas,monospace;font-size:12px}} .rk{{font-weight:700}}
-.sev{{display:inline-block;padding:2px 10px;border-radius:6px;background:var(--critical-bg);color:var(--critical);font-weight:700}}
-.print{{margin:14px 0;color:var(--text-3);font-size:12px}} @media print{{.print{{display:none}}}}
+:root{{color-scheme:light}}
+body{{font:14px/1.55 -apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+ max-width:880px;margin:32px auto;padding:0 20px;color:#141920;background:#fff}}
+h1{{font-size:21px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}}
+h2{{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;
+ color:#5A6472;margin:30px 0 8px;padding-bottom:6px;border-bottom:1px solid #DFE3E9}}
+p{{margin:8px 0}}
+.meta{{color:#5A6472;font-size:13px;margin-bottom:4px}}
+table{{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}}
+th,td{{text-align:left;padding:8px 10px;border-bottom:1px solid #E7EAEF;vertical-align:top}}
+thead th,tr>th[scope=col]{{background:#F4F6F8;font-size:11px;text-transform:uppercase;
+ letter-spacing:.06em;color:#5A6472;font-weight:600}}
+th[scope=row]{{width:200px;color:#5A6472;font-weight:500}}
+tbody tr:nth-child(even) td{{background:#FAFBFC}}
+.mono{{font-family:ui-monospace,Consolas,monospace;font-size:12px}}
+.rk{{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}}
+.sev{{display:inline-block;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:600;
+ letter-spacing:.06em;background:#FBE9EA;color:#A82530;border:1px solid #F0C7CB}}
+.v{{display:inline-block;padding:5px 12px;border-radius:5px;font-size:12px;font-weight:600;
+ background:#F1F3F6;color:#3B4453;border:1px solid #DFE3E9}}
+.v.tp{{background:#FBE9EA;color:#A82530;border-color:#F0C7CB}}
+.v.fp{{background:#E8F0FD;color:#14509C;border-color:#C6D9F7}}
+.note{{white-space:pre-wrap;background:#F7F9FB;border:1px solid #E7EAEF;
+ border-left:3px solid #C3CBD6;border-radius:5px;padding:12px 14px;margin-top:12px;color:#2B333F}}
+.print{{margin:16px 0;padding:9px 12px;border-radius:5px;background:#F4F6F8;
+ border:1px solid #E7EAEF;color:#5A6472;font-size:12px}}
+@media print{{.print{{display:none}} body{{margin:0}}}}
 </style></head><body>
-<div class=print>💡 Чтобы сохранить в PDF — нажми Ctrl+P → «Сохранить как PDF».</div>
+<div class=print>Чтобы сохранить в PDF — Ctrl+P → «Сохранить как PDF».</div>
 <h1>IR-отчёт · Инцидент #{iid}</h1>
 <div class=meta><span class=sev>{sev}</span> · подозреваемый <b>@{esc(actor)}</b> ·
 risk {i.get('max_risk')} · репозитории: {esc(', '.join(i.get('repos', [])))}</div>
-<h2>1. Краткий разбор</h2><p>{narr}</p>
+{narr_block}
 {analyst_block}
-<h2>3. ATT&amp;CK kill-chain</h2><p class=mono>{chain}</p>
-<h2>4. Таймлайн атаки — каждое событие</h2>
+<h2>ATT&amp;CK kill-chain</h2><p class=mono>{chain}</p>
+<h2>Таймлайн атаки</h2>
 <table><tr><th scope=col>#</th><th scope=col>Время</th><th scope=col>Что произошло и почему сработало</th><th scope=col>Risk</th><th scope=col>Ссылка</th></tr>
 {''.join(rows) or '<tr><td colspan=5>нет событий</td></tr>'}</table>
-<h2>5. Индикаторы компрометации (IOC)</h2>
+<h2>Индикаторы компрометации</h2>
 <table><tr><th scope=col>Тип</th><th scope=col>Значение</th></tr>{iocrows}</table>
-<div class=meta style=margin-top:28px>Сгенерировано Sentinel SOC · анти-лик (только наблюдаемые данные).</div>
 </body></html>"""
 
 
@@ -1384,9 +1486,21 @@ def api_health():
             age = None
     with _LOCK:
         running = _STATE["running"]; processed = _STATE["processed"]
+    # ПРИЧИНА, А НЕ НОЛЬ.
+    #
+    # При недоступном event-store всё это раньше отдавало нули, и «база не
+    # открылась» выглядело точно так же, как «мир ещё не запускали». Теперь
+    # ошибка доходит до интерфейса отдельным полем.
+    store_err = None
+    try:
+        store_err = eventstore.last_error()
+    except Exception:
+        _flog.error("не удалось прочитать состояние event-store", exc_info=True)
     return jsonify({
         "world_alive": age is not None and age < 180,
         "events": {"total": st.get("events", 0), "last": last, "last_age_s": age},
+        "store_ok": bool(st.get("enabled")),
+        "store_error": store_err,
         "defense": {"running": running, "processed": processed},
         "ollama": _ollama_ok(),
         "auto_triage": bool(getattr(config, "LLM_AUTO_TRIAGE", True)),
@@ -1505,8 +1619,45 @@ def api_science():
             with open(os.path.join(base, name + ".csv"), encoding="utf-8") as f:
                 out[name] = list(csv.DictReader(f))
         except Exception:
+            _flog.debug("нет выгрузки эксперимента %s.csv", name)
             out[name] = []
+    # JSON-выгрузки новых экспериментов: ablation, кривая нагрузки, компоненты UEBA
+    for name in ("ablation", "workload_curve", "ueba_components"):
+        try:
+            with open(os.path.join(base, name + ".json"), encoding="utf-8") as f:
+                out[name] = json.load(f)
+        except FileNotFoundError:
+            out[name] = None
+        except Exception:
+            _flog.error("не удалось прочитать results/%s.json", name, exc_info=True)
+            out[name] = None
     return jsonify(out)
+
+
+@app.route("/api/workload_curve.svg")
+def api_workload_curve_svg():
+    """График «полнота против нагрузки на аналитика».
+
+    Строится research/workload_curve.py. Если файла нет — отдаём короткую
+    инструкцию вместо пустоты: молчаливый 404 в интерфейсе выглядит как
+    поломка, хотя причина в том, что эксперимент просто не запускали.
+    """
+    from flask import Response
+    import os
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                     "results", "workload_curve.svg")
+    if not os.path.exists(p):
+        msg = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 700 150' "
+               "width='700' height='150'><text x='20' y='60' font-size='15' "
+               "font-family='system-ui'>График ещё не построен.</text>"
+               "<text x='20' y='92' font-size='13' font-family='ui-monospace'>"
+               "python research/workload_curve.py --capacity 10</text>"
+               "<text x='20' y='122' font-size='12' font-family='system-ui' "
+               "fill='#6b7280'>Займёт около минуты; результат ляжет в results/.</text>"
+               "</svg>")
+        return Response(msg, mimetype="image/svg+xml")
+    with open(p, encoding="utf-8") as f:
+        return Response(f.read(), mimetype="image/svg+xml")
 
 
 # ----------------------------------------------------------------------

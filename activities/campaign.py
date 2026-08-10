@@ -9,6 +9,7 @@
 """
 import random
 import logging
+import config
 from config import PROJECTS, DELAYS, FEATURES
 from content import rules as rc, comments
 import simclock
@@ -23,7 +24,7 @@ class CampaignActivity:
         self.agents = agents
         self.lead   = lead_agent
         self.state  = state
-        self.pid    = PROJECTS["detection-rules"]
+        self.pid    = config.repo_id("detection-rules")
 
     def _eng(self):
         return random.choice([self.agents["maria.ivanova"],

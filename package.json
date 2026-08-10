@@ -7,6 +7,6 @@
     "test": "node tests/test_a11y.js && node tests/test_i18n.js"
   },
   "devDependencies": {
-    "jsdom": "^24.0.0"
+    "jsdom": "^24.1.3"
   }
 }

@@ -6,6 +6,7 @@ import random
 import logging
 from collections import Counter
 from datetime import date
+import config
 from config import PROJECTS, USERS, DELAYS
 from content import commit_messages as cm, comments
 
@@ -18,7 +19,7 @@ class DashboardActivity:
     def __init__(self, author_agent, lead_agent):
         self.author = author_agent
         self.lead   = lead_agent
-        self.pid    = PROJECTS["detection-rules"]
+        self.pid    = config.repo_id("detection-rules")
 
     def run(self) -> bool:
         # Считаем покрытие по тактикам на основе реально лежащих правил
@@ -78,7 +79,7 @@ class DashboardActivity:
             f"| {t.replace('_',' ').title():22} | {c:3} |"
             for t, c in sorted(tactics.items(), key=lambda x: -x[1])
         ) or "| (нет данных) | 0 |"
-        return """# ATT&CK Coverage Matrix
+        return f"""# ATT&CK Coverage Matrix
 
 **Обновлено:** {date.today().isoformat()}
 **Всего правил:** {total}
@@ -98,7 +99,7 @@ class DashboardActivity:
             f"{random.choice(['↓','↑','→'])} |"
             for s in sample
         ) or "| (нет правил) | 0 | → |"
-        return """# Weekly False-Positive Report
+        return f"""# Weekly False-Positive Report
 
 **Неделя:** {date.today().strftime('%Y-W%W')}
 **Автор:** {self.author.name}
@@ -113,7 +114,7 @@ class DashboardActivity:
 """
 
     def _mttr_doc(self) -> str:
-        return """# MTTR / MTTD Dashboard
+        return f"""# MTTR / MTTD Dashboard
 
 **Обновлено:** {date.today().isoformat()}
 

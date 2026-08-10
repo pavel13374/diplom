@@ -5,6 +5,8 @@
 """
 import random
 import logging
+from datetime import date
+
 import config
 from config import USERS, DELAYS
 from content import commit_messages as cm, comments
@@ -80,7 +82,7 @@ class DeprecateRuleActivity:
         return ok
 
     def _archive_note(self, slug: str, path: str, reason: str) -> str:
-        return """# DEPRECATED: {slug}
+        return f"""# DEPRECATED: {slug}
 
 **Удалено:** {date.today().isoformat()}
 **Автор депрекейта:** {self.author.name}

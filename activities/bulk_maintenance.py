@@ -6,6 +6,7 @@
 import random
 import logging
 from datetime import date
+import config
 from config import PROJECTS, USERS, DELAYS
 from content import commit_messages as cm
 
@@ -18,7 +19,7 @@ class BulkMaintenanceActivity:
     def __init__(self, author_agent, lead_agent):
         self.author = author_agent
         self.lead   = lead_agent
-        self.pid    = PROJECTS["detection-rules"]
+        self.pid    = config.repo_id("detection-rules")
 
     def run(self) -> bool:
         kind = random.choice([
@@ -106,7 +107,7 @@ deploy-staging:
 """
 
     def _migration_doc(self, change: str) -> str:
-        return """# Migration: {change}
+        return f"""# Migration: {change}
 
 **Дата:** {date.today().isoformat()}
 **Автор:** {self.author.name}

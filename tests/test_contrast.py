@@ -3,7 +3,7 @@
 
 Читает токены из static/design-system.css и считает контраст для всех
 сочетаний «текст на фоне», которые реально встречаются в консолях, —
-отдельно для тёмной, светлой и яркой темы.
+отдельно для тёмной и светлой темы.
 
 Пороги WCAG 2.1 AA:
   4.5 : обычный текст (меньше 18pt / 14pt жирного)
@@ -12,6 +12,10 @@
 Тест нужен потому, что палитру легко «улучшить» на глаз и незаметно
 уронить читаемость: жёлтый и зелёный на белом фоне проваливают порог
 почти всегда, а приглушённый серый — на тёмном.
+
+Токены могут ссылаться друг на друга через var(--x) — псевдонимы
+раскрываются рекурсивно, иначе тест видит строку вместо цвета и
+молча пропускает пару.
 """
 import io
 import os
@@ -24,52 +28,56 @@ CSS = os.path.join(ROOT, "static", "design-system.css")
 THEMES = {
     ":root": "тёмная",
     '[data-theme="light"]': "светлая",
-    '[data-theme="bright"]': "яркая",
 }
 
-# (токен текста, токен фона, порог, описание)
-PAIRS = [
-    ("--text-1", "--bg", 4.5, "основной текст на полотне"),
-    ("--text-1", "--surface-2", 4.5, "основной текст на карточке"),
-    ("--text-1", "--surface-3", 4.5, "основной текст на вложенном блоке"),
-    ("--text-2", "--surface-2", 4.5, "вторичный текст на карточке"),
-    ("--text-2", "--surface-3", 4.5, "вторичный текст на вложенном блоке"),
-    ("--text-3", "--surface-2", 4.5, "приглушённый текст на карточке"),
-    ("--text-3", "--surface-1", 4.5, "приглушённый текст в сайдбаре"),
-    ("--text-4", "--surface-2", 4.5, "метаданные на карточке"),
-    ("--critical", "--surface-2", 4.5, "критичный уровень текстом"),
-    ("--high", "--surface-2", 4.5, "высокий уровень текстом"),
-    ("--warning", "--surface-2", 4.5, "средний уровень текстом"),
-    ("--success", "--surface-2", 4.5, "успех текстом"),
-    ("--info", "--surface-2", 4.5, "информация текстом"),
-    ("--accent-brand", "--surface-2", 3.0, "акцент как ГРАФИКА (заливка, полоса)"),
-    # Акцентом набирались подсказки и ссылки, а проверялся он только по
-    # графическому порогу 3:1 — поэтому нечитаемый текст тест пропускал.
-    ("--accent-text", "--surface-2", 4.5, "акцент как ТЕКСТ на карточке"),
-    ("--accent-text", "--surface-3", 4.5, "акцент как ТЕКСТ на вложенном блоке"),
-    ("--accent-text", "--bg", 4.5, "акцент как ТЕКСТ на полотне"),
-    ("--text-3", "--surface-3", 4.5, "приглушённый текст на вложенном блоке"),
-    ("--text-4", "--surface-3", 4.5, "метаданные на вложенном блоке"),
-    ("--text-2", "--bg", 4.5, "вторичный текст на полотне"),
-    ("--sev-critical", "--surface-2", 3.0, "метка critical"),
-    ("--sev-high", "--surface-2", 3.0, "метка high"),
-    ("--sev-medium", "--surface-2", 3.0, "метка medium"),
-    ("--sev-low", "--surface-2", 3.0, "метка low"),
-    ("--layer-ueba", "--surface-2", 3.0, "слой UEBA"),
-    ("--layer-rule", "--surface-2", 3.0, "слой правил"),
-    ("--layer-signature", "--surface-2", 3.0, "слой сигнатур"),
-    ("--layer-ml", "--surface-2", 3.0, "слой ML"),
+# Фоны, на которых вообще может оказаться текст.
+BACKGROUNDS = ["--bg", "--surface-1", "--surface-2", "--surface-3", "--surface-4"]
+
+# Токены текста: проверяются на КАЖДОМ фоне из списка выше.
+TEXT_TOKENS = [
+    ("--text-1", "основной текст"),
+    ("--text-2", "вторичный текст"),
+    ("--text-3", "приглушённый текст"),
+    ("--accent-text", "акцент как текст"),
+    ("--sev-critical", "уровень critical текстом"),
+    ("--sev-high", "уровень high текстом"),
+    ("--sev-medium", "уровень medium текстом"),
+    ("--sev-low", "уровень low текстом"),
+    ("--success", "успех текстом"),
+]
+
+# Графика: заливка кнопки, полоса, точка. Порог 3:1.
+GRAPHIC_PAIRS = [
+    ("--accent", "--bg", "акцент как заливка на полотне"),
+    ("--accent", "--surface-2", "акцент как заливка на карточке"),
 ]
 
 
-def _tokens():
+def _raw_tokens():
     css = io.open(CSS, encoding="utf-8").read()
     out = {}
     for sel in THEMES:
         i = css.index(sel + "{")
-        j = css.index("}", i)
-        out[sel] = dict(re.findall(r"(--[\w-]+):\s*([^;]+);", css[i:j]))
+        j = css.index("\n}", i)
+        block = css[i:j]
+        # комментарии внутри блока не должны попадать в значения
+        block = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
+        out[sel] = dict(re.findall(r"(--[\w-]+)\s*:\s*([^;]+);", block))
     return out
+
+
+def _resolve(name, theme, root, depth=0):
+    """Раскрывает var(--x) до конкретного цвета."""
+    if depth > 8:
+        return None
+    val = theme.get(name, root.get(name))
+    if val is None:
+        return None
+    val = val.strip()
+    m = re.match(r"^var\(\s*(--[\w-]+)\s*\)$", val)
+    if m:
+        return _resolve(m.group(1), theme, root, depth + 1)
+    return val
 
 
 def _rgb(v):
@@ -78,6 +86,10 @@ def _rgb(v):
     if m:
         h = m.group(1)
         return tuple(int(h[k:k + 2], 16) for k in (0, 2, 4))
+    m = re.match(r"^#([0-9a-fA-F]{3})$", v)
+    if m:
+        h = m.group(1)
+        return tuple(int(h[k] * 2, 16) for k in (0, 1, 2))
     m = re.match(r"^rgba?\(([^)]+)\)$", v)
     if m:
         parts = [x.strip() for x in m.group(1).split(",")]
@@ -101,34 +113,65 @@ def contrast(a, b):
 
 
 def main():
-    T = _tokens()
+    T = _raw_tokens()
     root = T[":root"]
     fails = []
+    unresolved = []
     print("=" * 62)
     print("  КОНТРАСТ ИНТЕРФЕЙСА — WCAG 2.1 AA")
     print("=" * 62)
+
     for sel, label in THEMES.items():
+        theme = T[sel]
         print("\n  тема: %s" % label)
-        for fg, bg, need, what in PAIRS:
-            a = _rgb(T[sel].get(fg) or root.get(fg))
-            b = _rgb(T[sel].get(bg) or root.get(bg))
+        worst = (99.0, "")
+        checked = 0
+
+        for fg, what in TEXT_TOKENS:
+            a = _rgb(_resolve(fg, theme, root))
+            if not a:
+                unresolved.append((label, fg))
+                continue
+            for bgname in BACKGROUNDS:
+                b = _rgb(_resolve(bgname, theme, root))
+                if not b:
+                    unresolved.append((label, bgname))
+                    continue
+                r = contrast(a, b)
+                checked += 1
+                if r < worst[0]:
+                    worst = (r, "%s на %s" % (what, bgname))
+                if r < 4.5:
+                    fails.append((label, "%s на %s" % (what, bgname), r, 4.5))
+
+        for fg, bgname, what in GRAPHIC_PAIRS:
+            a = _rgb(_resolve(fg, theme, root))
+            b = _rgb(_resolve(bgname, theme, root))
             if not a or not b:
-                print("    ??    токен не разобран: %s / %s" % (fg, bg))
-                fails.append((label, what, 0.0, need))
+                unresolved.append((label, fg + "/" + bgname))
                 continue
             r = contrast(a, b)
-            ok = r >= need
-            if not ok:
-                fails.append((label, what, r, need))
-            print("    %s %5.2f (нужно %.1f)  %s"
-                  % ("OK   " if ok else "НИЗКО", r, need, what))
+            checked += 1
+            if r < 3.0:
+                fails.append((label, what, r, 3.0))
+            print("    %-5s %5.2f (нужно 3.0)  %s"
+                  % ("OK" if r >= 3.0 else "НИЗКО", r, what))
+
+        print("    проверено пар текста: %d, худшая: %.2f — %s"
+              % (checked - len(GRAPHIC_PAIRS), worst[0], worst[1]))
+
     print("\n" + "=" * 62)
+    if unresolved:
+        print("  токены не разобраны: %d" % len(unresolved))
+        for label, name in unresolved[:10]:
+            print("     %s — %s" % (label, name))
+        return 1
     if fails:
-        print("  ❌ ниже порога AA: %d" % len(fails))
+        print("  НИЖЕ ПОРОГА AA: %d" % len(fails))
         for label, what, r, need in fails:
             print("     %s — %s: %.2f < %.1f" % (label, what, r, need))
         return 1
-    print("  ✅ все сочетания проходят WCAG 2.1 AA")
+    print("  ВСЕ СОЧЕТАНИЯ ПРОХОДЯТ WCAG 2.1 AA")
     return 0
 
 

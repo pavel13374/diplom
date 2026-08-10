@@ -67,13 +67,15 @@
     people:    { i: I.users,  s: 'Среда' }
   };
 
-  /* ---------- 1. ТЕМА: тёмная → светлая → яркая ---------- */
+  /* ---------- 1. ТЕМА: тёмная ⇄ светлая ----------
+     Тем было три. «Яркая» отличалась от светлой полотном #ffffff вместо
+     #F8FAFC и чуть плотнее акцентом — на глаз неотличимо, поэтому
+     переключатель на трети нажатий выглядел сломанным. Осталось две. */
   var THEME_KEY = 'soc_theme';
-  var THEMES = ['dark', 'light', 'bright'];
+  var THEMES = ['dark', 'light'];
   var THEME_META = {
-    dark:   { icon: 'sun',    title: 'Тема: тёмная — нажмите для светлой' },
-    light:  { icon: 'bright', title: 'Тема: светлая — нажмите для яркой' },
-    bright: { icon: 'moon',   title: 'Тема: яркая — нажмите для тёмной' }
+    dark:  { icon: 'sun',  title: 'Светлая тема' },
+    light: { icon: 'moon', title: 'Тёмная тема' }
   };
   function currentTheme() {
     var t = document.documentElement.getAttribute('data-theme');
@@ -87,18 +89,18 @@
       var m = THEME_META[t];
       b.innerHTML = svg(I[m.icon]);
       b.title = L(m.title);
+      b.setAttribute('aria-label', L(m.title));
     }
   }
   function initTheme() {
-    var saved = 'dark';
-    try { saved = localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) {}
-    applyTheme(saved);
+    var saved = null;
+    try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+    applyTheme(saved || 'dark');
   }
   function toggleTheme() {
     var next = THEMES[(THEMES.indexOf(currentTheme()) + 1) % THEMES.length];
     try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
     applyTheme(next);
-    if (window.toast) window.toast('Тема: ' + ({dark:'тёмная',light:'светлая',bright:'яркая'})[next], 'info', 1600);
   }
   function setTheme(t) {
     try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
@@ -113,10 +115,29 @@
     var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
     if (!links.length) return;
 
-    // 1) иконки
+    // 1) иконка и подпись.
+    //    Подпись оборачиваем в <span class=nav-t>: голый текстовый узел
+    //    нельзя ни скрыть, ни показать всплывающей подсказкой, из-за чего
+    //    в свёрнутом сайдбаре названия разделов вылезали за 44 пикселя
+    //    и обрезались посередине слова.
     links.forEach(function (a) {
       var key = a.getAttribute('data-v') || a.getAttribute('data-view');
       var m = MAP[key];
+      if (!a.querySelector('.nav-t')) {
+        var label = '';
+        Array.prototype.slice.call(a.childNodes).forEach(function (n) {
+          if (n.nodeType === 3) { label += n.nodeValue; a.removeChild(n); }
+        });
+        label = label.trim();
+        if (label) {
+          var sp = document.createElement('span');
+          sp.className = 'nav-t';
+          sp.textContent = label;
+          a.appendChild(sp);
+          a.title = label;
+          a.setAttribute('aria-label', label);
+        }
+      }
       if (m && !a.querySelector('svg')) a.insertAdjacentHTML('afterbegin', svg(m.i));
     });
 
@@ -310,7 +331,6 @@
     });
     out.push({ group: 'Тема', label: 'Тёмная тема',  icon: I.moon,   run: function () { setTheme('dark'); } });
     out.push({ group: 'Тема', label: 'Светлая тема', icon: I.sun,    run: function () { setTheme('light'); } });
-    out.push({ group: 'Тема', label: 'Яркая тема',   icon: I.bright, run: function () { setTheme('bright'); } });
     var other = location.port === '8788' ? 'http://127.0.0.1:8787/' : 'http://127.0.0.1:8788/';
     out.push({
       group: 'Действия', label: 'Открыть вторую консоль',

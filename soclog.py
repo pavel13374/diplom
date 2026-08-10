@@ -77,6 +77,17 @@ class _JsonFormatter(logging.Formatter):
                                "module": d["module"], "event": str(d.get("event"))})
 
 
+import re as _re
+
+# Werkzeug раскрашивает строки доступа ANSI-кодами для терминала, а опрос
+# собственного API интерфейсом — это 90% журнала и ноль смысла для аналитика.
+_ANSI_RE = _re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+# Любая успешная строка доступа werkzeug: опрос API, статика, редирект
+# на форму входа. Продуктового смысла в них нет, а журнал они
+# занимают целиком. Ошибки (4xx/5xx) остаются.
+_NOISE_RE = _re.compile(r'"(?:GET|POST|HEAD|PUT|DELETE) /[^"]*" [23]\d\d ')
+
+
 class _RingHandler(logging.Handler):
     """Кольцевой буфер + счётчики — отдаётся страницей «Диагностика»."""
 
@@ -85,6 +96,14 @@ class _RingHandler(logging.Handler):
             msg = record.getMessage()
         except Exception:
             msg = str(record.msg)
+        # Werkzeug пишет строки доступа в цвете: в браузере ANSI-коды
+        # выводились текстом («[32mGET / HTTP/1.1[0m»).
+        msg = _ANSI_RE.sub("", msg).strip()
+        # Успешный опрос собственного API интерфейсом занимал почти весь
+        # журнал. Счётчики уровней тоже считались по нему, поэтому «5380
+        # DEBUG» отражало частоту поллинга, а не работу платформы.
+        if not msg or _NOISE_RE.search(msg):
+            return
         _COUNTS[record.levelname] += 1
         entry = {
             "ts": datetime.now().strftime("%H:%M:%S"),
@@ -188,13 +207,39 @@ def diag():
         }
 
 
-def tail_errors(n=80):
-    """Хвост errors.log (читает файл — переживает рестарт процесса)."""
+_STARTED_AT = datetime.now()
+
+
+def tail_errors(n=200, current_run_only=True):
+    """Хвост errors.log.
+
+    По умолчанию отдаём только записи ТЕКУЩЕГО запуска. Файл живёт между
+    перезапусками, и страница «Диагностика» показывала трейсбеки
+    полугодовой давности как свежие: уже исправленная ошибка выглядела
+    действующей. Отсечка — по метке времени в начале строки; строки
+    продолжения трейсбека идут за своей шапкой.
+    """
     p = _STATE["paths"].get("errors")
     if not p or not os.path.exists(p):
         return []
     try:
         with open(p, encoding="utf-8", errors="replace") as f:
-            return f.readlines()[-n:]
-    except Exception:
+            lines = f.readlines()
+    except OSError:
         return []
+    if not current_run_only:
+        return lines[-n:]
+
+    stamp = _re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
+    out, keep = [], False
+    for ln in lines:
+        m = stamp.match(ln)
+        if m:
+            try:
+                ts = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                ts = None
+            keep = (ts is None) or (ts >= _STARTED_AT)
+        if keep:
+            out.append(ln)
+    return out[-n:]

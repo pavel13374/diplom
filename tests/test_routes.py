@@ -126,7 +126,7 @@ def probe(module_name, title):
               f"POST /login -> {r.status_code}")
 
         # --- 2. GET-маршруты отдают 200 ---
-        broken, api_bad = [], []
+        broken, api_bad, degraded = [], [], []
         html_pages = []
         for rule, methods in gets:
             if rule in SKIP_GET or rule in ("/static/<path:filename>",):
@@ -134,7 +134,25 @@ def probe(module_name, title):
             url = _concrete(rule)
             resp = c.get(url)
             if resp.status_code >= 500:
-                broken.append(f"GET {url} -> {resp.status_code}")
+                # 503 + ВНЯТНАЯ ПРИЧИНА — это не поломка, а корректный отказ
+                # необязательной возможности.
+                #
+                # `/api/report/full.pdf` без установленного reportlab отдаёт
+                # 503 с текстом «выполни pip install reportlab». Считать это
+                # провалом неверно: маршрут делает ровно то, что должен, а
+                # альтернатива — притвориться, что всё хорошо, и отдать
+                # пустой файл. Провалом остаётся любой 5xx БЕЗ объяснения и
+                # любой 500.
+                body = resp.get_data(as_text=True)
+                explained = (resp.status_code == 503
+                             and any(w in body.lower()
+                                     for w in ("install", "не установл",
+                                               "недоступ", "unavailable")))
+                if explained:
+                    degraded.append(f"GET {url} -> 503: "
+                                    + body.strip()[:110].replace("\n", " "))
+                else:
+                    broken.append(f"GET {url} -> {resp.status_code}")
                 continue
             if resp.status_code != 200:
                 # 404 на несуществующий id — нормально, 4xx кроме 401 допустим
@@ -154,12 +172,22 @@ def probe(module_name, title):
                     json.loads(body)
                 except Exception as e:
                     api_bad.append(f"GET {url}: {e}")
-            elif rule.startswith("/api/") and "csv" not in ctype:
+            elif rule.startswith("/api/") and not any(
+                    t in ctype for t in ("csv", "svg", "pdf")):
+                # csv/svg/pdf под /api/ — это выгрузки и графики
+                # (/api/trends.csv, /api/workload_curve.svg, /api/*/report.pdf).
+                # Проверять их на JSON бессмысленно, важно лишь что не 5xx.
                 api_bad.append(f"GET {url}: неожиданный Content-Type {ctype!r}")
             elif "<html" in body.lower() or "<!doctype" in body.lower():
                 html_pages.append((url, body))
 
         check("ни один GET-маршрут не падает с 5xx", not broken, "\n".join(broken))
+        if degraded:
+            # Не провал, но и не молчание: возможность выключена, и это должно
+            # быть видно в выводе, а не «просто зелено».
+            print(f"      ⚠️  недоступных необязательных возможностей: {len(degraded)}")
+            for d in degraded:
+                print(f"         {d}")
         check("каждый /api/* отдаёт валидный JSON", not api_bad, "\n".join(api_bad))
         check("html-страницы отдаются", len(html_pages) >= 1,
               f"страниц получено: {len(html_pages)}")

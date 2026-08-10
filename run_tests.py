@@ -6,6 +6,9 @@ RUN TESTS — единый прогон проверок платформы.
 Запускает по очереди:
   • компиляцию всех .py;
   • test_detector.py (правила, окна, вероятностный UEBA, слияние рисков);
+  • test_generated_content.py (СОДЕРЖИМОЕ, уходящее в GitLab: шаблоны, Sigma,
+    IR-отчёт — плюс статические проверки на потерянный префикс f и выброшенные
+    вычисления);
   • selftest.py   (полный конвейер: store→detector→correlator→triage→commands→export→baseline→metrics);
   • test_antileak.py (защита не видит ПОЛЕЙ разметки мира);
   • test_leakage.py  (ни одно ЗНАЧЕНИЕ наблюдаемого признака не определяет
@@ -57,6 +60,11 @@ def main():
     results = []
     results.append(("compile", compile_all()))
     results.append(("unit-detector", run([sys.executable, "tests/test_detector.py"], "tests/test_detector.py")))
+    # ПРОДУКТ, а не движок: то, что реально уходит в репозитории GitLab.
+    # Без этой проверки батарея была зелёной в момент, когда в коммиты
+    # заливались буквальные «{pb['title']}» вместо подставленных значений.
+    results.append(("generated-content", run([sys.executable, "tests/test_generated_content.py"],
+                                             "tests/test_generated_content.py")))
     results.append(("selftest", run([sys.executable, "tests/selftest.py"], "tests/selftest.py")))
     results.append(("antileak", run([sys.executable, "tests/test_antileak.py"], "tests/test_antileak.py")))
     results.append(("leakage", run([sys.executable, "tests/test_leakage.py"], "tests/test_leakage.py")))
@@ -68,6 +76,7 @@ def main():
     results.append(("realmon", run([sys.executable, "tests/test_realmon.py"], "tests/test_realmon.py")))
     results.append(("llm-fallback", run([sys.executable, "tests/test_llm.py"], "tests/test_llm.py")))
     results.append(("contrast", run([sys.executable, "tests/test_contrast.py"], "tests/test_contrast.py")))
+    results.append(("design-system", run([sys.executable, "tests/test_design_system.py"], "tests/test_design_system.py")))
     results.append(("a11y", run([sys.executable, "tests/run_a11y.py"], "tests/run_a11y.py")))
 
     print("\n" + "=" * 50)

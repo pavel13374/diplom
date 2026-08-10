@@ -2,16 +2,27 @@
 """
 ЕДИНЫЙ НАБОР ПРИЗНАКОВ СОБЫТИЯ для ML-слоя.
 
-Раньше вектор признаков был описан внутри `research/train_model.py`, а боевой
-детектор ML вообще не использовал. Из-за этого «доказали, что ML лучше регулярок»
-и «система работает на регулярках» жили в разных файлах и никак не сходились.
+Единственная точка, где событие превращается в числовой вектор:
+  • research/train_runtime_model.py — обучение, калибровка, оценка;
+  • detector.MLScorer (слой L2)     — инференс в потоке.
 
-Теперь featurize() один на всех:
-  • research/train_model.py       — обучение и оффлайн-оценка;
-  • detector.MLScorer (слой L2)   — инференс в потоке.
+Почему это важно
+----------------
+Исторически вектор признаков был описан внутри `research/train_model.py`, а
+боевой детектор ML вообще не использовал: «доказали, что ML обобщает лучше
+регулярок» и «система работает на регулярках» жили в разных файлах и никак не
+сходились. Потом появился этот модуль — но старая реализация НЕ БЫЛА УДАЛЕНА и
+продолжала жить своей жизнью: 22 признака против 63, свой список действий с
+`repo_enum`, `comment`, `approve`, которых в taxonomy.py нет вовсе. Числа,
+полученные тем скриптом, выглядели как метрики того же детектора, но были
+несопоставимы. Сейчас реализация одна, и это проверяется тестом
+`tests/test_generated_content.py::test_single_feature_implementation` —
+семантически, по пересечению словарей, а не по именам файлов.
 
-Так гарантировано, что обучение и применение видят ОДИН И ТОТ ЖЕ вектор:
-классическая причина расхождения train/serve здесь исключена конструктивно.
+Отдельно: `research/content_ml_features.py` — это ДРУГОЕ признаковое
+пространство (только по содержимому файла, без привязки к событию) для
+самостоятельного вопроса «отличим ли секрет по статистике текста без
+регулярок». Оно не дубликат и не участвует в боевом инференсе.
 
 АНТИ-ЛИК: на вход подаются только наблюдаемые поля события (те, что остаются
 после run_defense.observed()). Ни одна метка мира сюда не попадает — это
@@ -20,8 +31,16 @@
 import math
 
 #: Действия из нормализованного словаря (taxonomy.py), которые кодируем one-hot.
+#:
+#: Список ОБЯЗАН совпадать с taxonomy.OBSERVABLE — это проверяется ассертом
+#: ниже и тестом tests/test_detector.py. Раньше рассинхрон был: в taxonomy
+#: добавили issue_open / issue_comment / issue_close, а сюда — нет. 634 события
+#: живого журнала (2% потока) получали НУЛЕВОЙ вектор действия: для модели они
+#: были неотличимы друг от друга и от любого неизвестного действия. Молчаливый
+#: рассинхрон такого рода — самый дешёвый способ потерять сигнал.
 ACTIONS = ["push", "force_push", "file_delete", "branch_create", "branch_delete",
            "mr_open", "mr_merge", "mr_approve", "mr_comment", "mr_close",
+           "issue_open", "issue_comment", "issue_close",
            "api_read", "token_create", "deploy_key_add", "hook_create",
            "schedule_create", "pipeline_run", "member_update", "release_publish"]
 
@@ -51,6 +70,8 @@ FEATURES = [
     "no_approvals", "self_merged",
     # оконные агрегаты (заполняет detector.Enricher)
     "burst_delete", "burst_api", "burst_any", "distinct_projects",
+    # действие вне словаря: сигнал «данные не той версии», а не тихий ноль
+    "act_unknown",
 ] + ["act_" + a for a in ACTIONS]
 
 _SENSITIVE_API = ("/oauth", "/members", "/search", "/repository/archive", "/tokens")
@@ -140,10 +161,27 @@ def featurize(r):
         math.log1p(max(0.0, _num(r, "burst_api_read_15m"))) / 3.0,
         math.log1p(max(0.0, _num(r, "burst_any_30m"))) / 4.0,
         math.log1p(max(0.0, _num(r, "distinct_projects_1h"))) / 3.0,
+
+        0.0 if action in _ACTION_SET else 1.0,       # act_unknown
     ] + [1.0 if action == a else 0.0 for a in ACTIONS]
 
     return vec
 
 
+_ACTION_SET = frozenset(ACTIONS)
+
 assert len(featurize({})) == len(FEATURES), (
     f"рассинхрон FEATURES({len(FEATURES)}) и featurize({len(featurize({}))})")
+
+
+def check_taxonomy():
+    """ACTIONS должен совпадать с taxonomy.OBSERVABLE.
+
+    Отдельной функцией, а не голым импортом на уровне модуля: ml_features
+    подтягивает детектор в инференсе, и жёсткая зависимость создала бы цикл.
+    Зовётся из tests/ и tools/doctor.py.
+    """
+    import taxonomy
+    missing = sorted(taxonomy.OBSERVABLE - _ACTION_SET)
+    extra = sorted(_ACTION_SET - taxonomy.OBSERVABLE)
+    return missing, extra
