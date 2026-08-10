@@ -399,7 +399,49 @@ def stats():
         except OSError:
             size = None
     out["size_bytes"] = size
+
+    # ДАТАСЕТ ВИДЕН И ДО СТАРТА СИМУЛЯЦИИ.
+    # _STATE заполняется только в init(), который зовут при запуске мира.
+    # До этого страница «Датасет» показывала «событий записано 0» и
+    # «событий пока нет», хотя data/events.jsonl лежал рядом на десятки
+    # мегабайт и защита успешно по нему работала. Файл на диске — факт,
+    # не зависящий от того, идёт ли прогон прямо сейчас.
+    if not path:
+        peek = _peek_dataset()
+        if peek:
+            out.update(peek)
     return out
+
+
+# Разбор файла кэшируется по времени изменения: stats() зовут из опроса
+# страницы несколько раз в минуту, а файл бывает в десятки мегабайт.
+_PEEK = {"mtime": None, "data": None}
+
+
+def _peek_dataset():
+    """Размер и число строк журнала на диске, без открытия на дозапись."""
+    import config as _cfg
+    cfg = getattr(_cfg, "EVENT_LOG", {}) or {}
+    p = cfg.get("file", "data/events.jsonl")
+    if not os.path.isabs(p):
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), p)
+    try:
+        st = os.stat(p)
+    except OSError:
+        return None
+    if _PEEK["mtime"] == st.st_mtime and _PEEK["data"]:
+        return dict(_PEEK["data"], file=p, size_bytes=st.st_size)
+    total = 0
+    try:
+        with open(p, "rb") as fh:
+            for _ in fh:
+                total += 1
+    except OSError:
+        return None
+    data = {"total": total, "from_disk": True}
+    _PEEK["mtime"] = st.st_mtime
+    _PEEK["data"] = data
+    return dict(data, file=p, size_bytes=st.st_size)
 
 
 def tail(n=80):

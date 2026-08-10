@@ -12,7 +12,7 @@
       <a data-view=config><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><line x1=4 y1=21 x2=4 y2=14 /><line x1=4 y1=10 x2=4 y2=3 /><line x1=12 y1=21 x2=12 y2=12 /><line x1=12 y1=8 x2=12 y2=3 /><line x1=20 y1=21 x2=20 y2=16 /><line x1=20 y1=12 x2=20 y2=3 /><line x1=1 y1=14 x2=7 y2=14 /><line x1=9 y1=8 x2=15 y2=8 /><line x1=17 y1=16 x2=23 y2=16 /></svg> Конфигурация</a>
       <a data-view=logs><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><polyline points="4 17 10 11 4 5"/><line x1=12 y1=19 x2=20 y2=19 /></svg> Журнал событий</a>
       <a data-view=data><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><ellipse cx=12 cy=5 rx=9 ry=3 /><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg> Датасет</a>
-      <a data-view=repos><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><path d="M3 7h18M3 12h18M3 17h18"/><circle cx=6 cy=7 r=0.6 fill=currentColor/><circle cx=6 cy=12 r=0.6 fill=currentColor/><circle cx=6 cy=17 r=0.6 fill=currentColor/></svg> Репозитории</a>
+      <a data-view=repos><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><path d="M3 7h18M3 12h18M3 17h18"/><circle cx=6 cy=7 r=0.6 fill=currentColor /><circle cx=6 cy=12 r=0.6 fill=currentColor /><circle cx=6 cy=17 r=0.6 fill=currentColor /></svg> Репозитории</a>
       <a data-view=insights><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><line x1=18 y1=20 x2=18 y2=10 /><line x1=12 y1=20 x2=12 y2=4 /><line x1=6 y1=20 x2=6 y2=14 /></svg> Аналитика</a>
       <a data-view=people><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx=9 cy=7 r=4 /><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Активность команды</a>
     </nav>
@@ -390,7 +390,7 @@ function renderCfg(c){
    wn.map((d,i)=>'<label class="day '+((c.WORK_DAYS||[]).includes(i)?'act':'')+'"><input type=checkbox data-day='+i+' '+((c.WORK_DAYS||[]).includes(i)?'checked':'')+' onchange="this.parentNode.classList.toggle(\'act\',this.checked)">'+d+'</label>').join('')+
    '</div><div class=help>Дни, когда команда считается работающей.</div></div>';
 
- const tl=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=12 cy=12 r=9/><path d="M12 7v5l3 2"/></svg>','Сжатие времени','Насколько быстро идёт время внутри симуляции относительно реального.',
+ const tl=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=12 cy=12 r=9 /><path d="M12 7v5l3 2"/></svg>','Сжатие времени','Насколько быстро идёт время внутри симуляции относительно реального.',
    '<div class=presets>'+
      '<button class=chip onclick="preset(\'real\')">Реальное время</button>'+
      '<button class=chip onclick="preset(\'wd60\')">Рабочий день → 1 ч</button>'+
@@ -405,7 +405,7 @@ function renderCfg(c){
    txt('SIM_START','Начало отсчёта','Пусто — сегодня в 10:00. Формат: 2026-06-01 10:00.',c.SIM_START)+
    '</div>',true);
 
- const wd=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><rect x=3 y=4 width=18 height=18 rx=2/><path d="M16 2v4M8 2v4M3 10h18"/></svg>','Рабочий день и неделя','Когда команда активна.','<div class=fields>'+
+ const wd=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><rect x=3 y=4 width=18 height=18 rx=2 /><path d="M16 2v4M8 2v4M3 10h18"/></svg>','Рабочий день и неделя','Когда команда активна.','<div class=fields>'+
    slider('WORK_HOURS_START','Начало рабочего дня, час','Час, с которого начинается рабочий день.',0,23,1,' ч',c.WORK_HOURS_START)+
    slider('WORK_HOURS_END','Конец рабочего дня, час','Час окончания рабочего дня. После — нерабочее время.',1,24,1,' ч',c.WORK_HOURS_END)+
    days+
@@ -432,7 +432,7 @@ function renderCfg(c){
    slider('PTO_PROBABILITY_PER_DAY','Вероятность отпуска в день','Шанс, что сотрудник отсутствует в конкретный день.',0,1,0.01,'',c.PTO_PROBABILITY_PER_DAY)+
    '</div>');
 
- const git=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=6 cy=6 r=3/><circle cx=6 cy=18 r=3/><path d="M18 9a9 9 0 0 1-9 9"/><circle cx=18 cy=6 r=3/></svg>','GitLab и время','Подключение и согласование дат.','<div class=fields>'+
+ const git=group('<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=6 cy=6 r=3 /><circle cx=6 cy=18 r=3 /><path d="M18 9a9 9 0 0 1-9 9"/><circle cx=18 cy=6 r=3 /></svg>','GitLab и время','Подключение и согласование дат.','<div class=fields>'+
    txt('GITLAB_URL','Адрес GitLab','URL сервера GitLab.',c.GITLAB_URL)+
    txt('ADMIN_TOKEN','Токен доступа','Personal access token со scope api.',c.ADMIN_TOKEN)+
    sel('GITLAB_DATES','Даты, записываемые в GitLab','Реальное время сервера согласовано с коммитами и рекомендуется по умолчанию.',[['real','Реальное время сервера'],['sim','Время симуляции']],c.GITLAB_DATES)+
@@ -820,7 +820,7 @@ pollInsights();setInterval(pollInsights,3000);
 
 // ---------- Репозитории (живая карта) ----------
 const ACT_ICON={push:['ic-push','+'],mr_open:['ic-open','MR'],mr_merge:['ic-merge','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M20 6 9 17l-5-5"/></svg>'],
- mr_close:['ic-close','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M18 6 6 18M6 6l12 12"/></svg>'],branch_create:['ic-branch','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=6 cy=6 r=3/><circle cx=6 cy=18 r=3/><path d="M18 9a9 9 0 0 1-9 9"/><circle cx=18 cy=6 r=3/></svg>'],mr_comment:['ic-cmt','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>'],
+ mr_close:['ic-close','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M18 6 6 18M6 6l12 12"/></svg>'],branch_create:['ic-branch','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=6 cy=6 r=3 /><circle cx=6 cy=18 r=3 /><path d="M18 9a9 9 0 0 1-9 9"/><circle cx=18 cy=6 r=3 /></svg>'],mr_comment:['ic-cmt','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>'],
  mr_approve:['ic-merge','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M20 6 9 17l-5-5"/></svg>'],issue_open:['ic-open','!'],issue_comment:['ic-cmt','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>'],issue_close:['ic-close','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M18 6 6 18M6 6l12 12"/></svg>']};
 // Короткие имена типов событий для плотных таблиц. Полных фраз тут не
 // нужно: рядом стоит объект действия, он и уточняет смысл.

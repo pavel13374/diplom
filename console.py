@@ -336,6 +336,13 @@ def _replay_history(pos):
                                                "action": ev.get("action")}})
                     continue
                 seen += 1
+                # Переигранные события — тоже обработанные. Счётчик рос
+                # только в живом цикле, поэтому после перезапуска консоли
+                # на обзоре стояло «обработано защитой 0» рядом с
+                # «алертов 13»: из нуля событий тринадцать алертов не
+                # получаются, и показатель читался как сломанный.
+                with _LOCK:
+                    _STATE["processed"] += 1
                 if not det.get("alert"):
                     continue
                 top = max(det["alerts"], key=lambda a: a["risk"])
@@ -473,8 +480,11 @@ def api_stats():
     cs = _COR.summary()
     eng = _engine()
     covered = set(eng.techniques_covered())
-    fired = set(_STATE["fired_tech"].keys())
     all_tech = {t for _, lst in ATTACK for t, _ in lst}
+    # Поведенческий слой помечает свои срабатывания псевдотехниками UEBA и
+    # ML — в матрице ATT&CK их нет. Показатель «техник сработало» считал
+    # их наравне с настоящими, и экран покрытия показывал 1, а обзор 2.
+    fired = {t for t in _STATE["fired_tech"] if t in all_tech}
     cov_pct = round(len(covered & all_tech) / max(1, len(all_tech)) * 100)
     return jsonify({
         "store_events": st.get("events", 0), "processed": proc, "alerts": al,
