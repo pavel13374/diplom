@@ -323,7 +323,7 @@
       "path": "rules/persistence/linux_cron_job_persistence.yml",
       "tactic": "persistence",
       "status": "experimental",
-      "author": "pavel.morozov",
+      "author": "nikita.orlov",
       "created": "2026-08-11",
       "modified": "2026-08-11",
       "fp_rate": 9,
@@ -349,17 +349,6 @@
       "created": "2026-08-13",
       "modified": "2026-09-08",
       "fp_rate": 0,
-      "noisy": false,
-      "tunes": 0
-    },
-    "rdp_hijacking_via_tscon": {
-      "path": "rules/lateral_movement/rdp_hijacking_via_tscon.yml",
-      "tactic": "lateral_movement",
-      "status": "stable",
-      "author": "nikita.orlov",
-      "created": "2026-09-07",
-      "modified": "2026-09-07",
-      "fp_rate": 8,
       "noisy": false,
       "tunes": 0
     },
@@ -967,6 +956,17 @@
       "fp_rate": 0,
       "noisy": false,
       "tunes": 0
+    },
+    "remote_system_discovery": {
+      "path": "rules/discovery/remote_system_discovery.yml",
+      "tactic": "discovery",
+      "status": "experimental",
+      "author": "dmitry.kozlov",
+      "created": "2026-08-11",
+      "modified": "2026-08-11",
+      "fp_rate": 10,
+      "noisy": false,
+      "tunes": 0
     }
   },
   "sprint_start": "2026-09-02",
@@ -974,7 +974,7 @@
   "oncall_index": 11,
   "issue_seq": 1000,
   "release_seq": 4,
-  "campaign_seq": 88,
+  "campaign_seq": 89,
   "pto": {
     "2026-07-08": "maria.ivanova",
     "2026-07-22": "maria.ivanova",

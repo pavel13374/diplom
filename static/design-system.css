@@ -1554,8 +1554,25 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
 .pinfo{min-width:0;display:flex;align-items:baseline;gap:8px}
 .m-name{color:var(--text-1);font-weight:var(--fw-medium);font-size:var(--fs-sm)}
 .pcur,.pmeta,.m-role{color:var(--text-3);font-size:var(--fs-xs)}
+/* РАСКРЫТИЕ КАРТОЧКИ УЧАСТНИКА.
+
+   Правила, прячущего тело карточки, в системе не было вовсе: класс
+   `open` переключался в скрипте, но ни на что не влиял. До первого
+   раскрытия тело пустое и потому невидимое — карточка выглядела
+   свёрнутой. После первого раскрытия скрипт наполнял его лентой
+   событий, и оно оставалось на экране навсегда: повторный клик снимал
+   класс, а тело продолжало висеть. Со стороны — «профиль не
+   закрывается». Видимостью управляет состояние, а не наличие текста. */
+.pcard>.pbody{display:none}
+.pcard.open>.pbody{display:block}
 .pbody{background:var(--surface-3);border-top:1px solid var(--line);
   padding:var(--sp-3) var(--pad-x);line-height:var(--lh-base)}
+/* Шеврон показывает, раскрыта карточка или нет. Поворот — это
+   состояние, а не украшение на ховере. */
+.pcard>.phead{cursor:pointer;user-select:none}
+.pchev{transition:transform var(--dur) var(--ease)}
+.pcard.open>.phead .pchev{transform:rotate(180deg)}
+.pcard.open>.phead{background:var(--surface-3)}
 .members{border-radius:0}
 .member{padding:6px var(--pad-x);min-height:38px;display:flex;align-items:center;
   gap:var(--sp-3);border:0;border-bottom:1px solid var(--line)}
