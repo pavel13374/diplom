@@ -72,10 +72,10 @@
       "status": "stable",
       "author": "irina.belova",
       "created": "2026-08-14",
-      "modified": "2026-08-14",
-      "fp_rate": 7,
+      "modified": "2026-08-11",
+      "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "external_remote_service_logon_anomaly": {
       "path": "rules/initial_access/external_remote_service_logon_anomaly.yml",
@@ -158,10 +158,10 @@
       "path": "rules/impact/data_destruction_via_cipher/sdelete.yml",
       "tactic": "impact",
       "status": "experimental",
-      "author": "sergey.volkov",
-      "created": "2026-07-29",
-      "modified": "2026-09-11",
-      "fp_rate": 0,
+      "author": "dmitry.kozlov",
+      "created": "2026-08-11",
+      "modified": "2026-08-11",
+      "fp_rate": 9,
       "noisy": false,
       "tunes": 0
     },
@@ -190,11 +190,11 @@
     "aws_iam_key_used_from_unusual_region": {
       "path": "rules/initial_access/aws_iam_key_used_from_unusual_region.yml",
       "tactic": "initial_access",
-      "status": "stable",
-      "author": "dmitry.kozlov",
-      "created": "2026-07-29",
+      "status": "experimental",
+      "author": "nikita.orlov",
+      "created": "2026-08-11",
       "modified": "2026-08-11",
-      "fp_rate": 0,
+      "fp_rate": 9,
       "noisy": false,
       "tunes": 0
     },
@@ -213,10 +213,10 @@
       "path": "rules/lateral_movement/lateral_tool_transfer_over_smb.yml",
       "tactic": "lateral_movement",
       "status": "experimental",
-      "author": "olga.novak",
-      "created": "2026-07-31",
-      "modified": "2026-07-31",
-      "fp_rate": 4,
+      "author": "maria.ivanova",
+      "created": "2026-08-11",
+      "modified": "2026-08-11",
+      "fp_rate": 6,
       "noisy": false,
       "tunes": 0
     },
@@ -413,7 +413,7 @@
       "status": "experimental",
       "author": "olga.novak",
       "created": "2026-07-30",
-      "modified": "2026-08-17",
+      "modified": "2026-08-12",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 2
@@ -490,7 +490,7 @@
       "status": "experimental",
       "author": "irina.belova",
       "created": "2026-08-19",
-      "modified": "2026-09-09",
+      "modified": "2026-08-11",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 0
@@ -512,7 +512,7 @@
       "status": "stable",
       "author": "dmitry.kozlov",
       "created": "2026-08-05",
-      "modified": "2026-08-12",
+      "modified": "2026-08-11",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 0
@@ -521,12 +521,12 @@
       "path": "rules/defense_evasion/linux_log_tampering_/_history_clear.yml",
       "tactic": "defense_evasion",
       "status": "stable",
-      "author": "olga.novak",
+      "author": "irina.belova",
       "created": "2026-08-11",
-      "modified": "2026-08-10",
-      "fp_rate": 0,
+      "modified": "2026-08-11",
+      "fp_rate": 1,
       "noisy": false,
-      "tunes": 1
+      "tunes": 0
     },
     "iodine": {
       "path": "rules/command_and_control/protocol_tunneling_via_ssh/iodine.yml",
@@ -730,10 +730,10 @@
       "path": "rules/persistence/linux_systemd_service_persistence.yml",
       "tactic": "persistence",
       "status": "experimental",
-      "author": "sergey.volkov",
-      "created": "2026-09-09",
-      "modified": "2026-09-09",
-      "fp_rate": 5,
+      "author": "maria.ivanova",
+      "created": "2026-08-11",
+      "modified": "2026-08-11",
+      "fp_rate": 9,
       "noisy": false,
       "tunes": 0
     },
@@ -974,7 +974,7 @@
   "oncall_index": 11,
   "issue_seq": 1000,
   "release_seq": 4,
-  "campaign_seq": 89,
+  "campaign_seq": 91,
   "pto": {
     "2026-07-08": "maria.ivanova",
     "2026-07-22": "maria.ivanova",

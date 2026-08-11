@@ -624,7 +624,10 @@ a:hover,.link:hover{text-decoration:underline}
 .b-med {color:var(--sev-medium)}
 .b-low {color:var(--sev-low)}
 .b-camp{color:var(--text-3)}
-.ly,.ly.r,.ly.u{color:var(--text-3)}
+.ly,.ly.r,.ly.u{color:var(--text-3);font-size:var(--fs-2xs);
+  letter-spacing:.05em;white-space:nowrap}
+.ly.u{color:var(--sev-medium)}
+.ly.r{color:var(--accent-text)}
 .stpill.new,.stpill.open{background:var(--critical-bg);border-color:var(--critical-border);
   color:var(--sev-critical)}
 .stpill.investigating{background:var(--accent-bg);border-color:var(--accent-border);
@@ -1420,12 +1423,15 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
   padding:6px 8px;font-size:var(--fs-xs);color:var(--text-2)}
 .kcs.cur .kcb{border-color:var(--accent)}
 .kct{font-size:var(--fs-2xs);letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
-.kcl{margin-left:auto;font-size:var(--fs-xs)}
+/* Идентификатор техники и имя слоя стояли вплотную: «T1059ПРАВИЛО».
+   Строка карточки — flex с зазором, а не два подряд идущих узла. */
+.kcx{display:flex;align-items:baseline;gap:var(--sp-2);flex-wrap:wrap}
+.kcl{margin-left:auto;font-size:var(--fs-2xs);flex:none}
 .kcf{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:auto}
 .kcf .rk{font-size:var(--fs-xs);font-family:var(--font-mono);color:var(--text-2)}
 .kcf .rk.hi{color:var(--sev-critical)} .kcf .rk.md{color:var(--sev-medium)}
 .kcg{font-size:var(--fs-2xs);color:var(--text-3);white-space:nowrap}
-.kcx{font-size:var(--fs-xs);color:var(--text-3)}
+.kcx{font-size:var(--fs-xs);color:var(--text-3);min-width:0}
 .kcx b{color:var(--text-1);font-family:var(--font-sans);font-weight:var(--fw-medium)}
 
 
@@ -2073,3 +2079,8 @@ main:focus{outline:none}
 /* Из чего сложился риск инцидента: слои и их вклад. Служебная строка
    рядом с крупным числом — она объясняет, а не соревнуется с ним. */
 .ds-inc-parts{font-size:var(--fs-xs);color:var(--text-3);white-space:nowrap}
+
+/* Блок результата запуска сценария: выделен акцентной кромкой — это
+   ответ на действие пользователя, а не очередная панель на экране. */
+.red-result{border-left:3px solid var(--accent)}
+.red-result>.row{padding:0 var(--pad-x)}

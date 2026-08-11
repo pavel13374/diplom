@@ -157,6 +157,13 @@ class Correlator:
 
         for a in det.get("alerts", []):
             inc["alerts"].append({
+                # ts_sim — время СИМУЛЯЦИИ, оно скачет и сжато относительно
+                # реального. Чтобы ответить на вопрос «что прилетело после
+                # того, как я нажал „Запустить“», нужна отметка реального
+                # времени: экран запуска сценариев отбирал инциденты по
+                # первому появлению и не видел детекты, подклеившиеся к уже
+                # существующему инциденту того же актора.
+                "seen_real": _time.time(),
                 "ts_sim": ts, "action": ev.get("action"), "project": proj,
                 "path": ev.get("path"), "branch": ev.get("branch"), "mr_iid": ev.get("mr_iid"),
                 "risk": a["risk"], "technique": a.get("technique"),
@@ -170,6 +177,7 @@ class Correlator:
                 inc["techniques"].append(tech)
             inc["chain"].append({"ts": ts, "tactic": tac, "technique": tech,
                                  "action": ev.get("action"), "risk": a["risk"]})
+        inc["touched_real"] = _time.time()
         inc["is_campaign"] = len([x for x in inc["tactics"] if x != "Behavioral"]) >= 2
         inc["risk"] = self._incident_risk(inc)
         inc["severity"] = ("critical" if inc["risk"] >= 0.85 else

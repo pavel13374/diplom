@@ -568,7 +568,7 @@ async function huntRun(q){
  hits.forEach(a=>{if(a.technique)byTech[a.technique]=(byTech[a.technique]||0)+1;
                   if(a.actor)byActor[a.actor]=(byActor[a.actor]||0)+1;});
  const top=o=>Object.keys(o).sort((x,y)=>o[y]-o[x]).slice(0,4).map(k=>k+' ('+o[k]+')').join(', ')||'—';
- if(box)box.innerHTML='<b style=color:var(--text-1)>Найдено: '+hits.length+'</b> из '+al.length+' детектов'+
+ if(box)box.innerHTML='<b style=color:var(--text-1)>Найдено: '+hits.length+'</b> из '+plural(al.length,'детекта','детектов','детектов')+
   '<div class=mt-2>Техники: '+esc(top(byTech))+'</div>'+
   '<div>Разработчики: '+esc(top(byActor))+'</div>'+
   (hits.length?'<button class="btn ghost mt-3" onclick="dsDrawerClose();goView(\'alerts\');'+
@@ -704,13 +704,13 @@ async function execReport(){
  '</table>'+
  '<h2>Инциденты</h2><table><tr><th scope=row>Инцидент</th><td>Детали</td></tr>'+
   (inc.length?inc.map(i=>'<tr><th scope=row>#'+i.id+' · @'+E(i.actor)+'</th><td>'+
-     E(i.severity)+' · риск '+i.max_risk+' · '+i.alerts+' детектов · '+
+     E(i.severity)+' · риск '+i.max_risk+' · '+plural(i.alerts,'детект','детекта','детектов')+' · '+
      E((i.tactics||[]).join(' → '))+(i.verdict?(' · вердикт '+E(i.verdict.toUpperCase())):'')+
      '</td></tr>').join(''):'<tr><th scope=row>—</th><td>инцидентов нет</td></tr>')+
  '</table>'+
  '<h2>Вывод</h2><p>'+
   (s.incidents?('За прогон система обработала '+(s.processed||0)+' событий разработки, подняла '+
-   (s.alerts||0)+' детектов и собрала их в '+(s.incidents||0)+' инцидент(ов). '+
+   nAlerts(s.alerts||0)+' и собрала их в '+plural(s.incidents||0,'инцидент','инцидента','инцидентов')+'. '+
    (s.campaigns_detected?('Из них '+s.campaigns_detected+' — многошаговые атаки, восстановленные в цепочку ATT&CK. '):'')+
    (prec!=null?('Точность на разобранных аналитиком инцидентах — '+prec+'%. '):'')+
    'Покрытие матрицы ATT&CK — '+(s.coverage_pct||0)+'%.')
@@ -1055,7 +1055,7 @@ function renderAlerts(){
  const total=rows.length,pages=Math.max(1,Math.ceil(total/_AL_PER));
  if(_alPage>=pages)_alPage=pages-1;
  const page=rows.slice(_alPage*_AL_PER,(_alPage+1)*_AL_PER);
- $('alCount').textContent=(_alF||_alQ)?('показано '+total+' из '+all.length):(all.length+' детектов');
+ $('alCount').textContent=(_alF||_alQ)?('показано '+total+' из '+all.length):plural(all.length,'детект','детекта','детектов');
 
  document.querySelectorAll('#alTable thead th').forEach(th=>{
   const k=th.getAttribute('data-k');
@@ -1734,20 +1734,41 @@ function renderRedResult(title,ev,tp,nsteps,d){
  const incs=d.incidents||[], dets=d.detections||0;
  const st=_CMDST_RU[d.cmd_status]||(d.cmd_status||'в очереди');
  const first=incs.length?_hhmm(Math.min.apply(null,incs.map(i=>i.seen_real||1e18))):'';
- let h='<div class=card style="border-left:3px solid var(--accent-brand);margin-bottom:14px">'+
-   '<h2 class=mb-2>Результат кампании: <span>'+esc(title)+'</span></h2>'+
-   '<div class=sub>статус: <b>'+esc(st)+'</b> · профиль <b>'+esc(ev)+'</b> · темп <b>'+(_TEMPO_RU[tp]||tp)+'</b> · шагов <b>'+nsteps+'</b></div>'+
-   '<div class="sub mt-1">детектов: <b>'+dets+'</b> · инцидентов: <b>'+incs.length+'</b>'+(first?(' · первый в <b>'+first+'</b>'):'')+'</div>';
- if(!incs.length){h+='<div class="help empty mt-3">ждём детекты… (атака разворачивается)</div>';}
+ const готово=(d.cmd_status==='done'||d.cmd_status==='failed'||d.cmd_status==='error');
+ let h='<div class="card red-result mb-4">'+
+   '<h2>Результат запуска: <span>'+esc(title)+'</span></h2>'+
+   '<div class=metrics>'+
+    '<div><span class=mk>Статус</span><span class=mv>'+esc(st)+'</span></div>'+
+    '<div><span class=mk>Шагов</span><span class=mv>'+nsteps+'</span></div>'+
+    '<div><span class=mk>Детектов</span><span class="mv'+(dets?' bad':'')+'">'+dets+'</span></div>'+
+    '<div><span class=mk>Инцидентов</span><span class="mv'+(incs.length?' bad':'')+'">'+incs.length+'</span></div>'+
+    '<div><span class=mk>Профиль</span><span class=mv>'+esc(ev)+'</span></div>'+
+    '<div><span class=mk>Темп</span><span class=mv>'+esc(_TEMPO_RU[tp]||tp)+'</span></div>'+
+   '</div>';
+ if(!incs.length){
+  // Пока кампания идёт — это ожидание. Когда она завершилась, а детектов
+  // нет — это результат эксперимента, и говорить о нём надо прямо.
+  h+= готово
+   ? '<div class="vbanner fp mt-3"><span class=vt>Атака не обнаружена</span>'+
+     '<span>Сценарий отработал, но ни одно правило и ни один поведенческий слой не сработали. '+
+     'Это слепая зона — кандидат на новое правило.</span></div>'
+   : '<div class="help empty mt-3">Атака разворачивается, ждём детекты…</div>';}
  else{h+='<div class=mt-3>'+incs.map(i=>{
    const tm=_hhmm(i.seen_real), tech=(i.techniques||[]).slice(0,5).join(', ');
-   return '<div class=row style=align-items:center;gap:8px>'+
-     '<span class=mono>#'+i.id+'</span> <span>'+esc(i.actor||'')+'</span>'+
-     '<span class="badge '+esc(i.severity||'')+'">риск '+i.risk+'</span>'+
-     (i.is_campaign?'<span class="badge campaign">многошаговая</span>':'')+
+   return '<div class=row>'+
+     '<span class=mono>#'+i.id+'</span> <span>@'+esc(i.actor||'')+'</span>'+
+     sevBadge(i.severity||'low')+
+     '<span class="rk '+rkcls(i.risk)+'">'+i.risk+'</span>'+
+     (i.is_campaign?'<span class="badge b-camp">многошаговая</span>':'')+
+     // Инцидент мог быть заведён этим запуском, а мог существовать раньше:
+     // детекты подклеиваются к тому же актору в окне корреляции.
+     (i.is_new?'<span class="stpill new">новый</span>'
+              :'<span class="stpill investigating">пополнен</span>')+
      '<span class=grow></span>'+
-     '<span class=sub>'+esc(tech)+' · '+i.n_alerts+' детект.'+(tm?(' · '+tm):'')+'</span> '+
-     '<a onclick="gotoInc('+i.id+')" class="link clickable">Открыть</a></div>';}).join('')+'</div>';}
+     '<span class=sub>'+esc(tech)+' · '+plural(i.n_alerts,'новый детект','новых детекта','новых детектов')+
+       (i.n_alerts_total&&i.n_alerts_total!==i.n_alerts?(' из '+i.n_alerts_total):'')+
+       (tm?(' · '+tm):'')+'</span> '+
+     '<a onclick="gotoInc('+i.id+')" class=clickable>Открыть</a></div>';}).join('')+'</div>';}
  h+='</div>';
  $('redResult').innerHTML=h;
 }
@@ -1949,7 +1970,7 @@ function caseIncList(c,m){
   return '<div class="help empty">инцидентов нет — приобщите их кнопкой ниже или из карточки инцидента</div>';
  return '<div class=ds-ev-list>'+(c.incidents||[]).map(id=>{const i=m[id];
   return '<div class=case-inc><span class=case-inc-id>#'+esc(id)+'</span>'+
-   (i?(sevBadge(i.severity)+'<span class=sub>@'+esc(i.actor||'')+' · '+(i.alerts||0)+' детектов · риск '+
+   (i?(sevBadge(i.severity)+'<span class=sub>@'+esc(i.actor||'')+' · '+plural(i.alerts||0,'детект','детекта','детектов')+' · риск '+
        (i.max_risk||0).toFixed(2)+'</span>')
      :'<span class=sub>вне текущего окна выдачи</span>')+
    '<span class=grow></span>'+
@@ -1992,7 +2013,7 @@ function caseAddOpen(cid){
  const free=(_caseInc||[]).filter(i=>!have[i.id]);
  const body=free.length
   ?('<div class=ds-ev-list>'+free.map(i=>'<div class=case-inc><span class=case-inc-id>#'+i.id+'</span>'+
-     sevBadge(i.severity)+'<span class=sub>@'+esc(i.actor||'')+' · '+(i.alerts||0)+' детектов · риск '+
+     sevBadge(i.severity)+'<span class=sub>@'+esc(i.actor||'')+' · '+plural(i.alerts||0,'детект','детекта','детектов')+' · риск '+
      (i.max_risk||0).toFixed(2)+((i.repos||[]).length?(' · '+esc(i.repos.join(', '))):'')+'</span>'+
      '<span class=grow></span><button class="btn xs" onclick="caseLink(\''+cid+'\','+i.id+')">Приобщить</button></div>').join('')+'</div>')
   :'<div class="help empty">все инциденты из текущей выдачи уже в деле</div>';
@@ -2030,7 +2051,7 @@ function caseReport(cid){
  const E=x=>String(x==null?'':x).replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
  const rows=(c.incidents||[]).map(id=>{const i=m[id];
   return '<tr><th scope=row>#'+E(id)+'</th><td>'+(i?(E(i.severity)+' · @'+E(i.actor)+' · риск '+i.max_risk+
-   ' · '+(i.alerts||0)+' детектов · '+E((i.tactics||[]).join(' → '))):'вне текущего окна выдачи')+'</td></tr>';}).join('')
+   ' · '+plural(i.alerts||0,'детект','детекта','детектов')+' · '+E((i.tactics||[]).join(' → '))):'вне текущего окна выдачи')+'</td></tr>';}).join('')
   ||'<tr><th scope=row>—</th><td>инцидентов в деле нет</td></tr>';
  const log=(c.log||[]).map(e=>'<tr><th scope=row>'+E(e.ts)+'</th><td>'+E(e.t)+'</td></tr>').join('')
   ||'<tr><th scope=row>—</th><td>записей нет</td></tr>';
@@ -2118,7 +2139,7 @@ function rpBuild(){
  const ev=_rpRaw.ev.filter(e=>e.t>=from);
  const ic=_rpRaw.inc.filter(i=>(i.b||i.a)>=from);
  const cnt=$('rpCount');
- if(cnt)cnt.textContent=ev.length+' детектов · '+ic.length+' инцидентов'+
+ if(cnt)cnt.textContent=plural(ev.length,'детект','детекта','детектов')+' · '+plural(ic.length,'инцидент','инцидента','инцидентов')+
    (ev.length<_rpRaw.ev.length?(' (всего в журнале '+_rpRaw.ev.length+')'):'');
  if(!ev.length&&!ic.length)return empty('в этом окне детектов нет — возьмите период шире');
 
@@ -2153,7 +2174,7 @@ function rpDraw(){
    if(k<0)k=rowEnd.indexOf(Math.min.apply(null,rowEnd));
    rowEnd[k]=l+wd;
    return '<span class="rp-bar '+esc(i.sev)+'" style="left:'+l+'%;width:'+wd+'%;top:'+(3+k*12)+
-    'px" title="#'+i.id+' · @'+esc(i.actor)+' · '+i.n+' детектов" onclick="caseGoInc('+i.id+')">'+
+    'px" title="#'+i.id+' · @'+esc(i.actor)+' · '+plural(i.n,'детект','детекта','детектов')+'" onclick="caseGoInc('+i.id+')">'+
     (wd>=4?('#'+i.id):'')+'</span>';}).join('');
  w.innerHTML=
   '<div class=rp-lane><span class=rp-lane-n>Детекты</span><div class=rp-track>'+dots+'<b class=rp-head></b></div></div>'+
@@ -2211,7 +2232,7 @@ function rpSide(cur){
   (opened.length?('<div class=ds-drawer-sec><div class=t-label>Инциденты, открытые к этому моменту</div>'+
     '<div class=ds-ev-list>'+opened.slice(-6).reverse().map(i=>
      '<div class=case-inc><span class=case-inc-id>#'+i.id+'</span>'+sevBadge(i.sev)+
-     '<span class=sub>@'+esc(i.actor)+' · '+i.n+' детектов</span><span class=grow></span>'+
+     '<span class=sub>@'+esc(i.actor)+' · '+plural(i.n,'детект','детекта','детектов')+'</span><span class=grow></span>'+
      '<button class="btn ghost xs" onclick="caseGoInc('+i.id+')">Открыть</button></div>').join('')+'</div></div>'):'');}
 
 function rpToggle(){

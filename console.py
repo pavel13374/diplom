@@ -935,20 +935,43 @@ def api_red_result():
         _flog.error("не удалось прочитать очередь команд — статус запуска "
                     "красной команды не обновится", exc_info=True,
                     extra={"ctx": {"command_id": cid}})
+    # ЧТО ИМЕННО ПРИЛЕТЕЛО ПОСЛЕ ЗАПУСКА.
+    #
+    # Отбор шёл по seen_real инцидента — то есть по времени, когда инцидент
+    # УВИДЕЛИ ВПЕРВЫЕ. Детекты, подклеившиеся к уже существующему инциденту
+    # того же актора (окно корреляции — часы), в результат не попадали
+    # вовсе, и экран запуска сценариев писал «детектов 0» после атаки,
+    # которая на самом деле подняла пять тревог. На демонстрации это
+    # выглядит как провал детектирования.
+    #
+    # Считаем по отметке реального времени каждого алерта: инцидент
+    # попадает в результат, если после запуска в нём появился хотя бы один
+    # детект, и показываем ровно количество новых, а не все за всю жизнь.
+    cut = ts - 1
     incs = []
     for i in _COR.list(200):
-        if (i.get("seen_real") or 0) >= ts - 1:
-            incs.append({
-                "id": i["id"], "actor": i.get("actor"),
-                "risk": round(i.get("max_risk", 0), 2),
-                "severity": i.get("severity"),
-                "techniques": i.get("techniques", [])[:8],
-                "tactics": i.get("tactics", [])[:8],
-                "n_alerts": len(i.get("alerts", [])),
-                "is_campaign": bool(i.get("is_campaign")),
-                "seen_real": i.get("seen_real"),
-                "start_ts": i.get("start_ts"),
-            })
+        alerts = i.get("alerts", [])
+        fresh = [a for a in alerts if (a.get("seen_real") or 0) >= cut]
+        # Инциденты, поднятые до появления отметок (пережившие рестарт),
+        # берём по прежнему признаку — иначе они исчезнут из результата.
+        if not fresh and (i.get("seen_real") or 0) < cut:
+            continue
+        n_new = len(fresh) if fresh else len(alerts)
+        last_seen = max([a.get("seen_real") or 0 for a in fresh] or
+                        [i.get("touched_real") or i.get("seen_real") or 0])
+        incs.append({
+            "id": i["id"], "actor": i.get("actor"),
+            "risk": round(i.get("max_risk", 0), 2),
+            "severity": i.get("severity"),
+            "techniques": i.get("techniques", [])[:8],
+            "tactics": i.get("tactics", [])[:8],
+            "n_alerts": n_new,
+            "n_alerts_total": len(alerts),
+            "is_new": (i.get("seen_real") or 0) >= cut,
+            "is_campaign": bool(i.get("is_campaign")),
+            "seen_real": last_seen,
+            "start_ts": i.get("start_ts"),
+        })
     incs.sort(key=lambda x: -(x["seen_real"] or 0))
     return jsonify({"cmd_status": cmd_status, "cmd_result": cmd_result,
                     "detections": sum(x["n_alerts"] for x in incs),
