@@ -105,11 +105,20 @@ class Correlator:
         iid = self._open_by_actor.get(actor)
         inc = self.incidents.get(iid) if iid else None
 
-        # закрыть окно, если прошло больше window_min
+        # ЗАКРЫТЬ ОКНО, ЕСЛИ РАЗРЫВ БОЛЬШЕ window_min — В ЛЮБУЮ СТОРОНУ.
+        #
+        # Сравнение шло только вперёд: (t - last) > window. Симулированное
+        # время не монотонно — при перезапуске мира оно откатывается назад, и
+        # тогда разрыв получался отрицательным, условие не выполнялось, окно
+        # не закрывалось. События разных симулированных дней склеивались в
+        # один инцидент: в живом стенде нашёлся такой с началом 14 сентября,
+        # концом 11 августа и семью репозиториями. Цепочка атаки в нём
+        # бессмысленна, а метрика ложных срабатываний считает его окно
+        # пересекающимся почти с любым эпизодом.
         if inc is not None and t is not None:
             last = _parse(inc["last_ts"])
-            if last and (t - last).total_seconds() > self.window_min * 60:
-                log.debug("окно инцидента закрыто по таймауту",
+            if last and abs((t - last).total_seconds()) > self.window_min * 60:
+                log.debug("окно инцидента закрыто по разрыву во времени",
                           extra={"ctx": {"incident_id": inc["id"], "actor": actor,
                                          "gap_min": round((t - last).total_seconds() / 60, 1),
                                          "window_min": self.window_min}})
@@ -129,7 +138,15 @@ class Correlator:
             self.incidents[iid] = inc
             self._open_by_actor[actor] = iid
 
-        inc["last_ts"] = ts
+        # Границы окна — минимум и максимум, а не «последнее присвоенное».
+        # Внутри окна события тоже приходят не строго по возрастанию
+        # симулированного времени.
+        if _parse(ts) and _parse(inc["last_ts"]) and _parse(ts) < _parse(inc["last_ts"]):
+            inc["start_ts"] = min(inc["start_ts"], ts)
+        else:
+            inc["last_ts"] = ts
+        if _parse(ts) and _parse(inc["start_ts"]) and _parse(ts) < _parse(inc["start_ts"]):
+            inc["start_ts"] = ts
         inc["max_risk"] = max(inc["max_risk"], det.get("risk", 0))
         proj = ev.get("project")
         if proj and proj not in inc["repos"]:
