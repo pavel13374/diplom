@@ -717,6 +717,37 @@ def api_incident(iid):
     for a in data.get("alerts", []):
         a["url"] = _alert_url(a)
     data["ioc"] = ioc_mod.flat(ioc_mod.from_incident(i))
+
+    # ПОСЛУЖНОЙ СПИСОК ПРАВИЛ ЭТОГО ИНЦИДЕНТА.
+    #
+    # Измерено на живом стенде: из 21 разобранного инцидента аналитик
+    # ошибся в четырёх, и ВСЕ ТРИ вердикта «ложное» оказались настоящими
+    # атаками. Подтвердить атаку по экрану можно — там цепочка, слои,
+    # техники. А чтобы её ОТКЛОНИТЬ, на экране не хватало главного: как
+    # это правило вело себя раньше. Одиночное срабатывание правила,
+    # которое до этого шесть раз показало настоящую атаку, — совсем не то
+    # же самое, что срабатывание правила, которое ошибается через раз.
+    # Цена ошибки здесь несимметрична: лишняя тревога стоит времени,
+    # пропуск — инцидента, а три ложных вердикта ещё и глушат правило.
+    try:
+        fp_v, tp_v = rule_verdict_stats()
+        with _LOCK:
+            fired = dict(_STATE["fired_rule"])
+        seen, track = set(), []
+        for a in i.get("alerts", []):
+            rid = a.get("rule_id")
+            if not rid or rid in seen:
+                continue
+            seen.add(rid)
+            tp, fp = tp_v.get(rid, 0), fp_v.get(rid, 0)
+            track.append({"rule_id": rid, "fired": fired.get(rid, 0),
+                          "tp": tp, "fp": fp,
+                          "precision": (round(tp / (tp + fp), 2) if (tp + fp) else None)})
+        track.sort(key=lambda x: -(x["tp"] + x["fp"]))
+        data["rule_track"] = track
+    except Exception:
+        _flog.error("не удалось собрать послужной список правил", exc_info=True)
+        data["rule_track"] = []
     # реальный результат «Реагировать» — из очереди команд (ставит мир)
     rc = i.get("_resp_cid")
     if rc and not i.get("responded"):

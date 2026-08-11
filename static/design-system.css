@@ -2084,3 +2084,13 @@ main:focus{outline:none}
    ответ на действие пользователя, а не очередная панель на экране. */
 .red-result{border-left:3px solid var(--accent)}
 .red-result>.row{padding:0 var(--pad-x)}
+
+/* Послужной список правила рядом с кнопками вердикта: сколько раз это
+   правило уже оказывалось настоящей атакой, а сколько — ложным. */
+.rt-row{display:flex;align-items:baseline;gap:var(--sp-3);min-height:26px;
+  padding:3px 0;border-bottom:1px solid var(--line);font-size:var(--fs-sm)}
+.rt-row:last-child{border-bottom:0}
+.rt-id{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-1);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.rt-v{font-size:var(--fs-xs);white-space:nowrap;color:var(--text-2)}
+.rt-v.ok{color:var(--success)} .rt-v.warn{color:var(--sev-medium)} .rt-v.bad{color:var(--sev-critical)}
