@@ -68,8 +68,12 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #: Пороги действия, по которым строится кривая.
 THRESHOLDS = [0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95]
 
-#: Рабочая точка из metrics.py — «действенный инцидент».
-CURRENT_THRESHOLD = 0.6
+#: Рабочая точка продукта. Берётся из конфигурации, а не переписывается
+#: здесь: скрипт, который сам себе назначает «текущий порог», рано или
+#: поздно начинает сравнивать рекомендацию с порогом, которого в продукте
+#: уже нет — ровно так 0.6 и пережил свою правку.
+import config as _cfg
+CURRENT_THRESHOLD = getattr(_cfg, "ACTION_THRESHOLD", 0.6)
 
 
 def collect(seeds, evasions, days, per_day):
@@ -124,6 +128,12 @@ def collect(seeds, evasions, days, per_day):
                 inc = cor.incidents[iid]
                 incidents.append({
                     "risk": inc.get("risk", inc.get("max_risk", 0.0)),
+                    # Правило пропускает инцидент в очередь мимо порога
+                    # (correlator.actionable). Флаг нужно тащить с собой:
+                    # без него кривая мерила бы политику, которой в
+                    # продукте нет.
+                    "has_rule": any(a.get("layer") == "rules"
+                                    for a in inc.get("alerts", [])),
                     "eps": d["eps"],
                     "first_hit": d["first_hit"],
                 })
@@ -154,9 +164,19 @@ def _span(ts_list):
     return max((max(ok) - min(ok)).total_seconds() / 86400.0, 1.0 / 24)
 
 
-def evaluate(incidents, ep_all, ep_first, span_days, thr):
-    """Метрики очереди при заданном пороге действия."""
-    queue = [i for i in incidents if i["risk"] >= thr]
+def evaluate(incidents, ep_all, ep_first, span_days, thr, bypass=True):
+    """Метрики очереди при заданном пороге действия.
+
+    `bypass` — пускать ли инцидент со сработавшим правилом мимо порога.
+    Обе политики считаются ЯВНО, а не через correlator.actionable: тот
+    смотрит в конфигурацию, и скрипт, который меряет «что было бы, если», не
+    должен зависеть от того, что включено сейчас. Сравнение двух политик —
+    главное, что показывает этот замер.
+    """
+    if bypass:
+        queue = [i for i in incidents if i["risk"] >= thr or i.get("has_rule")]
+    else:
+        queue = [i for i in incidents if i["risk"] >= thr]
     caught, mttd = set(), []
     tp = 0
     for i in queue:
@@ -284,7 +304,16 @@ def main():
           f"sim-дней: {span:.1f}")
     print("-" * 92)
 
-    points = [evaluate(incidents, ep_all, ep_first, span, t) for t in THRESHOLDS]
+    # Обе политики считаются ВСЕГДА, независимо от того, какая включена в
+    # конфигурации: панель в консоли показывает их рядом, и цена обхода
+    # должна быть видна и тогда, когда обход выключен.
+    by_thr = [evaluate(incidents, ep_all, ep_first, span, t, bypass=False)
+              for t in THRESHOLDS]
+    by_bypass = [evaluate(incidents, ep_all, ep_first, span, t, bypass=True)
+                 for t in THRESHOLDS]
+    bypass_on = bool(getattr(_cfg, "RULE_BYPASSES_THRESHOLD", False))
+    points = by_bypass if bypass_on else by_thr
+    points_alt = by_thr if bypass_on else by_bypass
 
     print(f"  {'порог':>6} {'инц/день':>9} {'очередь':>8} {'precision':>10} "
           f"{'эпизодный recall':>22} {'MTTD мед.':>10}")
@@ -356,6 +385,35 @@ def main():
                 print(f"  Текущий порог {CURRENT_THRESHOLD} — разумная точка "
                       f"для этой ёмкости.")
 
+    # ---------------- порог против обхода по правилу ----------------
+    #
+    # Замер выше показывает почти горизонтальную кривую, и это не дефект
+    # графика: инцидент со сработавшим правилом попадает в очередь мимо
+    # порога, а таких — почти все. Значит порогом управляется только то,
+    # что пришло от поведения и модели. Настоящая развилка не «какой
+    # порог», а «пускать ли правила в обход», и стоит она вот столько.
+    spread = max(p["per_day"] for p in by_bypass) - min(p["per_day"] for p in by_bypass)
+    print()
+    print("  ПОРОГ ПРОТИВ ОБХОДА ПО ПРАВИЛУ")
+    print(f"  От {THRESHOLDS[0]:.2f} до {THRESHOLDS[-1]:.2f} очередь меняется на "
+          f"{spread:.1f} инц./день — порог сам по себе почти не управляет нагрузкой.")
+    cur_b = next((p for p in by_bypass
+                  if abs(p["threshold"] - CURRENT_THRESHOLD) < 1e-9), None)
+    cur_r = next((p for p in by_thr
+                  if abs(p["threshold"] - CURRENT_THRESHOLD) < 1e-9), None)
+    if cur_b and cur_r:
+        print(f"  {'политика':<34}{'очередь':>9}{'полнота':>18}{'настоящих':>12}")
+        print(f"  {'только риск >= ' + f'{CURRENT_THRESHOLD:.2f}':<34}"
+              f"{cur_r['per_day']:>7.1f}/д{cur_r['caught']:>10}/{cur_r['episodes']:<4}"
+              f"{cur_r['precision'] * 100:>10.1f}%")
+        print(f"  {'то же, но правило мимо порога':<34}"
+              f"{cur_b['per_day']:>7.1f}/д{cur_b['caught']:>10}/{cur_b['episodes']:<4}"
+              f"{cur_b['precision'] * 100:>10.1f}%")
+        d_q = cur_b["per_day"] - cur_r["per_day"]
+        d_e = cur_b["caught"] - cur_r["caught"]
+        print(f"  Обход стоит +{d_q:.1f} инц./день и приносит +{d_e} эпизодов "
+              f"({cur_r['recall'] * 100:.0f}% -> {cur_b['recall'] * 100:.0f}%).")
+
     out_base = os.path.join(BASE, args.out) if not os.path.isabs(args.out) else args.out
     os.makedirs(os.path.dirname(out_base), exist_ok=True)
     svg(points, args.capacity, out_base + ".svg")
@@ -363,6 +421,12 @@ def main():
         json.dump({"seeds": seeds, "evasions": list(evasions),
                    "days": args.days, "per_day_events": args.per_day,
                    "capacity": args.capacity, "sim_days": round(span, 2),
+                   # Порог продукта на момент замера — иначе панель в консоли
+                   # не сможет отметить «сейчас» и сравнить с рекомендацией.
+                   "current_threshold": CURRENT_THRESHOLD,
+                   "built_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                   "bypass": bypass_on,
+                   "points_alt": points_alt,
                    "episodes": len(ep_all), "incidents_total": len(incidents),
                    "points": points}, f, ensure_ascii=False, indent=2)
     print("=" * 92)

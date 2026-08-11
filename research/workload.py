@@ -412,6 +412,64 @@ class FakeGL:
         return f
 
 
+class _PinnedClock:
+    """Часы, которые стоят там, где их поставили.
+
+    Обычный SimClock отсчитывает симулированное время от РЕАЛЬНОГО
+    секундомера: `start_sim + (monotonic() - start_real) * scale`. Для живого
+    стенда это правильно, для офлайн-эксперимента — источник невоспроизводимости.
+    Прогон длится то сорок секунд, то пятьдесят, и на столько же разъезжаются
+    метки времени событий, а вместе с ними час суток, порядок в окне
+    корреляции и всё, что от них зависит.
+
+    Интерфейс повторяет SimClock ровно в той части, которую спрашивает
+    движок; методы досчёта времени (fast_forward, set_scale) в офлайне
+    не нужны и молча ничего не делают.
+    """
+
+    def __init__(self, start_sim, scale=1.0, work_start=10, work_end=18,
+                 work_days=(0, 1, 2, 3, 4), fast_forward_offhours=False,
+                 api_min_pause=0.0, max_real_sleep=0.0):
+        self.start_sim = start_sim
+        self.scale = scale
+        self.work_start = work_start
+        self.work_end = work_end
+        self.work_days = list(work_days)
+        self.fast_forward_offhours = fast_forward_offhours
+        self.api_min_pause = api_min_pause
+        self.max_real_sleep = max_real_sleep
+        self._t = start_sim
+
+    def pin(self, t):
+        self._t = t
+
+    def now(self):
+        return self._t
+
+    def today(self):
+        return self._t.date()
+
+    def sleep(self, sim_seconds=0):
+        return None
+
+    def is_work_time(self, now=None):
+        now = now or self._t
+        return (now.weekday() in self.work_days
+                and self.work_start <= now.hour < self.work_end)
+
+    def next_work_start(self, now=None):
+        return now or self._t
+
+    def fast_forward_to(self, target_sim):
+        return None
+
+    def fast_forward(self, sim_seconds):
+        return None
+
+    def set_scale(self, new_scale):
+        self.scale = new_scale
+
+
 def build_workload(evasion="noisy", seed=42, days=12, per_day=140, campaigns=None):
     """Свежий временный стор: нормальный фон + ATT&CK-кампании профиля `evasion`.
 
@@ -420,15 +478,20 @@ def build_workload(evasion="noisy", seed=42, days=12, per_day=140, campaigns=Non
     import config, simclock, events, eventstore
     config.OFFLINE_MODE = True
     config.TELEGRAM = {"enabled": False}
-    config.seed_all()
+    # Сид ПЕРЕДАЁТСЯ. Раньше здесь стояло `config.seed_all()` без аргумента,
+    # то есть всегда SEED=42: фон менялся от сида к сиду, а кампании были
+    # ОДНИ И ТЕ ЖЕ. «Три сида» в отчёте означали три прогона одной и той же
+    # атаки, и разброс между сидами получался заниженным.
+    config.seed_all(seed)
     tmp = tempfile.mkdtemp()
     config.EVENT_LOG = {"enabled": True, "file": os.path.join(tmp, "e.jsonl")}
     config.EVENT_STORE = {"enabled": True, "path": os.path.join(tmp, "e.db")}
     start = datetime(2026, 6, 1, 10, 0, 0)
-    simclock.init(simclock.SimClock(start_sim=start, scale=1.0,
-                                    work_start=10, work_end=18,
-                                    work_days=[0, 1, 2, 3, 4],
-                                    fast_forward_offhours=False))
+    clock = _PinnedClock(start_sim=start, scale=1.0,
+                         work_start=10, work_end=18,
+                         work_days=[0, 1, 2, 3, 4],
+                         fast_forward_offhours=False)
+    simclock.init(clock)
     simclock.sleep = lambda *a, **k: None
     events.init()
 
@@ -463,6 +526,14 @@ def build_workload(evasion="noisy", seed=42, days=12, per_day=140, campaigns=Non
         day_idx = 1 + int(i * (days - 2) / n)
         hour = 9 + (i * 5) % 11          # разные часы, чтобы не совпадали
         day = start + timedelta(days=day_idx, hours=hour - start.hour)
+        # Часы переставляются В ОБЪЕКТЕ, а не только в функции модуля.
+        # Подмены simclock.now не хватало: код, добравшийся до часов через
+        # simclock.get(), получал время от РЕАЛЬНОГО секундомера, и метки
+        # событий уезжали ровно на длительность прогона. Один и тот же сид
+        # давал разные датасеты — замерено 887–896 событий вместо
+        # постоянного числа, и метрики гуляли на несколько процентных
+        # пунктов.
+        clock.pin(day)
         simclock.now = lambda _t=day: _t
         red.run_campaign(key, evasion=evasion)
     events.close()

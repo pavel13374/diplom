@@ -347,7 +347,10 @@ class AnomalyActivity:
         """
         target = random.choice(["maria.ivanova", "dmitry.kozlov", "anna.smirnova"])
         ok = actor.gl.create_named_token(USERS[target]["id"],
-                                         name="ci-temp-" + datetime.now().strftime("%H%M%S"),
+                                         # Имя токена берётся по СИМУЛИРОВАННЫМ
+                                         # часам: реальные делали содержимое
+                                         # события разным при каждом прогоне.
+                                         name="ci-temp-" + simclock.now().strftime("%H%M%S"),
                                          scopes=["api"])
         events.emit("token_create", actor=actor.username, role=actor.role,
                     target=target, message="created additional API token",

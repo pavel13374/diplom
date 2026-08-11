@@ -72,10 +72,10 @@
       "status": "stable",
       "author": "maria.ivanova",
       "created": "2026-08-11",
-      "modified": "2026-08-11",
+      "modified": "2026-08-13",
       "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "malicious_vbscript_execution_via_wscript": {
       "path": "rules/execution/malicious_vbscript_execution_via_wscript.yml",
@@ -204,10 +204,10 @@
       "status": "experimental",
       "author": "pavel.morozov",
       "created": "2026-08-13",
-      "modified": "2026-08-13",
-      "fp_rate": 1,
+      "modified": "2026-08-12",
+      "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "dll_side_loading_from_application_direct": {
       "path": "rules/persistence/dll_side_loading_from_application_direct.yml",
@@ -279,10 +279,10 @@
       "path": "rules/persistence/linux_cron_job_persistence.yml",
       "tactic": "persistence",
       "status": "experimental",
-      "author": "nikita.orlov",
-      "created": "2026-08-11",
-      "modified": "2026-08-17",
-      "fp_rate": 0,
+      "author": "sergey.volkov",
+      "created": "2026-08-13",
+      "modified": "2026-08-13",
+      "fp_rate": 2,
       "noisy": false,
       "tunes": 0
     },
@@ -292,7 +292,7 @@
       "status": "experimental",
       "author": "dmitry.kozlov",
       "created": "2026-08-19",
-      "modified": "2026-09-11",
+      "modified": "2026-08-13",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 2
@@ -399,11 +399,11 @@
     "ntds.dit_extraction_via_ntdsutil": {
       "path": "rules/credential_access/ntds.dit_extraction_via_ntdsutil.yml",
       "tactic": "credential_access",
-      "status": "stable",
-      "author": "dmitry.kozlov",
-      "created": "2026-07-29",
-      "modified": "2026-08-16",
-      "fp_rate": 0,
+      "status": "experimental",
+      "author": "artem.lebedev",
+      "created": "2026-08-12",
+      "modified": "2026-08-12",
+      "fp_rate": 3,
       "noisy": false,
       "tunes": 0
     },
@@ -457,10 +457,10 @@
       "status": "stable",
       "author": "dmitry.kozlov",
       "created": "2026-08-05",
-      "modified": "2026-08-11",
+      "modified": "2026-08-12",
       "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "_history_clear": {
       "path": "rules/defense_evasion/linux_log_tampering_/_history_clear.yml",
@@ -520,13 +520,13 @@
     "rundll32_suspicious_export_execution": {
       "path": "rules/defense_evasion/rundll32_suspicious_export_execution.yml",
       "tactic": "defense_evasion",
-      "status": "experimental",
-      "author": "maria.ivanova",
+      "status": "stable",
+      "author": "dmitry.kozlov",
       "created": "2026-08-11",
-      "modified": "2026-08-11",
-      "fp_rate": 2,
+      "modified": "2026-08-13",
+      "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "suspicious_cmd_execution_via_office_appl": {
       "path": "rules/execution/suspicious_cmd_execution_via_office_appl.yml",
@@ -564,13 +564,13 @@
     "logon_script_persistence_via_registry": {
       "path": "rules/persistence/logon_script_persistence_via_registry.yml",
       "tactic": "persistence",
-      "status": "stable",
-      "author": "maria.ivanova",
-      "created": "2026-08-10",
-      "modified": "2026-08-13",
-      "fp_rate": 1,
+      "status": "experimental",
+      "author": "olga.novak",
+      "created": "2026-08-12",
+      "modified": "2026-08-12",
+      "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "sam_database_credential_extraction": {
       "path": "rules/credential_access/sam_database_credential_extraction.yml",
@@ -666,7 +666,7 @@
       "status": "stable",
       "author": "sergey.volkov",
       "created": "2026-08-10",
-      "modified": "2026-08-18",
+      "modified": "2026-08-12",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 1
@@ -688,10 +688,10 @@
       "status": "experimental",
       "author": "maria.ivanova",
       "created": "2026-08-12",
-      "modified": "2026-08-17",
+      "modified": "2026-08-11",
       "fp_rate": 0,
       "noisy": false,
-      "tunes": 0
+      "tunes": 1
     },
     "shadow_access": {
       "path": "rules/credential_access/linux_/etc/shadow_access.yml",
@@ -740,11 +740,11 @@
     "regsvr32_scriptlet_execution_(squiblydoo": {
       "path": "rules/defense_evasion/regsvr32_scriptlet_execution_(squiblydoo.yml",
       "tactic": "defense_evasion",
-      "status": "stable",
-      "author": "pavel.morozov",
-      "created": "2026-08-19",
-      "modified": "2026-08-19",
-      "fp_rate": 5,
+      "status": "experimental",
+      "author": "maria.ivanova",
+      "created": "2026-08-13",
+      "modified": "2026-08-13",
+      "fp_rate": 8,
       "noisy": false,
       "tunes": 0
     },
@@ -911,7 +911,7 @@
       "modified": "2026-08-11",
       "fp_rate": 0,
       "noisy": false,
-      "tunes": 1
+      "tunes": 2
     },
     "volume_shadow_copy_deletion": {
       "path": "rules/impact/volume_shadow_copy_deletion.yml",
@@ -924,25 +924,14 @@
       "noisy": false,
       "tunes": 0
     },
-    "network_service_scanning": {
-      "path": "rules/discovery/network_service_scanning.yml",
-      "tactic": "discovery",
-      "status": "stable",
-      "author": "olga.novak",
-      "created": "2026-08-11",
-      "modified": "2026-08-11",
-      "fp_rate": 4,
-      "noisy": false,
-      "tunes": 0
-    },
     "process_injection_via_createremotethread": {
       "path": "rules/privilege_escalation/process_injection_via_createremotethread.yml",
       "tactic": "privilege_escalation",
       "status": "experimental",
-      "author": "sergey.volkov",
+      "author": "gleb.nikitin",
       "created": "2026-08-11",
       "modified": "2026-08-11",
-      "fp_rate": 5,
+      "fp_rate": 4,
       "noisy": false,
       "tunes": 0
     },
@@ -982,11 +971,11 @@
     "signed_script_proxy_(pubprn)": {
       "path": "rules/defense_evasion/signed_script_proxy_(pubprn).yml",
       "tactic": "defense_evasion",
-      "status": "stable",
-      "author": "pavel.morozov",
-      "created": "2026-08-17",
-      "modified": "2026-08-17",
-      "fp_rate": 2,
+      "status": "experimental",
+      "author": "viktor.orlov",
+      "created": "2026-08-12",
+      "modified": "2026-08-12",
+      "fp_rate": 5,
       "noisy": false,
       "tunes": 0
     },
@@ -995,9 +984,53 @@
       "tactic": "defense_evasion",
       "status": "experimental",
       "author": "maria.ivanova",
-      "created": "2026-08-17",
-      "modified": "2026-08-17",
+      "created": "2026-08-12",
+      "modified": "2026-08-12",
+      "fp_rate": 1,
+      "noisy": false,
+      "tunes": 0
+    },
+    "keylogging_hook_installation": {
+      "path": "rules/collection/keylogging_hook_installation.yml",
+      "tactic": "collection",
+      "status": "stable",
+      "author": "roman.zaytsev",
+      "created": "2026-08-13",
+      "modified": "2026-08-13",
       "fp_rate": 5,
+      "noisy": false,
+      "tunes": 0
+    },
+    "webshell_access_pattern": {
+      "path": "rules/initial_access/webshell_access_pattern.yml",
+      "tactic": "initial_access",
+      "status": "experimental",
+      "author": "maria.ivanova",
+      "created": "2026-08-11",
+      "modified": "2026-08-11",
+      "fp_rate": 4,
+      "noisy": false,
+      "tunes": 0
+    },
+    "resource_hijacking_—_cryptominer": {
+      "path": "rules/impact/resource_hijacking_—_cryptominer.yml",
+      "tactic": "impact",
+      "status": "experimental",
+      "author": "dmitry.kozlov",
+      "created": "2026-08-12",
+      "modified": "2026-08-12",
+      "fp_rate": 2,
+      "noisy": false,
+      "tunes": 0
+    },
+    "registry_run_key_modification": {
+      "path": "rules/persistence/registry_run_key_modification.yml",
+      "tactic": "persistence",
+      "status": "stable",
+      "author": "vera.pavlova",
+      "created": "2026-08-13",
+      "modified": "2026-08-13",
+      "fp_rate": 7,
       "noisy": false,
       "tunes": 0
     }
@@ -1007,7 +1040,7 @@
   "oncall_index": 12,
   "issue_seq": 1000,
   "release_seq": 4,
-  "campaign_seq": 103,
+  "campaign_seq": 105,
   "pto": {
     "2026-07-08": "maria.ivanova",
     "2026-07-22": "maria.ivanova",

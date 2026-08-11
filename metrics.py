@@ -23,6 +23,7 @@ import collections
 from datetime import datetime
 
 import stats
+import config
 import eventstore
 import run_defense
 
@@ -155,16 +156,17 @@ def compute():
         cor.add(r, det)
     incidents = list(cor.incidents.values())
 
-    ACTION_THRESHOLD = 0.6
-
-    def _actionable(inc):
-        # Порог берётся от СЛИТОГО риска инцидента, а не от максимума по
-        # событиям: свидетельства разных слоёв в многошаговой кампании
-        # приходят на РАЗНЫХ шагах, и максимум их не складывает
-        # (см. correlator.Correlator._incident_risk).
-        if inc.get("risk", inc.get("max_risk", 0)) >= ACTION_THRESHOLD:
-            return True
-        return any(a.get("layer") == "rules" for a in inc.get("alerts", []))
+    # Порог берётся от СЛИТОГО риска инцидента, а не от максимума по
+    # событиям: свидетельства разных слоёв в многошаговой кампании приходят
+    # на РАЗНЫХ шагах, и максимум их не складывает
+    # (см. correlator.Correlator._incident_risk).
+    #
+    # Само правило «дошёл до очереди» живёт в correlator.actionable — там же,
+    # откуда его берёт research/workload_curve.py. Две копии этого условия
+    # успели разойтись: кривая порога считала по одному правилу, метрика по
+    # другому, и рекомендация кривой не совпадала с поведением продукта.
+    ACTION_THRESHOLD = config.ACTION_THRESHOLD
+    _actionable = correlator.actionable
 
     ep_windows = collections.defaultdict(list)
     for ep in episodes.values():

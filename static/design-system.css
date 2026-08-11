@@ -520,10 +520,39 @@ a:hover,.link:hover{text-decoration:underline}
 .dash-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gutter)}
 .dash-dyn{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
   gap:var(--gutter);align-items:start}
-.spark{width:100%;height:80px;display:block}
+/* Детекты во времени: шкала слева, поле, подписи времени и легенда.
+   Оси живут в обычной вёрстке, а не в SVG: холст растянут
+   preserveAspectRatio=none, и любой текст внутри него поехал бы вместе
+   с полем. Ширина шкалы (34px) повторена в отступе подписей и легенды —
+   иначе они не совпадут с началом поля. */
+.pulse{display:flex;flex-direction:column;gap:6px}
+.pulse-body{display:flex;gap:8px;align-items:stretch}
+.pulse-y{width:26px;height:118px;display:flex;flex-direction:column;
+  justify-content:space-between;text-align:right;
+  font-size:var(--fs-xs);color:var(--text-3);font-variant-numeric:tabular-nums}
+.pulse-plot{flex:1;min-width:0;height:118px;
+  border-left:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pulse-x,.pulse-leg{padding-left:34px;font-size:var(--fs-xs);color:var(--text-3)}
+.pulse-x{display:flex;justify-content:space-between;
+  font-variant-numeric:tabular-nums}
+.pulse-leg{display:flex;gap:16px;flex-wrap:wrap}
+.pulse-leg b{color:var(--text-1);font-weight:var(--fw-medium);
+  font-variant-numeric:tabular-nums}
+.pulse-leg i{width:8px;height:8px;border-radius:2px;
+  display:inline-block;margin-right:6px}
+.lg-critical{background:var(--sev-critical)}
+.lg-high{background:var(--sev-high)}
+.lg-medium{background:var(--sev-medium)}
+.lg-low{background:var(--sev-low)}
+.pulse-grid{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.spark{width:100%;height:118px;display:block}
 .spark-base{stroke:var(--line-strong);stroke-width:.4;vector-effect:non-scaling-stroke}
 .spark-bar{fill:var(--accent);cursor:crosshair}
-.spark-bar:hover{fill:var(--accent-text)}
+.sb-critical{fill:var(--sev-critical)}
+.sb-high{fill:var(--sev-high)}
+.sb-medium{fill:var(--sev-medium)}
+.sb-low{fill:var(--sev-low)}
+.spark g:hover .spark-bar{opacity:.72}
 @media(max-width:1200px){
   .dash{grid-template-columns:1fr}
   .dash-main{grid-row:auto}
@@ -623,6 +652,7 @@ a:hover,.link:hover{text-decoration:underline}
 .b-high{color:var(--sev-high)}
 .b-med {color:var(--sev-medium)}
 .b-low {color:var(--sev-low)}
+.b-ok  {color:var(--success)}
 .b-camp{color:var(--text-3)}
 .ly,.ly.r,.ly.u{color:var(--text-3);font-size:var(--fs-2xs);
   letter-spacing:.05em;white-space:nowrap}
@@ -1881,6 +1911,65 @@ svg text{fill:var(--text-3);font-family:var(--font-sans);font-size:var(--fs-2xs)
   border-radius:var(--r-ctl);overflow:auto}
 .figure img{display:block;width:100%;max-width:760px;margin:0 auto}
 .figure figcaption{margin-top:6px;color:#5A6472;font-size:var(--fs-xs)}
+
+/* ============================================================
+   ВЫБОР РАБОЧЕГО ПОРОГА.
+   Две величины разной природы в одном поле: очередь — столбиками по
+   левой шкале, полнота — линией по правой. Обе шкалы в обычной вёрстке
+   по краям поля, как и в графике детектов: холст растянут, текст внутри
+   него поехал бы. Ширина шкал (30px) повторена в отступах подписей.
+   ============================================================ */
+.wl{display:flex;flex-direction:column;gap:6px}
+.wl-body{display:flex;gap:8px;align-items:stretch}
+.wl-y{width:30px;height:170px;display:flex;flex-direction:column;
+  justify-content:space-between;font-size:var(--fs-xs);color:var(--text-3);
+  font-variant-numeric:tabular-nums}
+.wl-l{text-align:right}
+.wl-r{text-align:left}
+.wl-plot{flex:1;min-width:0;height:170px;
+  border-left:1px solid var(--line);border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line)}
+.wl-plot svg{width:100%;height:170px;display:block}
+.wl-bar{fill:var(--accent);opacity:.55}
+.wl-bar.over{fill:var(--sev-critical);opacity:.5}
+.wl-bar.alt{fill:var(--text-3);opacity:.35}
+.wl-cap{stroke:var(--sev-critical);stroke-width:1.5;stroke-dasharray:5 4;
+  vector-effect:non-scaling-stroke}
+.wl-band{fill:var(--success);opacity:.16}
+.wl-line{fill:none;stroke:var(--success);stroke-width:2.5;
+  stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.wl-hit{fill:transparent;cursor:crosshair}
+.wl-hit:hover{fill:var(--text-1);fill-opacity:.06}
+.wl-hit.rec{fill:var(--success);fill-opacity:.08}
+.wl-x{display:flex;padding:0 38px;font-size:var(--fs-xs);color:var(--text-3);
+  font-variant-numeric:tabular-nums}
+.wl-x>span{flex:1;text-align:center}
+.wl-x>span.rec{color:var(--success);font-weight:var(--fw-medium)}
+.wl-x>span.cur{color:var(--text-1);font-weight:var(--fw-medium)}
+.wl-axname{display:flex;justify-content:space-between;padding:0 4px;margin-top:2px;
+  font-size:var(--fs-xs);color:var(--text-3)}
+.wl-axname>span:nth-child(2){color:var(--text-2)}
+.wl-leg{display:flex;gap:16px;flex-wrap:wrap;padding-left:38px;margin-top:2px;
+  font-size:var(--fs-xs);color:var(--text-3)}
+.wl-leg i{width:12px;height:8px;border-radius:2px;display:inline-block;
+  margin-right:6px;vertical-align:middle}
+.lg-bar{background:var(--accent);opacity:.55}
+.lg-alt{background:var(--text-3);opacity:.35}
+.lg-line{background:var(--success);height:3px !important;border-radius:2px}
+.lg-cap{height:0 !important;border-top:2px dashed var(--sev-critical);
+  border-radius:0}
+.wl-tbl{margin-top:var(--sp-3)}
+.wl-tbl td.bad{color:var(--sev-critical)}
+.wl-tbl tr.wl-rec>td{background:var(--success-bg,rgba(60,160,110,.10))}
+.wl-verdict{margin-top:var(--sp-3);padding:10px 12px;
+  border:1px solid var(--line);border-left:3px solid var(--success);
+  border-radius:var(--r-ctl);background:var(--surface-2);
+  color:var(--text-2);line-height:var(--lh-base)}
+.wl-verdict b{color:var(--text-1);font-weight:var(--fw-medium)}
+.wl-verdict.alt{border-left-color:var(--text-3);margin-top:var(--sp-2)}
+@media(max-width:900px){
+  .wl-y,.wl-plot,.wl-plot svg{height:130px}
+}
 
 /* ============================================================
    26. МЕЛКИЕ УТИЛИТЫ РАЗМЕТКИ

@@ -8,6 +8,7 @@ import random
 import logging
 from datetime import datetime
 import config
+import simclock
 from config import PROJECTS, USERS, DELAYS
 from content import commit_messages as cm, comments
 
@@ -35,7 +36,10 @@ class IncidentActivity:
             return False
         self.author.think()
 
-        report_path = f"incidents/{datetime.now().strftime('%Y%m')}/{inc_id}.md"
+        # Путь и дата в отчёте — по СИМУЛИРОВАННЫМ часам. С реальными
+        # артефакты симулированного мира помечались сегодняшним числом,
+        # а содержимое события менялось от запуска к запуску.
+        report_path = f"incidents/{simclock.now().strftime('%Y%m')}/{inc_id}.md"
         report = self._incident_report(inc_id, title, sev)
         if not self.author.push_file(self.pid, report_path, report,
                                      cm.incident_message(sev), branch):
@@ -78,7 +82,7 @@ class IncidentActivity:
 
 **Заголовок:** {title}
 **Severity:** {sev}
-**Обнаружено:** {datetime.now().strftime('%Y-%m-%d %H:%M')}
+**Обнаружено:** {simclock.now().strftime('%Y-%m-%d %H:%M')}
 **Дежурный:** {self.author.name}
 **Затронутый хост:** {host}
 

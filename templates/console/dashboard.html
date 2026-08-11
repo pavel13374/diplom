@@ -122,7 +122,16 @@
         <div class="card mt-3"><h2>Детекты во времени
             <span class=grow></span>
             <span class=sub id=alSparkSub>—</span></h2>
-          <div><svg id=alSpark viewBox="0 0 100 30" preserveAspectRatio=none class=spark></svg></div>
+          <div class=pulse>
+            <div class=pulse-body>
+              <div class=pulse-y id=alSparkY></div>
+              <div class=pulse-plot>
+                <svg id=alSpark viewBox="0 0 100 30" preserveAspectRatio=none class=spark></svg>
+              </div>
+            </div>
+            <div class=pulse-x id=alSparkX></div>
+            <div class=pulse-leg id=alSparkLeg></div>
+          </div>
         </div>
         <div class="card mt-3"><h2>Распределение по уровню риска
             <span class=grow></span>
@@ -337,22 +346,20 @@
       <div class=charts id=trendGrid></div>
 
       <div class="card mt-4">
-        <h2>Полнота против нагрузки на аналитика</h2>
-        <p class=page-sub>Сколько атак доходит до очереди при разной нагрузке на смену.</p>
-        <details class=explain><summary>Как читать график</summary><div>
-          По горизонтали — инцидентов в симулированный день, то есть объём работы смены;
-          по вертикали — доля пойманных эпизодов. Подписи у точек — порог действия,
-          лента — 95% интервал Уилсона. Рабочую точку выбирают там, где начинается плато:
-          правее полнота уже не растёт, а очередь продолжает расти. Штриховая линия —
-          ёмкость смены: всё правее неё разобрано не будет.
+        <h2>Выбор рабочего порога<span class=grow></span>
+          <span class=sub id=wlSub>—</span></h2>
+        <p class=page-sub>Порог действия решает, какой инцидент попадёт в очередь.
+          Ниже — чем платит смена за каждый вариант и что при этом ловится.</p>
+        <details class=explain><summary>Как это замерено</summary><div>
+          Прогон повторяется на нескольких сидах и обоих профилях скрытности; для каждого
+          порога считается доля пойманных эпизодов атак (с 95% интервалом Уилсона),
+          очередь в инцидентах на симулированный день и доля настоящих атак в очереди.
+          Счёт ведётся по инцидентам, а не по событиям: единица работы аналитика —
+          инцидент, один инцидент склеен из нескольких детектов.
           Нагрузка в инцидентах на день нагляднее доли ложных срабатываний: «2%» на потоке
           в 20 тысяч событий — это 400 тревог, а на потоке в 200 — четыре.
         </div></details>
-        <figure class=figure><img src="/api/workload_curve.svg"
-             alt="Кривая полноты обнаружения против нагрузки на аналитика"></figure>
-        <div class="sub mt-2">
-          Перестроить: <code>python research/workload_curve.py --capacity 10</code>
-        </div>
+        <div id=wlPanel><div class="help empty">Замер ещё не построен.</div></div>
       </div>
     </section>
 
@@ -908,32 +915,86 @@ async function pollOverview(){const s=await jget('/api/stats');
    Стало: непрерывная ось от первого детекта до последнего, разбитая на
    равные корзины. Пустые промежутки видны как пустые — именно они и
    составляют динамику. Столбики, а не линия: считаем события за интервал,
-   а линия между двумя замерами подразумевает непрерывную величину. */
+   а линия между двумя замерами подразумевает непрерывную величину.
+
+   Дальше пришлось доделать ещё три вещи.
+
+   Шаг корзины «span/28» давал дробные интервалы вроде «4 ч 17 мин», и
+   границы столбиков приходились на произвольные минуты. Теперь шаг
+   выбирается из лестницы человеческих значений (1, 5, 15, 30 минут, 1, 2,
+   3, 6, 12 часов, сутки, неделя), а сетка выравнивается по местному
+   времени — начало корзины всегда круглое.
+
+   Без шкалы график отвечал только на вопрос «когда», но не «сколько»:
+   высота столбика ни с чем не соотносилась. Появились ось слева, подписи
+   времени снизу и направляющие.
+
+   Столбик одного цвета скрывал главное. Всплеск из тридцати детектов
+   низкого уровня и всплеск из тридцати критических выглядели одинаково,
+   хотя это разные новости. Столбик разложен по уровню риска. */
+const PULSE_STEPS=[1,5,15,30,60,120,180,360,720,1440,2880,10080].map(m=>m*60000);
+const PULSE_SEV=[['critical','Критический'],['high','Высокий'],
+                 ['medium','Средний'],['low','Низкий']];
 function drawPulse(al){
  const svg=$('alSpark'), sub=$('alSparkSub');
+ const yEl=$('alSparkY'), xEl=$('alSparkX'), legEl=$('alSparkLeg');
  if(!svg)return;
- const ts=al.map(a=>Date.parse(String(a.ts_sim||'').replace(' ','T')))
-            .filter(t=>!isNaN(t)).sort((a,b)=>a-b);
- if(!ts.length){svg.innerHTML='';if(sub)sub.textContent='Детектов пока нет.';return;}
- if(ts.length===1){
-  svg.innerHTML='';
-  if(sub)sub.textContent='Один детект · '+fmtDT(ts[0])+' — для динамики нужно хотя бы два.';
-  return;}
- const t0=ts[0], t1=ts[ts.length-1], span=Math.max(1,t1-t0);
- const N=28, step=span/N;
- const buck=new Array(N).fill(0);
- ts.forEach(t=>{buck[Math.min(N-1,Math.floor((t-t0)/step))]++;});
- const mx=Math.max(...buck,1), W=100,H=30,p=3, bw=(W/N)*0.62;
- svg.innerHTML='<line class=spark-base x1="0" y1="'+(H-p)+'" x2="'+W+'" y2="'+(H-p)+'"></line>'+
-  buck.map(function(v,i){
-   if(!v)return '';
-   const h=Math.max(1.2,(v/mx)*(H-2*p));
-   return '<rect class=spark-bar x="'+((i+0.5)*(W/N)-bw/2).toFixed(2)+'" y="'+(H-p-h).toFixed(2)+
-          '" width="'+bw.toFixed(2)+'" height="'+h.toFixed(2)+'">'+
-          '<title>'+v+' '+nAlerts(v).replace(/^\d+\s/,'')+' · '+
-          fmtDT(t0+i*step)+' — '+fmtDT(t0+(i+1)*step)+'</title></rect>';}).join('');
- if(sub)sub.textContent=nAlerts(al.length)+' · '+fmtDT(t0)+' → '+fmtDT(t1)+
-   ' · корзина '+fmtDur(step)+' · пик '+mx+' за корзину';}
+ const clear=function(msg){svg.innerHTML='';
+  if(yEl)yEl.innerHTML='';if(xEl)xEl.innerHTML='';if(legEl)legEl.innerHTML='';
+  if(sub)sub.textContent=msg;};
+ const pts=al.map(function(a){
+   return {t:Date.parse(String(a.ts_sim||'').replace(' ','T')),s:sevOf(a.risk)};})
+  .filter(p=>!isNaN(p.t)).sort((a,b)=>a.t-b.t);
+ if(!pts.length){clear('Детектов пока нет.');return;}
+ if(pts.length===1){
+  clear('Один детект · '+fmtDT(pts[0].t)+' — для динамики нужно хотя бы два.');return;}
+ const t0=pts[0].t, t1=pts[pts.length-1].t, span=Math.max(1,t1-t0);
+ // Шаг: самый мелкий из лестницы, при котором корзин не больше тридцати двух.
+ let step=PULSE_STEPS.find(s=>span/s<=32)||PULSE_STEPS[PULSE_STEPS.length-1];
+ // Выравнивание по местному времени: floor по UTC поставил бы границу
+ // суточной корзины на полночь по Гринвичу, а не на полночь на часах.
+ const tzo=new Date().getTimezoneOffset()*60000;
+ const start=Math.floor((t0-tzo)/step)*step+tzo;
+ const N=Math.min(64,Math.max(1,Math.ceil((t1-start+1)/step)));
+ const buck=[];for(let i=0;i<N;i++)buck.push({critical:0,high:0,medium:0,low:0,n:0});
+ const totals={critical:0,high:0,medium:0,low:0};
+ pts.forEach(function(p){
+  const i=Math.min(N-1,Math.max(0,Math.floor((p.t-start)/step)));
+  buck[i][p.s]++;buck[i].n++;totals[p.s]++;});
+ const mx=Math.max.apply(null,buck.map(b=>b.n).concat([1]));
+ // Верх шкалы — круглое число не ниже пика: 7 превращается в 8, 23 — в 25.
+ const nice=function(v){const p=Math.pow(10,Math.floor(Math.log10(v)));
+  const k=v/p;return (k<=1?1:k<=2?2:k<=2.5?2.5:k<=5?5:10)*p;};
+ const top=Math.max(1,nice(mx));
+ const W=100,H=30,gap=Math.min(0.35,(W/N)*0.28),bw=Math.max(0.6,(W/N)-gap);
+ let g='';
+ [0.25,0.5,0.75].forEach(function(f){
+  g+='<line class=pulse-grid x1="0" x2="'+W+'" y1="'+(H*f).toFixed(2)+
+     '" y2="'+(H*f).toFixed(2)+'" />';});
+ const bars=buck.map(function(b,i){
+  if(!b.n)return '';
+  const x=(i*(W/N)+gap/2).toFixed(3);
+  const parts=PULSE_SEV.filter(s=>b[s[0]]>0)
+    .map(s=>b[s[0]]+' '+s[1].toLowerCase()).join(', ');
+  let y=H,out='';
+  // Снизу вверх от низкого к критическому: тяжёлое сверху, как в легенде.
+  PULSE_SEV.slice().reverse().forEach(function(s){
+   const v=b[s[0]];if(!v)return;
+   const h=(v/top)*H;y-=h;
+   out+='<rect class="spark-bar sb-'+s[0]+'" x="'+x+'" y="'+y.toFixed(3)+
+        '" width="'+bw.toFixed(3)+'" height="'+h.toFixed(3)+'" />';});
+  return '<g><title>'+esc(fmtDT(start+i*step)+' — '+fmtDT(start+(i+1)*step)+
+         '\n'+nAlerts(b.n)+(parts?': '+parts:''))+'</title>'+out+'</g>';}).join('');
+ svg.innerHTML=g+bars;
+ if(yEl)yEl.innerHTML='<span>'+top+'</span><span>'+(top/2)+'</span><span>0</span>';
+ if(xEl){
+  const lab=k=>fmtDT(start+k*step);
+  xEl.innerHTML=N<=2?'<span>'+lab(0)+'</span><span>'+lab(N)+'</span>'
+   :'<span>'+lab(0)+'</span><span>'+lab(Math.floor(N/2))+'</span><span>'+lab(N)+'</span>';}
+ if(legEl)legEl.innerHTML=PULSE_SEV.filter(s=>totals[s[0]]>0)
+   .map(s=>'<span><i class="lg-'+s[0]+'"></i>'+s[1]+' · <b>'+totals[s[0]]+'</b></span>').join('');
+ if(sub)sub.textContent=nAlerts(al.length)+' · корзина '+fmtDur(step)+
+   ' · пик '+mx+' за корзину';}
 
 /* ПОСЛУЖНОЙ СПИСОК ПРАВИЛ — ОПОРА ДЛЯ ВЕРДИКТА «ЛОЖНОЕ».
 
@@ -1687,6 +1748,191 @@ async function pollTrends(){let d;try{d=await jget('/api/trends');}catch(e){uiEr
   else if(sn.next_in_s!=null){st.textContent='следующий пересчёт через '+fmtAge(sn.next_in_s);}
   else{st.textContent='пересчёт каждые '+Math.round((sn.period_s||300)/60)+' мин';}}
  if(dot)dot.className='dot '+(sn.error?'bad':(sn.running?'warn':'ok'));}
+
+/* ============================================================
+   ВЫБОР РАБОЧЕГО ПОРОГА.
+
+   Панель показывала картинку из research/: белый лист поверх тёмной
+   темы, ось полноты во всю высоту от нуля до ста процентов, тогда как
+   все точки лежали в полосе 70–85%. Кривая вырождалась в горизонтальную
+   черту, а подписи порогов — 0.60, 0.50, 0.40, 0.30, 0.20 — приходились
+   на почти одну и ту же координату и накладывались друг на друга:
+   «0.6080 0.30». Смотреть было не на что и прочитать нельзя.
+
+   Причина в самой постановке. По горизонтали откладывалась нагрузка, а
+   порог был лишь подписью у точки; но при близких нагрузках подписи
+   неизбежно съезжаются. Порог — то, чем управляют, поэтому он и должен
+   быть горизонтальной осью: точки встают равномерно, наложений нет.
+
+   Дальше две величины разного смысла: очередь в инцидентах на день —
+   столбиками (это счётная величина за интервал), полнота — линией по
+   правой оси (это доля). Столбик выше ёмкости смены красный: такую
+   очередь не разберут, и фактическая полнота будет ниже расчётной.
+
+   Внизу таблица с теми же числами и вывод словами. График показывает
+   форму, таблица — точные значения, вывод — что из этого следует.
+   ============================================================ */
+function wlFmt(v,d){return (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toFixed(d);}
+// Замер лежит файлом и меняется только при ручном перезапуске скрипта.
+// Тянуть его каждые две с половиной секунды вместе с остальным обновлением
+// экрана незачем — читаем один раз за загрузку страницы.
+let _wlDone=false;
+async function pollWorkload(){
+ const host=$('wlPanel'); if(!host||_wlDone)return;
+ let d=null;
+ try{d=await jget('/api/workload_curve.json');}catch(e){uiErr('pollWorkload',e);}
+ const sub=$('wlSub');
+ const pts=(d&&d.points)||[];
+ if(!pts.length){
+  host.innerHTML='<div class="help empty">Замер ещё не построен. Запустите '+
+   '<code>python research/workload_curve.py --capacity 10</code> — займёт около минуты.</div>';
+  if(sub)sub.textContent='нет данных';return;}
+ const cap=+d.capacity||0;
+ const cur=pts.find(p=>Math.abs(p.threshold-(d.current_threshold!=null?d.current_threshold:0.6))<1e-9);
+ // Рекомендация: самый высокий порог, на котором полнота ещё не хуже
+ // лучшей из достижимых при посильной очереди. Тот же критерий, что и
+ // в скрипте, но пересчитанный здесь — панель не должна зависеть от
+ // того, положил ли скрипт готовый вывод в файл.
+ const ok=pts.filter(p=>!cap||p.per_day<=cap);
+ const pool=ok.length?ok:pts;
+ const best=Math.max.apply(null,pool.map(p=>p.recall));
+ const plateau=pool.filter(p=>p.recall>=best-1e-9);
+ // При равной полноте берём самую лёгкую очередь. Без этого правило выбрало
+ // бы левый край плато и посоветовало бы удвоить работу смены ни за что.
+ const rec=plateau.length?plateau.reduce((a,b)=>b.per_day<a.per_day?b:a):null;
+
+ const W=100,H=40;
+ const loadMax=Math.max.apply(null,pts.map(p=>p.per_day).concat([cap||0]))*1.18||1;
+ const n=pts.length, slot=W/n, bw=slot*0.5;
+ const YL=v=>H-(v/loadMax)*H;              // левая ось: очередь
+ // Правая ось обрезана снизу. Полнота лежит в полосе 66–76%, и на шкале от
+ // нуля линия прижимается к потолку — видно, что она есть, и не видно, где
+ // она падает. Низ шкалы подписан явно, чтобы обрезку нельзя было
+ // не заметить.
+ const rMin=Math.max(0,Math.min.apply(null,pts.map(p=>p.recall_ci[0]).concat([0.6]))-0.1);
+ const YR=v=>H-((v-rMin)/(1-rMin))*H;      // правая ось: полнота, rMin..1
+ let g='';
+ [0.25,0.5,0.75].forEach(function(f){
+  g+='<line class=pulse-grid x1="0" x2="'+W+'" y1="'+(H*f).toFixed(2)+
+     '" y2="'+(H*f).toFixed(2)+'" />';});
+ // Два столбика на порог: слева — как считает продукт сейчас, справа — если
+ // бы правило не проходило мимо порога. Разница между ними и есть цена
+ // обхода; одной серией её не увидеть.
+ const alt=(d.points_alt&&d.points_alt.length===n)?d.points_alt:null;
+ let bars='';
+ pts.forEach(function(p,i){
+  const pair=alt?2:1, w=bw/pair;
+  const x0=i*slot+(slot-bw)/2;
+  const y=YL(p.per_day), h=Math.max(0.3,H-y);
+  const over=cap&&p.per_day>cap;
+  bars+='<rect class="wl-bar'+(over?' over':'')+'" x="'+x0.toFixed(3)+
+        '" y="'+y.toFixed(3)+'" width="'+w.toFixed(3)+'" height="'+h.toFixed(3)+'" />';
+  if(alt){
+   const q=alt[i], y2=YL(q.per_day);
+   bars+='<rect class="wl-bar alt" x="'+(x0+w).toFixed(3)+'" y="'+y2.toFixed(3)+
+         '" width="'+w.toFixed(3)+'" height="'+Math.max(0.3,H-y2).toFixed(3)+'" />';}});
+ let capline='';
+ if(cap)capline='<line class=wl-cap x1="0" x2="'+W+'" y1="'+YL(cap).toFixed(2)+
+   '" y2="'+YL(cap).toFixed(2)+'" />';
+ // Лента интервала Уилсона и линия полноты.
+ const cx=i=>(i*slot+slot/2);
+ const band=pts.map((p,i)=>cx(i).toFixed(2)+','+YR(p.recall_ci[1]).toFixed(2)).join(' ')+' '+
+   pts.slice().reverse().map((p,i)=>cx(n-1-i).toFixed(2)+','+YR(p.recall_ci[0]).toFixed(2)).join(' ');
+ const line=pts.map((p,i)=>(i?'L':'M')+cx(i).toFixed(2)+' '+YR(p.recall).toFixed(2)).join(' ');
+ let dots='';
+ pts.forEach(function(p,i){
+  const isRec=rec&&Math.abs(p.threshold-rec.threshold)<1e-9;
+  dots+='<rect class="wl-hit'+(isRec?' rec':'')+'" x="'+(i*slot).toFixed(3)+
+        '" y="0" width="'+slot.toFixed(3)+'" height="'+H+'"><title>'+
+        esc('порог '+wlFmt(p.threshold,2)+'\nочередь '+wlFmt(p.per_day,1)+' инц./день'+
+            '\nполнота '+Math.round(p.recall*100)+'% ('+p.caught+' из '+p.episodes+')'+
+            '\nнастоящих в очереди '+Math.round(p.precision*100)+'%')+'</title></rect>';});
+
+ const yl=[loadMax,loadMax/2,0].map(v=>'<span>'+wlFmt(v,0)+'</span>').join('');
+ const yr=[1,(1+rMin)/2,rMin].map(v=>'<span>'+Math.round(v*100)+'%</span>').join('');
+ const xs=pts.map(function(p){
+  const isRec=rec&&Math.abs(p.threshold-rec.threshold)<1e-9;
+  const isCur=cur&&Math.abs(p.threshold-cur.threshold)<1e-9;
+  return '<span class="'+(isRec?'rec':(isCur?'cur':''))+'">'+wlFmt(p.threshold,2)+'</span>';}).join('');
+
+ const rows=pts.map(function(p){
+  const isRec=rec&&Math.abs(p.threshold-rec.threshold)<1e-9;
+  const isCur=cur&&Math.abs(p.threshold-cur.threshold)<1e-9;
+  const over=cap&&p.per_day>cap;
+  const mark=isRec?'<span class="badge b-ok">рекомендуется</span>'
+            :(isCur?'<span class="badge b-med">сейчас</span>':'');
+  return '<tr'+(isRec?' class=wl-rec':'')+'><td class=mono>'+wlFmt(p.threshold,2)+'</td>'+
+   '<td class="mono num'+(over?' bad':'')+'">'+wlFmt(p.per_day,1)+
+     (over?' <span class=sub title="очередь больше ёмкости смены">выше ёмкости</span>':'')+'</td>'+
+   '<td class="mono num">'+Math.round(p.recall*100)+'%'+
+     ' <span class=sub>'+p.caught+'/'+p.episodes+'</span></td>'+
+   '<td class="mono num">'+Math.round(p.precision*100)+'%</td>'+
+   '<td>'+mark+'</td></tr>';}).join('');
+
+ let verdict='';
+ if(rec&&cur){
+  if(Math.abs(rec.threshold-cur.threshold)<1e-9){
+   verdict='<b>Порог '+wlFmt(cur.threshold,2)+' стоит там, где надо.</b> Это самый высокий '+
+     'порог, который ещё ничего не стоит: полнота та же, что и на '+wlFmt(pts[0].threshold,2)+
+     ' — '+cur.caught+' из '+cur.episodes+' эпизодов, — а очередь короче на '+
+     Math.round((1-cur.per_day/pts[0].per_day)*100)+'%. '+
+     'Выше начинает теряться обнаружение.';}
+  else if(rec.threshold>cur.threshold){
+   verdict='<b>Порог можно поднять с '+wlFmt(cur.threshold,2)+' до '+wlFmt(rec.threshold,2)+
+     '.</b> Полнота та же — '+cur.caught+' из '+cur.episodes+' эпизодов, — а очередь падает с '+
+     wlFmt(cur.per_day,1)+' до '+wlFmt(rec.per_day,1)+' инцидентов в день'+
+     ' ('+Math.round((1-rec.per_day/cur.per_day)*100)+'%), доля настоящих атак в ней растёт с '+
+     Math.round(cur.precision*100)+'% до '+Math.round(rec.precision*100)+'%.';}
+  else{
+   verdict='<b>Порог '+wlFmt(cur.threshold,2)+' завышен.</b> На '+wlFmt(rec.threshold,2)+
+     ' полнота выше на '+Math.abs(Math.round((rec.recall-cur.recall)*1000)/10)+
+     ' п.п. при посильной очереди.';}}
+ // Цена обхода по правилу — отдельным абзацем: это вторая развилка, и
+ // именно она, а не порог, меняла очередь вдвое.
+ let bypassNote='';
+ if(alt&&cur){
+  const a=alt[pts.indexOf(cur)];
+  if(a){
+   const heavy=a.per_day>cur.per_day?a:cur, light=a.per_day>cur.per_day?cur:a;
+   const dEp=heavy.caught-light.caught;
+   bypassNote='<b>Цена обхода по правилу.</b> Если пускать инцидент со сработавшим правилом '+
+     'мимо порога, очередь растёт с '+wlFmt(light.per_day,1)+' до '+wlFmt(heavy.per_day,1)+
+     ' инцидентов в день, а эпизодов ловится '+
+     (dEp>0?('на '+dEp+' больше'):'ровно столько же')+
+     '. Доля настоящих атак в очереди при этом падает с '+
+     Math.round(light.precision*100)+'% до '+Math.round(heavy.precision*100)+'%.'+
+     (dEp>0?'':' Обход выключен: он добавлял работу и не добавлял обнаружения.');}}
+
+ host.innerHTML=
+  '<div class=wl>'+
+   '<div class=wl-body>'+
+    '<div class="wl-y wl-l">'+yl+'</div>'+
+    '<div class=wl-plot><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio=none>'+
+      g+bars+capline+
+      '<polygon class=wl-band points="'+band+'" />'+
+      '<path class=wl-line d="'+line+'" />'+dots+
+     '</svg></div>'+
+    '<div class="wl-y wl-r">'+yr+'</div>'+
+   '</div>'+
+   '<div class=wl-x>'+xs+'</div>'+
+   '<div class=wl-axname><span>← очередь, инцидентов в день</span>'+
+     '<span>порог действия</span><span>полнота обнаружения →</span></div>'+
+   '<div class=wl-leg><span><i class=lg-bar></i>очередь: как считает продукт</span>'+
+     (alt?'<span><i class=lg-alt></i>очередь: только по риску, без обхода</span>':'')+
+     (cap?'<span><i class=lg-cap></i>ёмкость смены: '+wlFmt(cap,0)+' инц./день</span>':'')+
+     '<span><i class=lg-line></i>полнота, 95% интервал Уилсона</span></div>'+
+   '<div class=ds-tablewrap><table class="ds-table wl-tbl"><thead><tr>'+
+     '<th scope=col>Порог</th><th scope=col class=num>Очередь, инц./день</th>'+
+     '<th scope=col class=num>Полнота</th>'+
+     '<th scope=col class=num>Настоящих в очереди</th><th scope=col></th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
+   (verdict?'<div class=wl-verdict>'+verdict+'</div>':'')+
+   (bypassNote?'<div class="wl-verdict alt">'+bypassNote+'</div>':'')+
+  '</div>';
+ if(sub)sub.textContent=plural(d.episodes||0,'эпизод','эпизода','эпизодов')+' атак · '+
+   plural(d.seeds?d.seeds.length:1,'сид','сида','сидов')+' · '+
+   wlFmt(d.sim_days||0,0)+' сим-дней'+(d.built_at?' · замер '+d.built_at:'');
+ _wlDone=true;}
 
 async function trendNow(){
  if(window.toast)toast('Пересчитываю метрики…','info',2500);
@@ -2487,7 +2733,7 @@ async function refresh(){try{
  else if(view==='replay')await rpLoad(false);
  else if(view==='red')await pollRed();
  else if(view==='workflow')await pollWorkflow();
- else if(view==='trends')await pollTrends();
+ else if(view==='trends'){await pollTrends();await pollWorkload();}
  else if(view==='diag')await pollDiag();
  await pollOverview();
 }catch(e){uiErr('refresh',e)}}

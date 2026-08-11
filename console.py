@@ -1763,30 +1763,34 @@ def api_science():
     return jsonify(out)
 
 
-@app.route("/api/workload_curve.svg")
-def api_workload_curve_svg():
-    """График «полнота против нагрузки на аналитика».
+@app.route("/api/workload_curve.json")
+def api_workload_curve():
+    """Замер «полнота против нагрузки» — данными, а не картинкой.
 
-    Строится research/workload_curve.py. Если файла нет — отдаём короткую
-    инструкцию вместо пустоты: молчаливый 404 в интерфейсе выглядит как
-    поломка, хотя причина в том, что эксперимент просто не запускали.
+    Раньше отдавался готовый SVG из results/. Картинка рисовалась на белом
+    листе с зашитыми цветами: в тёмной теме это был белый прямоугольник
+    посреди страницы, а масштаб и подписи не подстраивались ни под ширину
+    панели, ни под данные. Отдаём числа, рисует консоль.
+
+    Если замера нет — отдаём пустой список, а не 404: интерфейс покажет
+    «ещё не построен» с командой запуска. Молчаливая ошибка в сети выглядит
+    как поломка, хотя причина в том, что эксперимент просто не запускали.
     """
-    from flask import Response
     import os
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                     "results", "workload_curve.svg")
-    if not os.path.exists(p):
-        msg = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 700 150' "
-               "width='700' height='150'><text x='20' y='60' font-size='15' "
-               "font-family='system-ui'>График ещё не построен.</text>"
-               "<text x='20' y='92' font-size='13' font-family='ui-monospace'>"
-               "python research/workload_curve.py --capacity 10</text>"
-               "<text x='20' y='122' font-size='12' font-family='system-ui' "
-               "fill='#6b7280'>Займёт около минуты; результат ляжет в results/.</text>"
-               "</svg>")
-        return Response(msg, mimetype="image/svg+xml")
-    with open(p, encoding="utf-8") as f:
-        return Response(f.read(), mimetype="image/svg+xml")
+                     "results", "workload_curve.json")
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return jsonify({"points": [], "reason": "не построен"})
+    except Exception:
+        _flog.error("не удалось прочитать results/workload_curve.json", exc_info=True)
+        return jsonify({"points": [], "reason": "файл повреждён"})
+    # Порог мог измениться после замера — берём актуальный, чтобы панель
+    # отмечала «сейчас» там, где продукт действительно стоит сегодня.
+    data["current_threshold"] = getattr(config, "ACTION_THRESHOLD", 0.6)
+    return jsonify(data)
 
 
 # ----------------------------------------------------------------------

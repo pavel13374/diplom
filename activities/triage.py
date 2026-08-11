@@ -6,6 +6,7 @@
 import random
 import logging
 import config
+import simclock
 from datetime import datetime
 from config import USERS, DELAYS
 from content import rules as rc, commit_messages as cm, comments
@@ -42,7 +43,7 @@ class TriageFalsePositiveActivity:
         self.author.think()
 
         # Заметка триажа
-        note_path = f"triage/{datetime.now().strftime('%Y%m%d')}_{slug[:20]}.md"
+        note_path = f"triage/{simclock.now().strftime('%Y%m%d')}_{slug[:20]}.md"
         note = self._triage_note(slug, verdict)
         if not self.author.push_file(self.pid, note_path, note,
                                      f"docs(triage): verdict for {slug} alert", branch):
@@ -92,7 +93,7 @@ class TriageFalsePositiveActivity:
         user = random.choice(["jsmith", "alee", "mwilson", "kdavis", "svc-backup", "svc-sccm"])
         return f"""# Alert Triage: {slug}
 
-**Время:** {datetime.now().strftime('%Y-%m-%d %H:%M')}
+**Время:** {simclock.now().strftime('%Y-%m-%d %H:%M')}
 **Аналитик:** {self.author.name}
 **Хост:** {host}
 **Пользователь:** {user}
