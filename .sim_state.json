@@ -28,7 +28,7 @@
       "status": "stable",
       "author": "olga.novak",
       "created": "2026-08-17",
-      "modified": "2026-09-09",
+      "modified": "2026-08-11",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 0
@@ -36,11 +36,11 @@
     "firewall_rule_tampering": {
       "path": "rules/defense_evasion/firewall_rule_tampering.yml",
       "tactic": "defense_evasion",
-      "status": "experimental",
-      "author": "irina.belova",
+      "status": "stable",
+      "author": "maria.ivanova",
       "created": "2026-08-11",
       "modified": "2026-08-11",
-      "fp_rate": 6,
+      "fp_rate": 0,
       "noisy": false,
       "tunes": 0
     },
@@ -73,7 +73,7 @@
       "author": "maria.ivanova",
       "created": "2026-08-11",
       "modified": "2026-08-11",
-      "fp_rate": 9,
+      "fp_rate": 0,
       "noisy": false,
       "tunes": 0
     },
@@ -88,24 +88,13 @@
       "noisy": false,
       "tunes": 0
     },
-    "path_traversal_exploit_attempt": {
-      "path": "rules/initial_access/path_traversal_exploit_attempt.yml",
-      "tactic": "initial_access",
-      "status": "experimental",
-      "author": "maria.ivanova",
-      "created": "2026-07-30",
-      "modified": "2026-09-11",
-      "fp_rate": 0,
-      "noisy": false,
-      "tunes": 0
-    },
     "dcsync_replication_request": {
       "path": "rules/credential_access/dcsync_replication_request.yml",
       "tactic": "credential_access",
       "status": "stable",
       "author": "dmitry.kozlov",
       "created": "2026-08-17",
-      "modified": "2026-09-04",
+      "modified": "2026-08-11",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 1
@@ -138,7 +127,7 @@
       "status": "stable",
       "author": "nikita.orlov",
       "created": "2026-08-14",
-      "modified": "2026-09-09",
+      "modified": "2026-08-11",
       "fp_rate": 0,
       "noisy": false,
       "tunes": 0
@@ -179,11 +168,11 @@
     "aws_iam_key_used_from_unusual_region": {
       "path": "rules/initial_access/aws_iam_key_used_from_unusual_region.yml",
       "tactic": "initial_access",
-      "status": "experimental",
-      "author": "nikita.orlov",
+      "status": "stable",
+      "author": "pavel.morozov",
       "created": "2026-08-11",
       "modified": "2026-08-11",
-      "fp_rate": 9,
+      "fp_rate": 12,
       "noisy": false,
       "tunes": 0
     },
@@ -209,17 +198,6 @@
       "noisy": false,
       "tunes": 0
     },
-    "credentials_in_files_search": {
-      "path": "rules/credential_access/credentials_in_files_search.yml",
-      "tactic": "credential_access",
-      "status": "stable",
-      "author": "sergey.volkov",
-      "created": "2026-08-18",
-      "modified": "2026-09-07",
-      "fp_rate": 0,
-      "noisy": false,
-      "tunes": 1
-    },
     "theft": {
       "path": "rules/privilege_escalation/token_impersonation/theft.yml",
       "tactic": "privilege_escalation",
@@ -227,7 +205,7 @@
       "author": "sergey.volkov",
       "created": "2026-08-11",
       "modified": "2026-08-11",
-      "fp_rate": 2,
+      "fp_rate": 0,
       "noisy": false,
       "tunes": 0
     },
@@ -455,10 +433,10 @@
       "path": "rules/initial_access/default_account_logon.yml",
       "tactic": "initial_access",
       "status": "stable",
-      "author": "nikita.orlov",
-      "created": "2026-08-05",
-      "modified": "2026-08-10",
-      "fp_rate": 0,
+      "author": "dmitry.kozlov",
+      "created": "2026-08-11",
+      "modified": "2026-08-11",
+      "fp_rate": 4,
       "noisy": false,
       "tunes": 0
     },
@@ -575,9 +553,9 @@
     "suspicious_cmd_execution_via_office_appl": {
       "path": "rules/execution/suspicious_cmd_execution_via_office_appl.yml",
       "tactic": "execution",
-      "status": "experimental",
-      "author": "dmitry.kozlov",
-      "created": "2026-08-06",
+      "status": "stable",
+      "author": "olga.novak",
+      "created": "2026-08-11",
       "modified": "2026-08-11",
       "fp_rate": 0,
       "noisy": false,
@@ -828,11 +806,11 @@
     "signed_script_proxy_(pubprn)": {
       "path": "rules/defense_evasion/signed_script_proxy_(pubprn).yml",
       "tactic": "defense_evasion",
-      "status": "experimental",
-      "author": "pavel.morozov",
+      "status": "stable",
+      "author": "maria.ivanova",
       "created": "2026-08-11",
       "modified": "2026-08-11",
-      "fp_rate": 9,
+      "fp_rate": 3,
       "noisy": false,
       "tunes": 0
     },
@@ -1007,7 +985,7 @@
   "oncall_index": 11,
   "issue_seq": 1000,
   "release_seq": 4,
-  "campaign_seq": 94,
+  "campaign_seq": 95,
   "pto": {
     "2026-07-08": "maria.ivanova",
     "2026-07-22": "maria.ivanova",
