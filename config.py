@@ -164,6 +164,20 @@ ACTIVITY_WEIGHTS = {
     "deploy_key_rotation":    0.02,
     "membership_change":      0.02,
     "production_deploy":      0.02,
+    # РАСШИРЕННАЯ РУТИНА КОМАНДЫ (activities/team_routine.py).
+    # Хвост распределения был пуст: на push приходилась четверть всех
+    # событий. Живая команда ставит теги, ведёт ревью, чинит сборки,
+    # правит вики и состав участников — и делает это постоянно.
+    "review_cycle":           0.09,
+    "pipeline_care":          0.07,
+    "backlog_grooming":       0.06,
+    "docs_upkeep":            0.05,
+    "hotfix_port":            0.04,
+    "cross_repo_sweep":       0.04,
+    "access_upkeep":          0.03,
+    "security_hygiene":       0.03,
+    "release_tagging":        0.03,
+    "experiment_fork":        0.02,
 }
 
 
@@ -445,7 +459,51 @@ NEW_USERS = [
     {"username": "irina.belova",   "name": "Irina Belova",   "role": "soc_analyst"},
     {"username": "nikita.orlov",   "name": "Nikita Orlov",   "role": "devops"},
     {"username": "elena.kuzmina",  "name": "Elena Kuzmina",  "role": "ml_engineer"},
+    # --- вторая линия и смежные роли ---
+    # Без них у команды не бывает целых классов штатных действий: правки прав,
+    # релизы, документация, ревью архитектуры. А если действие встречается
+    # ТОЛЬКО у атакующего, его имя работает меткой, а не признаком.
+    {"username": "viktor.orlov",   "name": "Viktor Orlov",   "role": "security_architect"},
+    {"username": "daria.sokolova", "name": "Daria Sokolova", "role": "incident_responder"},
+    {"username": "artem.lebedev",  "name": "Artem Lebedev",  "role": "incident_responder"},
+    {"username": "ksenia.morozova","name": "Ksenia Morozova","role": "compliance"},
+    {"username": "roman.zaytsev",  "name": "Roman Zaytsev",  "role": "sre"},
+    {"username": "polina.egorova", "name": "Polina Egorova", "role": "qa_engineer"},
+    {"username": "gleb.nikitin",   "name": "Gleb Nikitin",   "role": "junior_analyst"},
+    {"username": "vera.pavlova",   "name": "Vera Pavlova",   "role": "tech_writer"},
+    {"username": "timur.hasanov",  "name": "Timur Hasanov",  "role": "contractor"},
 ]
+
+# АКТИВНОСТЬ РАСПРЕДЕЛЕНА НЕРАВНОМЕРНО.
+#
+# Раньше исполнитель выбирался равновероятно из всех инженеров, и все давали
+# примерно одинаковый поток. В живой команде так не бывает: пара человек
+# делает половину коммитов, стажёр и подрядчик — единицы. Для поведенческого
+# слоя это принципиально: он строит базовую линию НА ЧЕЛОВЕКА, и когда все
+# одинаковы, любое отклонение выглядит подозрительным. Отсюда и шум UEBA.
+#
+# Вес — относительная доля действий. Роль без записи получает 1.0.
+ACTOR_WEIGHT = {
+    "maria.ivanova":  3.0,   # ядро команды, тянет основной поток правил
+    "dmitry.kozlov":  2.6,
+    "pavel.morozov":  2.2,
+    "sergey.volkov":  1.8,
+    "alex.petrov":    1.6,   # тимлид: много ревью и мало коммитов
+    "elena.kuzmina":  1.4,
+    "anna.smirnova":  1.3,
+    "olga.novak":     1.2,
+    "nikita.orlov":   1.2,
+    "roman.zaytsev":  1.1,
+    "irina.belova":   1.0,
+    "daria.sokolova": 0.9,
+    "viktor.orlov":   0.8,
+    "artem.lebedev":  0.8,
+    "polina.egorova": 0.7,
+    "vera.pavlova":   0.5,
+    "ksenia.morozova": 0.4,
+    "gleb.nikitin":   0.35,  # стажёр
+    "timur.hasanov":  0.3,   # подрядчик, работает эпизодически
+}
 
 # Новые репозитории (создаются в группе PROJECT_NAMESPACE, если их нет).
 NEW_REPOS = ["threat-hunting", "cloud-detections", "siem-content",

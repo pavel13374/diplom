@@ -43,18 +43,46 @@ CORE = {
     "branch_delete",
     "mr_open", "mr_merge", "mr_approve", "mr_comment", "mr_close",
     "issue_open", "issue_comment", "issue_close",
+    # Хвост распределения. Раньше на push приходилось больше четверти всех
+    # событий, а редкие действия почти не встречались — база выглядела
+    # беднее настоящего GitLab, и поведенческий слой считал редкостью то,
+    # что в жизни обычное дело.
+    "tag_create",           # тег на релизном коммите
+    "mr_draft",             # черновик MR: работа начата, ревью ещё рано
+    "mr_review_request",    # запрошено ревью у конкретного человека
+    "mr_unapprove",         # аппрув снят после новых правок
+    "cherry_pick",          # перенос коммита в другую ветку
+    "revert_commit",        # откат коммита отдельным коммитом
+    "wiki_edit",            # правка вики проекта
+    "snippet_create",       # сниппет с куском конфига или запроса
+    "label_change",         # смена меток задачи или MR
+    "milestone_update",     # веха спринта
+    "fork_repo",            # форк для эксперимента
 }
 
 # --- административные действия: видны в Audit Events -----------------------
 ADMIN = {
     "api_read",         # GET к API: списки, поиск, реестр, участники, токены
     "token_create",     # создан PAT / project access token
+    "token_revoke",     # токен отозван — штатная гигиена, не только реакция
     "deploy_key_add",   # добавлен SSH deploy-ключ
+    "deploy_key_remove",
     "hook_create",      # добавлен webhook
+    "hook_delete",
     "schedule_create",  # добавлено расписание пайплайна
+    "schedule_update",
     "pipeline_run",     # запущен пайплайн
+    "pipeline_retry",   # перезапуск упавшего пайплайна
+    "pipeline_cancel",
+    "artifact_download",     # выгрузка артефактов сборки
+    "environment_deploy",    # деплой в окружение
     "member_update",    # изменены права участника
+    "member_add",       # участник добавлен в проект
+    "member_remove",    # участник исключён
+    "protected_branch_update",   # изменены правила защиты ветки
     "release_publish",  # опубликован релиз
+    "variable_update",  # правка переменной CI/CD
+    "mirror_sync",      # синхронизация зеркала репозитория
 }
 
 # --- служебные (meta=true, в датасет и в детектор не идут) -----------------

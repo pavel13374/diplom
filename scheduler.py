@@ -60,15 +60,40 @@ class Scheduler:
         return [a for u, a in self.agents.items()
                 if config.USERS.get(u, {}).get("role") in roles]
 
+    # Роли, которые ведут рабочую нагрузку в репозиториях. Список расширен:
+    # без второй линии и смежных ролей целые классы штатных действий
+    # (правки прав, релизы, документация) не встречались бы вовсе.
+    WORKING_ROLES = ("detection_engineer", "threat_hunter", "soc_analyst", "devops",
+                     "ml_engineer", "security_architect", "incident_responder",
+                     "sre", "qa_engineer", "junior_analyst", "compliance",
+                     "tech_writer", "contractor")
+
     def _engineers(self):
-        pool = self._role("detection_engineer", "threat_hunter", "soc_analyst", "devops")
+        pool = self._role(*self.WORKING_ROLES)
         if not pool:
             pool = [a for u, a in self.agents.items()
                     if config.USERS.get(u, {}).get("role") not in ("lead", "bot")]
         return pool or list(self.agents.values())
 
+    def _weights_for(self, pool):
+        """Относительная активность людей: ядро команды делает больше."""
+        w = getattr(config, "ACTOR_WEIGHT", {}) or {}
+        out = []
+        for a in pool:
+            uname = getattr(a, "username", None) or getattr(a, "user", None)
+            out.append(float(w.get(uname, 1.0)))
+        return out if any(x > 0 for x in out) else [1.0] * len(pool)
+
     def _random_engineer(self):
-        return random.choice(self._engineers())
+        # ВЫБОР ПО ВЕСУ, А НЕ РАВНОВЕРОЯТНО.
+        # Раньше все инженеры давали одинаковый поток. Поведенческий слой
+        # строит базовую линию на человека, и при одинаковых людях любое
+        # отклонение выглядит подозрительным — часть шума UEBA росла отсюда.
+        pool = self._engineers()
+        try:
+            return random.choices(pool, weights=self._weights_for(pool), k=1)[0]
+        except Exception:
+            return random.choice(pool)
 
     def _lead(self):
         leads = self._role("lead")
@@ -500,6 +525,7 @@ class Scheduler:
         from activities.dev_workflows    import (IterativeReviewActivity,
             DependencyAuditActivity, SprintRetroActivity)
         from activities.ops_admin        import BENIGN_ADMIN
+        from activities.team_routine     import TEAM_ROUTINE
 
         lead   = self._lead()
         author = (self._agent_or_lead(forced_actor) if forced_actor
@@ -602,6 +628,15 @@ class Scheduler:
                 # права, force-push). Нужна, чтобы эти действия не были
                 # эксклюзивом атакующего — иначе имя действия = метка.
                 return BENIGN_ADMIN[activity](author, lead, state=st).run()
+            elif activity in TEAM_ROUTINE:
+                # Расширенная рутина команды: теги и релизы, цикл ревью,
+                # хотфиксы, вики и сниппеты, метки и вехи, работа со сборками,
+                # состав участников, гигиена доступов, обход репозиториев.
+                # Исполнитель берётся из ролей, которым эта работа свойственна.
+                spec = TEAM_ROUTINE[activity]
+                cls, roles = spec["cls"], spec.get("roles") or ()
+                who = self._pick_role(*roles) if roles else None
+                return cls(who or author, lead, state=st).run()
             else:
                 logger.warning(f"Unknown activity: {activity}")
                 return False

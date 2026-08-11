@@ -1000,7 +1000,7 @@ const ACT_RU={
  push:'Коммит в репозиторий', branch_create:'Создание ветки',
  branch_delete:'Удаление ветки', mr_open:'Открытие merge request',
  mr_merge:'Слияние merge request', mr_close:'Закрытие merge request',
- mr_comment:'Комментарий к merge request', issue_open:'Заведение задачи',
+ mr_comment:'Комментарий к merge request', mr_approve:'Согласование merge request', issue_open:'Заведение задачи',
  issue_close:'Закрытие задачи', issue_comment:'Комментарий к задаче',
  file_delete:'Удаление файла', repo_create:'Создание репозитория',
  repo_archive:'Архивация репозитория', member_add:'Добавление участника',
@@ -1010,7 +1010,22 @@ const ACT_RU={
  wiki_edit:'Правка wiki', settings_change:'Изменение настроек',
  protected_branch_change:'Смена защиты ветки', deploy_key_add:'Добавление ключа деплоя',
  webhook_add:'Настройка вебхука', clone:'Клонирование репозитория',
- download_archive:'Выгрузка архива репозитория', search:'Поиск по коду'};
+ download_archive:'Выгрузка архива репозитория', search:'Поиск по коду',
+ tag_create:'Создание тега', mr_draft:'Черновик merge request',
+ mr_review_request:'Запрос ревью', mr_unapprove:'Снятие аппрува',
+ cherry_pick:'Перенос коммита', revert_commit:'Откат коммита',
+ wiki_edit:'Правка вики', snippet_create:'Создание сниппета',
+ label_change:'Смена меток', milestone_update:'Обновление вехи',
+ fork_repo:'Форк репозитория', token_revoke:'Отзыв токена',
+ deploy_key_remove:'Снятие ключа деплоя', hook_delete:'Удаление вебхука',
+ schedule_update:'Правка расписания', pipeline_retry:'Перезапуск сборки',
+ pipeline_cancel:'Отмена сборки', artifact_download:'Выгрузка артефактов',
+ environment_deploy:'Деплой в окружение', member_add:'Добавление участника',
+ member_remove:'Исключение участника', member_update:'Изменение прав',
+ protected_branch_update:'Смена защиты ветки', variable_update:'Правка переменной CI',
+ mirror_sync:'Синхронизация зеркала', release_publish:'Публикация релиза',
+ hook_create:'Создание вебхука', schedule_create:'Создание расписания',
+ force_push:'Перезапись истории', api_read:'Обращение к API'};
 function actName(k){
  if(ACT_RU[k])return ACT_RU[k];
  const t=String(k||'').replace(/_/g,' ').trim();

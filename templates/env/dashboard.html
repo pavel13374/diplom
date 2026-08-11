@@ -310,8 +310,12 @@ const PROB_HELP={
  promote:"Доля стабильных правил, продвигаемых в продакшен."
 };
 const ROLE_RU={detection_engineer:'Инженер детектирования',ml_engineer:'ML-инженер',
- threat_hunter:'Threat hunter',soc_analyst:'Аналитик SOC',devops:'DevOps',
- lead:'Тимлид',bot:'Сервисный бот',engineer:'Инженер'};
+ threat_hunter:'Специалист по поиску угроз',soc_analyst:'Аналитик SOC',devops:'DevOps',
+ lead:'Тимлид',bot:'Сервисный бот',engineer:'Инженер',
+ security_architect:'Архитектор безопасности',incident_responder:'Реагирование на инциденты',
+ compliance:'Комплаенс',sre:'SRE',qa_engineer:'Инженер по качеству',
+ junior_analyst:'Младший аналитик',tech_writer:'Технический писатель',
+ contractor:'Подрядчик'};
 function roleRu(r){return ROLE_RU[r]||r;}
 
 const ACT_HELP={
@@ -337,6 +341,11 @@ const ACT_HELP={
  siem_content:"Контент SIEM",sprint_retro:"Ретроспектива спринта",
  token_rotation:"Ротация токена",webhook_setup:"Настройка вебхука",
  standup:"Дейли-встреча",release:"Релиз",
+ review_cycle:"Цикл ревью merge request",pipeline_care:"Работа со сборками",
+ backlog_grooming:"Разбор бэклога",docs_upkeep:"Документация и вики",
+ hotfix_port:"Перенос хотфикса",cross_repo_sweep:"Обход репозиториев",
+ access_upkeep:"Работа с доступами",security_hygiene:"Гигиена доступов",
+ release_tagging:"Тег и релиз",experiment_fork:"Эксперимент на форке",
  anomaly:"Аномальное действие",offhours_benign:"Активность вне часов"
 };
 // Незнакомый ключ не показываем сырым: превращаем snake_case в фразу.
