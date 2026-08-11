@@ -1,10 +1,11 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Обзор платформы · Sentinel SOC</title>
+<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
 </head><body>
-<div class=content style="max-width:1000px;margin:0 auto">
+<div class="content doc">
 
 <div class=crumb>
   <a href="/">Sentinel SOC</a>
@@ -17,7 +18,7 @@
 цепочки в инциденты и объясняет каждый из них.</p>
 
 <h2 class="section-title mt-6">Как это работает</h2>
-<div class=pipe style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:28px">
+<div class="tiles mb-6">
   <div class=pnode><b>Атакующий</b><div class=s>Инсайдер или взломанный аккаунт крадёт токены, ключи, код.</div></div>
   <div class=pnode><b>События CI/CD</b><div class=s>Каждый push, ветка, merge request и настройка пишутся в общий журнал.</div></div>
   <div class=pnode><b>Детектор</b><div class=s>Три слоя: правила, профиль поведения сотрудника, обученная модель.</div></div>
@@ -39,20 +40,20 @@
 <div class=computing id=metSt>Считаю метрики по журналу событий.</div>
 
 <h2 class="section-title mt-6">Почему не поиск по шаблону</h2>
-<div class=card style=margin-bottom:28px>
+<div class="card mb-6">
   <p class="s mb-3">Поиск по регулярным выражениям находит только те форматы секретов,
   которые в него заложили. Проверка: один формат скрывается от детектора при обучении, затем
   проверяется, найдёт ли он его.</p>
   <div class="hleg mb-3">
     <span class=ds-leg><span class=ds-leg-box></span>Поиск по шаблонам</span>
-    <span class=ds-leg><span class=ds-leg-box style=background:var(--accent);border-color:var(--accent)></span>Модель платформы</span>
+    <span class=ds-leg><span class="ds-leg-box cov"></span>Модель платформы</span>
   </div>
   <div id=holdRows><div class="help empty">Нет данных holdout-эксперимента.
     Запустите <code>python research/experiments_holdout.py</code>.</div></div>
   <div class=concl id=holdConcl hidden></div>
 </div>
 
-<div class=ds-act-grid style=margin-bottom:24px>
+<div class="ds-act-grid mb-6">
   <a class=btn href="/#red">Показать живую атаку</a>
   <a class="btn ghost" href="/">Открыть консоль</a>
   <a class="btn ghost" href="http://127.0.0.1:8787" target=_blank>Консоль среды</a>
@@ -63,6 +64,13 @@
 
 </div>
 <script>
+/* Разряды и числительные — общие для отчётных страниц. */
+function nfmt(n){return (n==null?0:n).toLocaleString('ru-RU').replace(/\u00A0/g,' ');}
+function plur(n,one,few,many){n=Math.abs(+n||0);const a=n%10,b=n%100;
+ if(a===1&&b!==11)return one;
+ if(a>=2&&a<=4&&!(b>=12&&b<=14))return few;
+ return many;}
+
 const $=x=>document.getElementById(x);
 async function jget(u){const r=await fetch(u);return r.json();}
 function pct(v){return Math.round((v||0)*100)+'%';}
@@ -76,7 +84,12 @@ async function poll(){
   // цветом отмечается только уровень: доля ложных тревог выше порога
   $('mFp').className='n'+(m.fp_rate>0.15?' bad':'');
   $('mCov').textContent=pct(m.attack_coverage);
-  $('metSt').textContent='По '+m.events+' событиям · '+m.anomaly_episodes+' атакующих эпизодов · '+m.alerts+' алертов.';
+  // Разряды и согласование числительных — как во всём остальном
+  // интерфейсе. Здесь печаталось «По 45333 событиям · 67 атакующих
+  // эпизодов · 249 алертов».
+  $('metSt').textContent='По '+nfmt(m.events)+' '+plur(m.events,'событию','событиям','событиям')+
+    ' · '+nfmt(m.anomaly_episodes)+' '+plur(m.anomaly_episodes,'атакующий эпизод','атакующих эпизода','атакующих эпизодов')+
+    ' · '+nfmt(m.alerts)+' '+plur(m.alerts,'детект','детекта','детектов')+'.';
  } else {
   $('metSt').textContent=d.computing?'Считаю метрики по журналу событий.':(d.metrics_err?('Не удалось посчитать: '+d.metrics_err):'Нет данных: запустите среду или демо.');
  }

@@ -1,6 +1,7 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>Вход · Консоль защиты</title>
+<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
@@ -20,7 +21,7 @@
     <h1>Консоль защиты</h1>
     <div class=sub>Рабочее место аналитика SOC</div>
     <label for=u>Логин</label>
-    <input id=u name=username autocomplete=username autofocus>
+    <input id=u name=username type=text autocomplete=username autofocus>
     <label for=p>Пароль</label>
     <input id=p name=password type=password autocomplete=current-password>
     <button type=submit>Войти</button>

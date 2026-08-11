@@ -979,6 +979,37 @@ def _ask_filter(q):
     return f
 
 
+def _plural_ru(n, one, few, many):
+    """Согласование числительного: 1 событие, 2 события, 5 событий."""
+    n = int(n)
+    a, b = abs(n) % 10, abs(n) % 100
+    if a == 1 and b != 11:
+        word = one
+    elif 2 <= a <= 4 and not (12 <= b <= 14):
+        word = few
+    else:
+        word = many
+    return f"{n} {word}"
+
+
+def _ask_criteria(f):
+    """Человеческое описание условий отбора для строки ответа."""
+    if not f:
+        return "по всему журналу, без дополнительных условий"
+    parts = []
+    if f.get("actor"):
+        parts.append(f"актор @{f['actor']}")
+    if f.get("project"):
+        parts.append(f"репозиторий {f['project']}")
+    if f.get("is_night"):
+        parts.append("вне рабочих часов")
+    if f.get("secret"):
+        parts.append("признаки секрета в содержимом")
+    if f.get("action_kw"):
+        parts.append(f"действие содержит «{f['action_kw']}»")
+    return "отбор: " + ", ".join(parts) if parts else "по всему журналу"
+
+
 def _ask_match(ev, f):
     if f.get("actor") and ev.get("actor") != f["actor"]:
         return False
@@ -1008,8 +1039,10 @@ def api_ask():
     rows = [run_defense.observed(r) for r in rows]   # анти-лик
     f = _ask_filter(q)
     matched = [r for r in rows if _ask_match(r, f)]
-    crit = [", ".join(f"{k}={v}" for k, v in f.items()) or "без явных условий"]
-    answer = f"Найдено {len(matched)} событий (фильтр: {crit[0]})."
+    # Условия описываем словами. Раньше строка собиралась как
+    # "actor=maria.ivanova, is_night=True" — сырые имена полей плюс
+    # питоновское True прямо в интерфейсе аналитика.
+    answer = f"{_plural_ru(len(matched), 'событие', 'события', 'событий')} · {_ask_criteria(f)}."
     try:
         import llm_client
         if llm_client.available() and matched:

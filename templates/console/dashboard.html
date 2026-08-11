@@ -1,5 +1,6 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Sentinel SOC — Detection &amp; Response</title>
+<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
@@ -74,12 +75,12 @@
         </div>
       </div>
       <div class=kpis>
-        <div class=kpi acc><div class="n is-empty" id=kEv>—</div><div class=l>событий в сторе</div></div>
+        <div class=kpi><div class="n is-empty" id=kEv>—</div><div class=l>событий в сторе</div></div>
         <div class=kpi><div class="n is-empty" id=kProc>—</div><div class=l>обработано защитой</div></div>
         <div class=kpi><div class="n is-empty" id=kAl>—</div><div class=l>алертов</div></div>
-        <div class=kpi crit><div class="n is-empty" id=kInc>—</div><div class=l>инцидентов</div></div>
-        <div class=kpi acc><div class="n is-empty" id=kCamp>—</div><div class=l>кампаний выявлено</div></div>
-        <div class=kpi ok><div class="n is-empty" id=kCov>—</div><div class=l>покрытие ATT&CK</div></div>
+        <div class=kpi id=kpiInc><div class="n is-empty" id=kInc>—</div><div class=l>инцидентов</div></div>
+        <div class=kpi id=kpiCamp><div class="n is-empty" id=kCamp>—</div><div class=l>кампаний выявлено</div></div>
+        <div class=kpi id=kpiCov><div class="n is-empty" id=kCov>—</div><div class=l>покрытие ATT&CK</div></div>
       </div>
       <div class="ds-toolbar mt-2">
         <span class=grow></span>
@@ -112,12 +113,21 @@
         <div class=card><h2>Тактики срабатываний</h2><div id=byTactic></div></div>
       </div>
 
-      <div class="card mt-3"><h2>Динамика
-          <span class=grow></span>
-          <span class=sub id=alSparkSub>—</span></h2>
-        <div class=dash-dyn>
+      <!-- Два независимых графика жили в одной панели под общим
+           заголовком «Динамика»: подпись описывала только левый, а
+           правый — распределение по уровню риска — оставался вовсе
+           без названия. Читатель видел «Критический ≥0.85» и не знал,
+           к чему это относится. Разные вопросы — разные панели. -->
+      <div class=dash-dyn>
+        <div class="card mt-3"><h2>Детекты во времени
+            <span class=grow></span>
+            <span class=sub id=alSparkSub>—</span></h2>
           <div><svg id=alSpark viewBox="0 0 100 30" preserveAspectRatio=none class=spark></svg></div>
-          <div id=riskHist><div class=sub>—</div></div>
+        </div>
+        <div class="card mt-3"><h2>Распределение по уровню риска
+            <span class=grow></span>
+            <span class=sub id=riskHistSub>—</span></h2>
+          <div id=riskHist><div class="help empty">Детектов пока нет.</div></div>
         </div>
       </div>
 
@@ -860,6 +870,13 @@ function renderCovMini(s){
 async function pollOverview(){const s=await jget('/api/stats');
  setN('kEv',s.store_events);setN('kProc',s.processed);setN('kAl',s.alerts);
  setN('kInc',s.incidents);setN('kCamp',s.campaigns_detected);setN('kCov',(s.coverage_pct==null?'—':s.coverage_pct+'%'));
+ // ЦВЕТ ПОКАЗАТЕЛЯ ИДЁТ ОТ ДАННЫХ, А НЕ ОТ РАЗМЕТКИ.
+ // Раньше «инцидентов» всегда печаталось красным, а «покрытие» всегда
+ // зелёным — даже когда инцидентов ноль, а покрыта половина матрицы.
+ // Цвет, который не меняется вместе с числом, ничего не сообщает.
+ kpiState('kpiInc', (s.critical||0)>0?'crit':((s.incidents||0)>0?'warn':''));
+ kpiState('kpiCamp',(s.campaigns_detected||0)>0?'crit':'');
+ kpiState('kpiCov', s.coverage_pct==null?'':(s.coverage_pct>=80?'ok':(s.coverage_pct>=50?'warn':'crit')));
  // «Behavioral» — не тактика ATT&CK, а имя поведенческого слоя: так его
  // помечает детектор для срабатываний UEBA и модели. В панели с
  // заголовком «Тактики ATT&CK» оно читалось как шестнадцатая тактика
@@ -971,6 +988,11 @@ function actName(k){
  const t=String(k||'').replace(/_/g,' ').trim();
  return t?t.charAt(0).toUpperCase()+t.slice(1):'—';}
 
+/* Состояние плитки показателя: пусто, ok, warn или crit. */
+function kpiState(id,st){const e=$(id);if(!e)return;
+ e.classList.remove('ok','warn','crit');
+ if(st)e.classList.add(st);}
+
 /* ИМЯ СЛОЯ ДЕТЕКТИРОВАНИЯ — ОДНО НА ВЕСЬ ИНТЕРФЕЙС.
    В таблице алертов стояло RULE/UEBA, в панели обзора «Правила» и
    «Поведение», в цепочке атаки снова RULE. Три написания одной вещи
@@ -995,6 +1017,8 @@ function drawRiskHist(al){
  const IX={critical:0,high:1,medium:2,low:3};
  al.forEach(a=>{b[IX[sevOf(a.risk)]][1]++;});
  const mx2=Math.max(...b.map(x=>x[1]),1),tot=al.length||1;
+ const sub=$('riskHistSub');
+ if(sub)sub.textContent=al.length?(plural(al.length,'детект','детекта','детектов')+' за период'):'';
  $('riskHist').innerHTML=al.length?b.map(x=>'<div class=brow><span class=blab>'+x[0]+'</span>'+
   '<div class="btrack rk-bar '+x[2]+'"><i style="width:'+(x[1]/mx2*100)+'%"></i></div><b>'+x[1]+'</b>'+
   '<span class=bpct>'+Math.round(x[1]/tot*100)+'%</span></div>').join(''):'<div class="help empty">Алертов пока нет.</div>';}

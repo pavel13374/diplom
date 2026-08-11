@@ -431,6 +431,13 @@ a:hover,.link:hover{text-decoration:underline}
 
 .main{padding:var(--gutter) var(--gutter) var(--sp-10);min-width:0}
 .content{padding:var(--gutter) var(--gutter) var(--sp-10);max-width:none;min-width:0}
+/* Отчётные страницы читают, а не сканируют: колонка ограничивается по
+   ширине, иначе строка в полтора экрана теряется при переносе взгляда. */
+.content.doc{max-width:1000px;margin:0 auto}
+.content.doc-narrow{max-width:900px;margin:0 auto}
+/* Ряд равных плиток «как это работает» — сетка, а не инлайновый стиль. */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:var(--sp-3)}
 .view{display:none}
 .view.active{display:block;animation:none}
 
@@ -511,7 +518,8 @@ a:hover,.link:hover{text-decoration:underline}
 .dash-main{grid-row:span 2;display:flex;flex-direction:column;min-height:340px}
 .dash-main>.ds-feed{flex:1;overflow:auto}
 .dash-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gutter)}
-.dash-dyn{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--gutter)}
+.dash-dyn{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:var(--gutter);align-items:start}
 .spark{width:100%;height:80px;display:block}
 .spark-base{stroke:var(--line-strong);stroke-width:.4;vector-effect:non-scaling-stroke}
 .spark-bar{fill:var(--accent);cursor:crosshair}
@@ -545,7 +553,7 @@ a:hover,.link:hover{text-decoration:underline}
 .kpi:first-child{border-left:0}
 .kpi:hover{transform:none;box-shadow:none;background:var(--surface-3)}
 .kpi:before,.kpi.crit:before,.kpi.ok:before,.kpi.acc:before,
-.kpi[crit]:before,.kpi[ok]:before,.kpi[acc]:before{content:none;display:none}
+.kpi.crit:before,.kpi.warn:before,.kpi.ok:before{content:none;display:none}
 /* подпись СВЕРХУ, значение снизу: глаз идёт по колонке значений */
 .kpi .l{
   order:-1;display:block;margin:0 0 2px;
@@ -557,9 +565,13 @@ a:hover,.link:hover{text-decoration:underline}
   display:block;color:var(--text-1);-webkit-text-fill-color:currentColor;background:none;
   font-family:var(--font-sans);font-size:var(--fs-num);font-weight:var(--fw-semibold);
   letter-spacing:-.02em;line-height:1.05}
-.kpi.crit .n,.kpi[crit] .n{color:var(--sev-critical);-webkit-text-fill-color:var(--sev-critical)}
-.kpi.ok .n,.kpi[ok] .n{color:var(--success);-webkit-text-fill-color:var(--success)}
-.kpi.acc .n,.kpi[acc] .n{color:var(--text-1);-webkit-text-fill-color:var(--text-1)}
+/* Селекторы по атрибуту ([crit], [ok]) остались от разметки
+   «class=kpi crit»: без кавычек это класс kpi плюс отдельный булев
+   атрибут, а не два класса. Разметка исправлена, состояние ставит
+   скрипт по данным — поддержка атрибутов больше не нужна. */
+.kpi.crit .n{color:var(--sev-critical);-webkit-text-fill-color:var(--sev-critical)}
+.kpi.warn .n{color:var(--sev-medium);-webkit-text-fill-color:var(--sev-medium)}
+.kpi.ok .n{color:var(--success);-webkit-text-fill-color:var(--success)}
 .kpi .n.flash{animation:none}
 .is-empty,.kpi .n.is-empty,.met .n.is-empty{
   color:var(--text-3)!important;font-weight:var(--fw-normal)}
@@ -727,8 +739,14 @@ a:hover,.link:hover{text-decoration:underline}
 /* ============================================================
    10. ФОРМЫ
    ============================================================ */
-.sel,.askin,.tin,select,input[type=text],input[type=password],input[type=search],
-input[type=number],input[type=date],textarea{
+/* `input[type=text]` не совпадает с `<input>` без атрибута type: селектор
+   проверяет атрибут, а не подразумеваемое значение. Поле логина на форме
+   входа атрибута не имело и оставалось неоформленным — браузер рисовал
+   его своим тёмно-серым #3B3B3B рядом с чёрным полем пароля, и форма
+   выглядела наполовину сломанной. `input:not([type])` закрывает случай
+   раз и навсегда, даже если атрибут забудут снова. */
+.sel,.askin,.tin,select,input:not([type]),input[type=text],input[type=password],
+input[type=search],input[type=number],input[type=date],textarea{
   height:var(--ctl-h);width:auto;padding:0 8px;
   background:var(--bg);border:1px solid var(--line-strong);color:var(--text-1);
   border-radius:var(--r-ctl);font-family:var(--font-sans);font-size:var(--fs-sm);
@@ -770,6 +788,26 @@ label,.field label{display:block;color:var(--text-2);font-size:var(--fs-xs);
 .switch input:disabled + .track{opacity:.4;cursor:not-allowed}
 .sw-txt{min-width:0;font-size:var(--fs-xs);color:var(--text-3)}
 .sw-txt label{color:var(--text-2);font-size:var(--fs-xs)}
+/* АВТОЗАПОЛНЕНИЕ CHROME.
+   Браузер красит подставленное поле своим фоном мимо каскада: на форме
+   входа «Логин» выходил светло-серым рядом с тёмным «Паролем», и форма
+   выглядела наполовину сломанной. Обычный background не помогает —
+   перебить можно только внутренней тенью во всю высоту поля. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active{
+  -webkit-box-shadow:0 0 0 1000px var(--surface-1) inset !important;
+  box-shadow:0 0 0 1000px var(--surface-1) inset !important;
+  -webkit-text-fill-color:var(--text-1) !important;
+  caret-color:var(--text-1);
+  transition:background-color 100000s ease-in-out 0s}
+.auth input:-webkit-autofill,
+.auth input:-webkit-autofill:hover,
+.auth input:-webkit-autofill:focus{
+  -webkit-box-shadow:0 0 0 1000px var(--bg) inset !important;
+  box-shadow:0 0 0 1000px var(--bg) inset !important}
+
 input[type=range]{accent-color:var(--accent);height:auto;padding:0;border:0;background:none}
 .presets{display:flex;gap:4px;flex-wrap:wrap}
 .presets .chip{cursor:pointer;height:var(--ctl-h);padding:0 9px;font-size:var(--fs-sm)}
@@ -1006,6 +1044,7 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
 .rk-cell{display:flex;align-items:center;gap:6px;min-width:100px}
 .rk-bar{flex:1}
 .rk-bar.critical i{background:var(--sev-critical)}
+.btrack.bar-ok i{background:var(--success)}
 .rk-bar.high i{background:var(--sev-high)}
 .rk-bar.medium i{background:var(--sev-medium)}
 .rk-bar.low i{background:var(--text-3)}
@@ -1258,10 +1297,13 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
 .ds-legend{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
   font-size:var(--fs-xs)}
 .ds-leg{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-xs);color:var(--text-3)}
-.ds-leg-box{width:2px;height:11px;border-radius:0;border:0;
-  background:var(--line-strong);display:inline-block;flex:none}
-.ds-leg-box.cov{background:var(--line-strong)}
-.ds-leg-box.fired{background:var(--sev-critical)}
+/* Образец цвета в легенде. Полоска в два пикселя читалась как случайно
+   попавший в текст символ «|», а не как «вот таким цветом нарисовано». */
+.ds-leg-box{width:14px;height:12px;border-radius:3px;
+  border:1px solid var(--line-strong);background:var(--surface-4);
+  display:inline-block;flex:none}
+.ds-leg-box.cov{background:var(--accent-bg);border-color:var(--accent-border)}
+.ds-leg-box.fired{background:var(--sev-critical);border-color:var(--sev-critical)}
 .ds-covstrip{display:flex;flex-wrap:wrap;
   background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r);
   overflow:hidden;margin-bottom:var(--gutter)}

@@ -1,10 +1,11 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Оценка эффекта · Sentinel SOC</title>
+<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
 </head><body>
-<div class=content style="max-width:900px;margin:0 auto">
+<div class="content doc-narrow">
 
 <div class=crumb>
   <a href="/">Sentinel SOC</a>
@@ -54,9 +55,9 @@
 </div>
 <div class=bar2>
   <div class=brow><span class="blab blab-wide">Ущерб без системы</span>
-    <div class=btrack><i id=b1 style="background:var(--sev-critical)"></i></div><b id=bl1></b></div>
+    <div class="btrack rk-bar critical"><i id=b1></i></div><b id=bl1></b></div>
   <div class=brow><span class="blab blab-wide">Остаточный ущерб с системой</span>
-    <div class=btrack><i id=b2 style="background:var(--success)"></i></div><b id=bl2></b></div>
+    <div class="btrack bar-ok"><i id=b2></i></div><b id=bl2></b></div>
 </div>
 <div class="s mt-3" id=mttdNote>Время до обнаружения берётся из метрик прогона.</div>
 </div>
