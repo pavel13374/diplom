@@ -201,24 +201,52 @@ _SUPPRESS = detector_mod.Suppressor()   # против флуда UEBA-вспл�
 FP_MUTE_THRESHOLD = 3
 
 
-def muted_rules():
-    """rule_id -> сколько подтверждённых FP. Считается по вердиктам из БД."""
+def rule_verdict_stats():
+    """rule_id -> (сколько FP-инцидентов, сколько TP-инцидентов) по вердиктам.
+
+    Считаем и подтверждения, и опровержения. Раньше считались только FP, и
+    правило глушилось по трём отметкам независимо от того, сколько настоящих
+    атак оно поймало. Многошаговая кампания поднимает пять-шесть правил
+    разом, поэтому ТРИ ложных инцидента гасили сразу пять правил — включая
+    те, что работают с точностью 87%. Аналитик, честно разметивший шум,
+    выключал детект.
+    """
     import collections as _c
-    cnt = _c.Counter()
+    fp = _c.Counter(); tp = _c.Counter()
     try:
         stat = eventstore.all_incident_status()
     except Exception:
-        return cnt
+        return fp, tp
     with _LOCK:
         incs = list(_COR.incidents.values())
     for i in incs:
-        if (stat.get(i["id"]) or {}).get("verdict") == "fp":
-            seen = set()
-            for a in i["alerts"]:
-                rid = a.get("rule_id")
-                if rid and rid not in seen:
-                    seen.add(rid); cnt[rid] += 1
-    return cnt
+        v = (stat.get(i["id"]) or {}).get("verdict")
+        if v not in ("fp", "tp"):
+            continue
+        seen = set()
+        for a in i["alerts"]:
+            rid = a.get("rule_id")
+            if rid and rid not in seen:
+                seen.add(rid)
+                (fp if v == "fp" else tp)[rid] += 1
+    return fp, tp
+
+
+def muted_rules():
+    """rule_id -> число подтверждённых FP, но только для правил, которые
+    глушить безопасно.
+
+    Правило считается шумным, если ложных отметок у него не меньше порога И
+    при этом ложных строго больше, чем подтверждённых атак. Правило, которое
+    поймало настоящую атаку столько же раз или чаще, не выключается: цена
+    пропуска выше цены лишней тревоги.
+    """
+    fp, tp = rule_verdict_stats()
+    out = type(fp)()
+    for rid, n in fp.items():
+        if n >= FP_MUTE_THRESHOLD and n > tp.get(rid, 0):
+            out[rid] = n
+    return out
 _LOCK = threading.Lock()
 _STATE = {
     "alerts": collections.deque(maxlen=800),
@@ -1171,10 +1199,14 @@ def api_workflow():
                 if a.get("rule_id"):
                     fp_by_rule[a["rule_id"]] += 1
     muted = _MUTED_CACHE["rules"]
+    # Показываем и подтверждения, чтобы было видно, почему шумное правило
+    # всё ещё работает: оно ловит настоящие атаки не реже, чем ошибается.
+    _fp_v, _tp_v = rule_verdict_stats()
     noisy = []
     for rid, cnt in sorted(fired.items(), key=lambda x: -x[1])[:12]:
         noisy.append({"rule_id": rid, "fired": cnt, "fp": fp_by_rule.get(rid, 0),
-                      "muted": muted.get(rid, 0) >= FP_MUTE_THRESHOLD})
+                      "tp": _tp_v.get(rid, 0),
+                      "muted": rid in muted})
     return jsonify({"items": items, "counts": counts, "noisy_rules": noisy,
                     "muted_hits": _STATE.get("muted_hits", 0),
                     "fp_threshold": FP_MUTE_THRESHOLD})

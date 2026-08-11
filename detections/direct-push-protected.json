@@ -14,6 +14,9 @@
         "master"
       ]
     },
-    "protected_branch": true
-  }
+    "protected_branch": true,
+    "placeholder_signal": false,
+    "security_content": false
+  },
+  "tuning_note": "Точность была 1% (157 сработок, 2 верных): push в main — норма для команды. Добавлены оговорки по содержимому, как у high-entropy-push."
 }
