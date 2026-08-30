@@ -49,7 +49,7 @@ if DO_FULL:
 YES = "--yes" in ARGS
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=False)
+gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=config.gitlab_verify())
 H = {"PRIVATE-TOKEN": config.ADMIN_TOKEN}
 
 

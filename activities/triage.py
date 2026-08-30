@@ -7,7 +7,6 @@ import random
 import logging
 import config
 import simclock
-from datetime import datetime
 from config import USERS, DELAYS
 from content import rules as rc, commit_messages as cm, comments
 

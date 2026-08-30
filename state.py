@@ -50,22 +50,66 @@ class SimState:
 
     # ------------------------------------------------------------------
     def _load(self):
-        if os.path.exists(self.path):
+        """Читаем основной файл, при неудаче — резервный.
+
+        Ошибка разбора логируется как ERROR, а не WARNING: это ПОТЕРЯ
+        накопленного состояния, а не мелкая неприятность, и она обязана быть
+        видна на странице диагностики.
+        """
+        for path, kind in ((self.path, "основной"), (self.path + ".bak", "резервный")):
+            if not os.path.exists(path):
+                continue
             try:
-                with open(self.path, encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     loaded = json.load(f)
+                if not isinstance(loaded, dict):
+                    raise ValueError("состояние не является объектом JSON")
                 self.data.update(loaded)
-                logger.info(f"[State] загружено: {len(self.data['rules'])} правил, "
-                            f"спринт #{self.data['sprint_number']}")
-            except Exception as e:
-                logger.warning(f"[State] не удалось прочитать {self.path}: {e}")
+                logger.info("[State] загружено (%s): %d правил, спринт #%s", kind,
+                            len(self.data["rules"]), self.data["sprint_number"])
+                return
+            except Exception:
+                logger.error("[State] не удалось прочитать %s файл состояния — "
+                             "пробую следующий", kind, exc_info=True,
+                             extra={"ctx": {"file": path}})
 
     def save(self):
+        """АТОМАРНАЯ запись: временный файл -> fsync -> замена.
+
+        Раньше было open(path, "w"), то есть файл сначала обрезался, а потом
+        наполнялся. Прерывание в этот момент оставляло обрезанный файл;
+        _load ловил ошибку разбора, писал WARNING и продолжал с пустыми
+        значениями — то есть потеря была МОЛЧАЛИВОЙ. А в файле лежит жизненный
+        цикл правил, номер спринта, ротация дежурств и отложенные откаты, то
+        есть та самая «память отдела», без которой активности снова становятся
+        случайными.
+
+        save() зовётся ещё и на каждом инкременте счётчика (next_issue_id,
+        next_release, set_pto), поэтому окно уязвимости было широким.
+        """
+        tmp = self.path + ".tmp"
         try:
-            with open(self.path, "w", encoding="utf-8") as f:
+            with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.warning(f"[State] не удалось сохранить: {e}")
+                f.flush()
+                os.fsync(f.fileno())
+            if os.path.exists(self.path):
+                try:
+                    # одно поколение резерва: если новый файл окажется битым,
+                    # есть куда откатиться
+                    os.replace(self.path, self.path + ".bak")
+                except OSError:
+                    pass
+            os.replace(tmp, self.path)
+        except Exception:
+            logger.error("[State] не удалось сохранить состояние — прогресс "
+                         "прогона будет потерян", exc_info=True,
+                         extra={"ctx": {"file": self.path}})
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except OSError:
+                pass
 
     # ------------------------------------------------------------------
     # Правила

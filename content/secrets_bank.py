@@ -85,6 +85,46 @@ def base64_blob():
             "lines": ["EXPORT_DATA_B64=" + base64.b64encode(raw).decode()]}
 
 
+def package_index_manifest():
+    """requirements.txt с учётными данными приватного индекса пакетов В URI.
+
+    Отдельный генератор, потому что этот секрет живёт НЕ в форме `KEY=VALUE`, а
+    внутри адреса, и собрать его из произвольного секрета нельзя.
+
+    Раньше шаг атаки T1195.002 делал именно так:
+
+        secret["lines"][0].split("=")[-1]
+
+    Приём работает только для секретов вида KEY=VALUE. Для ssh-ключа первая
+    строка — `-----BEGIN RSA PRIVATE KEY-----`, для сервисного аккаунта GCP —
+    одна фигурная скобка `{`. В манифест уходило буквальное
+    `--index-url https://ci-bot:{@…/simple`, то есть мусор, а сигнатура
+    секрета не срабатывала вовсе: правило supply-chain-dep требует
+    n_regex_hits >= 1, и техника T1195.002 исполнялась, но НЕ
+    ДЕТЕКТИРОВАЛАСЬ — при том что правило под неё написано.
+
+    Хост НЕ в зоне `.example`: RFC 2606 резервирует её под документацию,
+    поэтому слово «example» стоит в маркерах шаблона (_PLACEHOLDER_RE), и
+    содержимое с таким адресом само себя помечало безобидным —
+    placeholder_signal=true гасит восемь правил и переворачивает знак
+    признака у слоя L2.
+
+    Возвращает dict(type, lines, content) — content готов к записи в файл.
+    """
+    token = "glpat-" + _rand(20) + "." + _hex(2) + "." + _rand(20)
+    url = f"https://ci-bot:{token}@pkgs.internal.soc.local/simple"
+    return {
+        "type": "package_index_credential",
+        "lines": [f"PIP_INDEX_URL={url}"],
+        "content": (
+            f"--index-url {url}\n"
+            "requests>=2.31.0\n"
+            "urllib3>=2.0.0\n"
+            "internal-utils==2.4.1\n"
+        ),
+    }
+
+
 _REAL = [aws_key, gcp_key, private_key, jwt_token, db_url, slack_token, generic_api_key]
 
 

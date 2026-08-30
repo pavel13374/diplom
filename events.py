@@ -62,6 +62,10 @@ _STATE = {
 
 SESSION_GAP_MIN = 30                 # разрыв (sim-минут) → новая рабочая сессия актора
 
+#: Потолок отслеживаемых путей на репозиторий (страница «Репозитории» и так
+#: показывает первые 80). Без него множество росло монотонно всё время работы.
+MAX_TRACKED_FILES_PER_REPO = 5000
+
 
 
 # ----------------------------------------------------------------------
@@ -188,8 +192,21 @@ def _norm_project(project, project_id):
 def emit(action, actor=None, role=None, project=None, project_id=None,
          path=None, branch=None, mr_iid=None, message=None, target=None,
          extra=None, anomaly_type=None, severity=None, is_anomaly=None,
-         campaign_id=None):
-    """Записать событие. Метки берутся из явных аргументов ИЛИ из активной аннотации."""
+         campaign_id=None, at_sim=None):
+    """Записать событие. Метки берутся из явных аргументов ИЛИ из активной аннотации.
+
+    at_sim — СИМУЛИРОВАННОЕ время события (datetime), если оно отличается от
+    текущего показания часов. Нужно там, где действующее лицо само выбирает
+    момент: атакующий, который лезет в production ночью, не ждёт, пока мир
+    доиграет рабочий день.
+
+    Важно, ЧТО ИМЕННО делает этот аргумент: он подменяет ОДИН источник времени,
+    из которого дальше выводятся ВСЕ временные поля события — ts_sim, hour,
+    weekday, is_night, is_weekend. Поэтому несогласованное событие («час 14, но
+    is_night=true») получить нельзя в принципе. Отдельного аргумента для
+    is_night нет и не должно быть: ровно так подделывают признак вместо того,
+    чтобы моделировать поведение.
+    """
     if not _STATE["enabled"]:
         return
     ann = _current_annotation()
@@ -226,7 +243,7 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
                    extra={"ctx": {"action": action, "actor": actor,
                                   "подсказка": "см. taxonomy.py"}})
 
-    now_sim = simclock.now()
+    now_sim = at_sim or simclock.now()
     proj_name, proj_odd = _norm_project(project, project_id)
     if proj_odd:
         # Не исключение: поток важнее строгости. Но в журнале это должно быть
@@ -290,7 +307,13 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
                     "path": path, "mr_iid": mr_iid, "message": rec.get("message"),
                     "is_anomaly": anom, "anomaly_type": a_type})
                 if action == "push" and path:
-                    _STATE["repo_files"][_proj].add(path)
+                    # Множество путей репозитория росло неограниченно и жило всё
+                    # время работы процесса мира. Держим потолок: страница
+                    # «Репозитории» показывает первые 80 путей, полное дерево ей
+                    # не нужно.
+                    _files = _STATE["repo_files"][_proj]
+                    if len(_files) < MAX_TRACKED_FILES_PER_REPO:
+                        _files.add(path)
                 if action == "file_delete" and path:
                     _STATE["repo_files"][_proj].discard(path)
                     _STATE["repo_deleted"][_proj].append({"path": path, "actor": actor,
@@ -318,8 +341,10 @@ def emit(action, actor=None, role=None, project=None, project_id=None,
                 _STATE["fh"].write(json.dumps(rec, ensure_ascii=False) + "\n")
                 _STATE["fh"].flush()
             except Exception:
+                # Ключ "file", а не "path": последнего в _STATE нет, поэтому
+                # единственное сообщение о ПОТЕРЕ события всегда называло None.
                 _log.error("не удалось записать событие в журнал %s",
-                           _STATE.get("path"), exc_info=True)
+                           _STATE.get("file"), exc_info=True)
         try:
             import eventstore
             eventstore.append(rec)

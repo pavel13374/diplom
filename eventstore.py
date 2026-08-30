@@ -43,6 +43,9 @@ CREATE INDEX IF NOT EXISTS ix_events_actor    ON events(actor);
 CREATE INDEX IF NOT EXISTS ix_events_action   ON events(action);
 CREATE INDEX IF NOT EXISTS ix_events_episode  ON events(episode_id);
 CREATE INDEX IF NOT EXISTS ix_events_campaign ON events(campaign_id);
+-- Индексы под stats(): без них каждый опрос дашборда шёл полным перебором.
+CREATE INDEX IF NOT EXISTS ix_events_meta      ON events(meta);
+CREATE INDEX IF NOT EXISTS ix_events_anomaly   ON events(is_anomaly, meta);
 CREATE TABLE IF NOT EXISTS cursors (
     name TEXT PRIMARY KEY,
     pos  INTEGER NOT NULL DEFAULT 0
@@ -85,6 +88,11 @@ CREATE TABLE IF NOT EXISTS metrics_history (
     alerts    INTEGER,
     incidents INTEGER
 );
+CREATE TABLE IF NOT EXISTS cases (
+    id        TEXT PRIMARY KEY,
+    payload   TEXT,
+    updated   TEXT
+);
 CREATE TABLE IF NOT EXISTS annotations (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     ts        TEXT,
@@ -93,14 +101,42 @@ CREATE TABLE IF NOT EXISTS annotations (
 """
 
 
-def init(path=None, enabled=True):
-    """Открыть/создать БД. Вызывается и в «мире», и в «защите»."""
+def init(path=None, enabled=True, force=False):
+    """Открыть/создать БД. Идемпотентно.
+
+    ПОЧЕМУ ИДЕМПОТЕНТНО. Раньше каждый вызов открывал НОВОЕ соединение и
+    перетирал прежнее, не закрывая: два подряд init() давали два разных
+    объекта. А зовут функцию отовсюду — events.init(), create_app() ->
+    start_workers(), сам _ingestor(), run_defense.run(), почти каждый скрипт в
+    tools/ и, что хуже всего, webapp.api_health НА КАЖДОМ ОПРОСЕ, если стор
+    оказался закрыт. Брошенные соединения держат дескрипторы и снимки WAL,
+    поэтому чекпойнт не проходит — правдоподобное объяснение тому, что на
+    рабочей машине рядом с events.db на 66 МБ лежит -wal на 4 МБ.
+
+    force=True нужен там, где переоткрытие осмысленно (api_fresh_start
+    подменяет файл базы).
+    """
     import config
     cfg = getattr(config, "EVENT_STORE", {}) or {}
     path = path or cfg.get("path", "data/events.db")
     if not os.path.isabs(path):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
     with _LOCK:
+        if not force and _STATE["db"] is not None and _STATE["path"] == path:
+            try:
+                _STATE["db"].execute("SELECT 1").fetchone()
+                _STATE["enabled"] = bool(enabled and cfg.get("enabled", True))
+                return path
+            except Exception:
+                # соединение испортилось — переоткроем ниже
+                _log.warning("соединение с event-store нерабочее, переоткрываю",
+                             exc_info=True)
+        if _STATE["db"] is not None:
+            try:
+                _STATE["db"].close()
+            except sqlite3.Error:
+                pass
+            _STATE["db"] = None
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
             db = sqlite3.connect(path, check_same_thread=False, timeout=30)
@@ -197,12 +233,24 @@ def max_id():
     return row[0] if row else 0
 
 
-def count(where=None):
+def count(actor=None, action=None):
+    """Число событий, при желании с фильтром.
+
+    Раньше сигнатура была count(where=None), и аргумент ПОЛНОСТЬЮ игнорировался:
+    count() и count("actor=\'nobody\'") давали одно и то же число. Вызывающий,
+    доверившийся сигнатуре, получал неверный ответ без всякой ошибки. Фильтр
+    сделан настоящим и параметризованным (никакой склейки SQL из строк).
+    """
     if not enabled():
         return 0
-    q = "SELECT COUNT(*) FROM events"
+    q = "SELECT COUNT(*) FROM events WHERE 1=1"
+    args = []
+    if actor:
+        q += " AND actor = ?"; args.append(actor)
+    if action:
+        q += " AND action = ?"; args.append(action)
     with _LOCK:
-        row = _STATE["db"].execute(q).fetchone()
+        row = _STATE["db"].execute(q, args).fetchone()
     return row[0] if row else 0
 
 
@@ -224,16 +272,40 @@ def set_cursor(name, pos):
         _STATE["db"].commit()
 
 
+#: Кэш stats(). Ключ — максимальный id: если новых событий нет, пересчитывать
+#: нечего.
+_STATS_CACHE = {"max_id": -1, "ts": 0.0, "data": None}
+_STATS_TTL_S = 2.0
+
+
 def stats():
+    """Сводка по журналу. КЭШИРУЕТСЯ.
+
+    Четыре полных прохода по таблице — COUNT(*), COUNT(*) с фильтром и два
+    COUNT(DISTINCT) — на базе, которая на рабочей машине занимает 66 МБ. А
+    зовут её из /api/stats, обоих /api/health и /api/onboarding, то есть с
+    частотой опроса дашборда, на КАЖДУЮ открытую вкладку. Соединение общее и
+    под общим замком с пишущим потоком, поэтому подсчёт ещё и притормаживал
+    приём событий. Это самое правдоподобное объяснение тому, что консоль
+    «тормозит тем сильнее, чем больше журнал».
+    """
     if not enabled():
         return {"enabled": False, "error": _STATE.get("error")}
+    import time as _t
+    mid = max_id()
+    c = _STATS_CACHE
+    if c["data"] is not None and c["max_id"] == mid and (_t.time() - c["ts"]) < _STATS_TTL_S:
+        return dict(c["data"])
     with _LOCK:
-        total = _STATE["db"].execute("SELECT COUNT(*) FROM events").fetchone()[0]
-        anom = _STATE["db"].execute("SELECT COUNT(*) FROM events WHERE is_anomaly=1 AND meta=0").fetchone()[0]
-        camp = _STATE["db"].execute("SELECT COUNT(DISTINCT campaign_id) FROM events WHERE campaign_id IS NOT NULL").fetchone()[0]
-        eps = _STATE["db"].execute("SELECT COUNT(DISTINCT episode_id) FROM events WHERE episode_id IS NOT NULL").fetchone()[0]
-    return {"enabled": True, "path": _STATE["path"], "events": total,
+        db = _STATE["db"]
+        total = db.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        anom = db.execute("SELECT COUNT(*) FROM events WHERE is_anomaly=1 AND meta=0").fetchone()[0]
+        camp = db.execute("SELECT COUNT(DISTINCT campaign_id) FROM events WHERE campaign_id IS NOT NULL").fetchone()[0]
+        eps = db.execute("SELECT COUNT(DISTINCT episode_id) FROM events WHERE episode_id IS NOT NULL").fetchone()[0]
+    data = {"enabled": True, "path": _STATE["path"], "events": total,
             "anomaly_events": anom, "episodes": eps, "campaigns": camp}
+    c.update(max_id=mid, ts=_t.time(), data=dict(data))
+    return data
 
 
 def last_event():
@@ -280,6 +352,70 @@ def all_incident_status():
         rows = _STATE["db"].execute("SELECT iid,status,verdict,reason,owner,updated FROM incident_status").fetchall()
     return {r[0]: {"status": r[1], "verdict": r[2], "reason": r[3], "owner": r[4], "updated": r[5]} for r in rows}
 
+
+
+# ----------------------------------------------------------------------
+#  ДЕЛА (расследования)
+# ----------------------------------------------------------------------
+# Дело — это несколько инцидентов, собранных в одно расследование:
+# ответственный, статус, приоритет, история действий, заметки.
+#
+# Раньше дела жили ТОЛЬКО в localStorage браузера. Получалась несогласованность,
+# которая обнаруживается в худший момент: вердикты TP/FP хранились на сервере и
+# честно переживали перезапуск, а собранное аналитиком расследование исчезало
+# при открытии консоли с другой машины или после очистки данных сайта — без
+# единого предупреждения.
+#
+# Хранится целиком как JSON, а не разложенным по колонкам: у дела свободная
+# форма (список инцидентов, произвольная история действий), и раскладывать её
+# по столбцам пришлось бы менять при каждом добавлении поля в интерфейсе.
+# Запросов по внутренностям дела нет — только чтение и запись целиком.
+
+def list_cases():
+    """Все дела, свежие первыми."""
+    if not enabled():
+        return []
+    import json as _j
+    with _LOCK:
+        rows = _STATE["db"].execute(
+            "SELECT payload FROM cases ORDER BY updated DESC").fetchall()
+    out = []
+    for (payload,) in rows:
+        try:
+            out.append(_j.loads(payload))
+        except Exception:
+            logging.getLogger("eventstore").error("дело не разобралось из хранилища — пропущено", exc_info=True)
+    return out
+
+
+def save_case(case):
+    """Создать или обновить дело. Ключ — case['id']."""
+    if not enabled() or not isinstance(case, dict):
+        return None
+    cid = str(case.get("id") or "").strip()
+    if not cid:
+        return None
+    import json as _j
+    import datetime as _dt
+    now = _dt.datetime.now().isoformat(timespec="seconds")
+    case = dict(case)
+    case["updated"] = now
+    with _LOCK:
+        _STATE["db"].execute(
+            "INSERT INTO cases(id,payload,updated) VALUES(?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated=excluded.updated",
+            (cid, _j.dumps(case, ensure_ascii=False), now))
+        _STATE["db"].commit()
+    return case
+
+
+def delete_case(cid):
+    if not enabled():
+        return False
+    with _LOCK:
+        cur = _STATE["db"].execute("DELETE FROM cases WHERE id=?", (str(cid),))
+        _STATE["db"].commit()
+    return cur.rowcount > 0
 
 def add_metrics_snapshot(m):
     if not enabled() or not m:
@@ -339,22 +475,130 @@ def enqueue_command(ctype, payload=None):
 
 
 def claim_command():
-    """Забрать старейшую pending-команду и пометить done. Возвращает dict|None."""
+    """Забрать старейшую pending-команду. Возвращает dict|None.
+
+    ── Два дефекта, которые здесь исправлены ──────────────────────────────
+    1. ЗАХВАТ БЫЛ НЕ АТОМАРНЫМ МЕЖДУ ПРОЦЕССАМИ. SELECT и UPDATE стояли под
+       threading.Lock — замком ВНУТРИ ПРОЦЕССА. Но вся суть этого хранилища в
+       том, что мир и консоль — РАЗНЫЕ процессы, ради чего и включён WAL. Два
+       мира (или мир плюс скрипт из tools/) могли забрать одну команду и
+       выполнить кампанию дважды, испортив разметку, по которой считаются
+       метрики. Теперь захват — одно условное предложение внутри BEGIN
+       IMMEDIATE: победитель ровно один, кто бы ни соревновался.
+
+    2. СТАТУС СТАНОВИЛСЯ 'done' ДО ВЫПОЛНЕНИЯ. Экран запуска сценариев
+       показывал кампанию завершённой в момент, когда её только сняли из
+       очереди, а падение посреди выполнения оставляло её «выполненной» без
+       результата. Введено состояние 'running'; в 'done'/'failed' переводит
+       set_command_result.
+    """
     if not enabled():
         return None
+    import datetime as _dt
+    now = _dt.datetime.now().isoformat(timespec="seconds")
+    expire_stale_commands()
     with _LOCK:
-        row = _STATE["db"].execute(
-            "SELECT id,type,payload FROM commands WHERE status='pending' ORDER BY id ASC LIMIT 1"
-        ).fetchone()
-        if not row:
+        db = _STATE["db"]
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT id,type,payload FROM commands WHERE status='pending' "
+                "ORDER BY id ASC LIMIT 1").fetchone()
+            if not row:
+                db.commit()
+                return None
+            cur = db.execute(
+                "UPDATE commands SET status='running', result=? "
+                "WHERE id=? AND status='pending'", ("claimed " + now, row[0]))
+            db.commit()
+            if cur.rowcount != 1:
+                return None          # успел другой процесс
+        except Exception:
+            try:
+                db.rollback()
+            except sqlite3.Error:
+                pass
+            _log.error("не удалось забрать команду из очереди", exc_info=True)
             return None
-        _STATE["db"].execute("UPDATE commands SET status='done' WHERE id=?", (row[0],))
-        _STATE["db"].commit()
     try:
         payload = json.loads(row[2]) if row[2] else {}
     except Exception:
+        _log.warning("битый payload команды", extra={"ctx": {"id": row[0]}})
         payload = {}
     return {"id": row[0], "type": row[1], "payload": payload}
+
+
+#: Сколько живёт НЕВЫПОЛНЕННАЯ команда. Запуск сценария и «Реагировать» —
+#: интерактивные действия аналитика, а не отложенные задания: их смысл
+#: пропадает вместе с моментом, когда человек их нажал.
+COMMAND_TTL_S = 900
+
+
+def expire_stale_commands(older_than_s=None):
+    """Снять с очереди команды, которые никто не забрал вовремя.
+
+    ОЧЕРЕДЬ РАЗБИРАЕТСЯ FIFO, И ЭТО БЫЛО ЛОВУШКОЙ. Пока мир остановлен,
+    нажатия «Запустить» копятся; на живом стенде накопилось 44 команды
+    возрастом до трёх суток. После запуска мира новая команда вставала в
+    хвост этой очереди и по одной за итерацию ждала своего часа — с точки
+    зрения аналитика кнопка просто не работала. А старые команды в это время
+    ВЫПОЛНЯЛИСЬ: стенд проигрывал запросы трёхдневной давности как свежие.
+
+    Обе беды лечит срок годности: невыполненная за COMMAND_TTL_S команда
+    помечается просроченной и в работу не идёт.
+    """
+    if not enabled():
+        return 0
+    import datetime as _dt
+    ttl = COMMAND_TTL_S if older_than_s is None else older_than_s
+    cutoff = (_dt.datetime.now() - _dt.timedelta(seconds=ttl)).isoformat(timespec="seconds")
+    with _LOCK:
+        cur = _STATE["db"].execute(
+            # В result кладём только объяснение. Статус хранится отдельным
+            # полем и на экране уже переведён, поэтому префикс «failed: »
+            # выводился вторым: строка читалась как
+            # «ошибка · failed: команда просрочена…».
+            "UPDATE commands SET status='failed', "
+            "result='команда просрочена — мир не забрал её вовремя' "
+            "WHERE status='pending' AND ts < ?", (cutoff,))
+        _STATE["db"].commit()
+    if cur.rowcount:
+        _log.warning("просроченные команды сняты с очереди",
+                     extra={"ctx": {"сколько": cur.rowcount, "срок_с": ttl}})
+    return cur.rowcount
+
+
+def pending_commands(limit=200):
+    """Сколько команд ждёт исполнения — для показа глубины очереди."""
+    if not enabled():
+        return 0
+    with _LOCK:
+        row = _STATE["db"].execute(
+            "SELECT COUNT(*) FROM commands WHERE status IN ('pending','running')"
+        ).fetchone()
+    return int(row[0]) if row else 0
+
+
+def reap_stale_commands(older_than_s=1800):
+    """Вернуть в очередь команды, зависшие в 'running' (процесс упал).
+
+    Без этого падение мира посреди кампании навсегда оставляло команду
+    захваченной, и повторно она не выполнялась никогда.
+    """
+    if not enabled():
+        return 0
+    import datetime as _dt
+    cutoff = (_dt.datetime.now() - _dt.timedelta(seconds=older_than_s)) \
+        .isoformat(timespec="seconds")
+    with _LOCK:
+        cur = _STATE["db"].execute(
+            "UPDATE commands SET status='pending', result=NULL "
+            "WHERE status='running' AND ts < ?", (cutoff,))
+        _STATE["db"].commit()
+    if cur.rowcount:
+        _log.warning("возвращены в очередь зависшие команды",
+                     extra={"ctx": {"сколько": cur.rowcount}})
+    return cur.rowcount
 
 
 def list_commands(limit=20):
@@ -370,11 +614,15 @@ def list_commands(limit=20):
     return out
 
 
-def set_command_result(cid, result):
+def set_command_result(cid, result, status=None):
+    """Записать результат и перевести команду в терминальное состояние."""
     if not enabled():
         return
+    if status is None:
+        status = "failed" if str(result or "").startswith("failed") else "done"
     with _LOCK:
-        _STATE["db"].execute("UPDATE commands SET result=? WHERE id=?", (result, cid))
+        _STATE["db"].execute("UPDATE commands SET result=?, status=? WHERE id=?",
+                             (result, status, cid))
         _STATE["db"].commit()
 
 
@@ -416,6 +664,6 @@ def close():
             try:
                 _STATE["db"].commit()
                 _STATE["db"].close()
-            except Exception:
-                pass
+            except sqlite3.Error:
+                _log.warning("не удалось корректно закрыть event-store", exc_info=True)
         _STATE["db"] = None

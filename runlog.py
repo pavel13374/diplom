@@ -44,22 +44,69 @@ def setup(base_dir=None):
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     path = os.path.join(d, f"run-{ts}.log")
 
-    fh = RotatingFileHandler(path, maxBytes=25 * 1024 * 1024, backupCount=3,
-                             encoding="utf-8")
+    root = logging.getLogger()
+
+    # ИДЕМПОТЕНТНОСТЬ. Каждый вызов добавлял НОВЫЙ файловый хендлер на 25 МБ и
+    # новый счётчик, не убирая прежние, и при этом переводил корневой логгер в
+    # DEBUG. Функцию зовут main.py, Runner.__init__ в webapp.py и тесты, так что
+    # хендлеры множились, а logs/ рос без границ: на рабочей машине это 47 МБ в
+    # восьми файлах run-*.log плюс 17 МБ debug-*.jsonl.
+    for h in list(root.handlers):
+        if getattr(h, "_runlog", False):
+            root.removeHandler(h)
+            try:
+                h.close()
+            except (OSError, ValueError):
+                pass
+
+    # 25 МБ × 3 архива на КАЖДЫЙ из десяти хранимых прогонов — до гигабайта
+    # в logs/ в худшем случае. Для разбора хватает и десятой части: файл
+    # пишется на DEBUG и десять мегабайт — это десятки тысяч строк.
+    fh = RotatingFileHandler(path, maxBytes=10 * 1024 * 1024, backupCount=1,
+                             encoding="utf-8", delay=True)
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter(
         "%(asctime)s %(levelname)-7s %(name)s: %(message)s", "%Y-%m-%d %H:%M:%S"))
+    fh._runlog = True
 
     ch = CountingHandler()
+    ch._runlog = True
 
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)            # полный уровень в файл
+    # DEBUG в корне только по явному запросу: иначе весь процесс пишет отладку
+    # во все приёмники, и debug-*.jsonl растёт десятками мегабайт за прогон.
+    import config as _cfg
+    want_debug = str(os.environ.get("SOC_DEBUG", "")).lower() in ("1", "true", "yes")
+    root.setLevel(logging.DEBUG if want_debug
+                  else getattr(logging, getattr(_cfg, "LOG_LEVEL", "INFO"), logging.INFO))
+    if not want_debug:
+        fh.setLevel(root.level)
     root.addHandler(fh)
     root.addHandler(ch)
+    _prune_old_runs(d)
 
     _ACTIVE.update(path=path, counter=ch, fh=fh)
     logging.getLogger("runlog").info(f"Полный лог прогона: {path}")
     return path
+
+
+#: Сколько файлов прогонов оставляем в logs/. Верхняя граница каталога:
+#: KEEP_RUN_LOGS × (10 МБ + 1 архив) = 100 МБ на прогоны.
+KEEP_RUN_LOGS = 5
+
+
+def _prune_old_runs(d):
+    """Не копить run-*.log бесконечно: каждый запуск создавал новый файл."""
+    try:
+        files = sorted((os.path.join(d, f) for f in os.listdir(d)
+                        if f.startswith("run-") and f.endswith(".log")),
+                       key=os.path.getmtime, reverse=True)
+        for f in files[KEEP_RUN_LOGS:]:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+    except OSError:
+        pass
 
 
 def path():

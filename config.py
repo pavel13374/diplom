@@ -18,12 +18,21 @@ GITLAB_URL  = "https://gitlab.polenov.ru"
 import os as _os_tok
 
 
-def _load_admin_token():
-    t = _os_tok.environ.get("GITLAB_ADMIN_TOKEN", "").strip()
+def _load_secret_file(env_name, file_name):
+    """Секрет из переменной окружения ИЛИ из git-ignored файла рядом с config.py.
+
+    Одна функция на все секреты стенда. Раньше такая логика существовала только
+    для токена GitLab, а токен Telegram был вписан в этот файл ЛИТЕРАЛОМ — при
+    том что config.py находится под git. Правило «секрет не хранится в
+    репозитории» было записано здесь же, в комментарии, и нарушено двумя
+    сотнями строк ниже. Комментария недостаточно: нужна общая функция, которой
+    пользуются ВСЕ.
+    """
+    t = _os_tok.environ.get(env_name, "").strip()
     if t:
         return t
     p = _os_tok.path.join(_os_tok.path.dirname(_os_tok.path.abspath(__file__)),
-                          ".gitlab_token")
+                          file_name)
     try:
         with open(p, encoding="utf-8") as f:
             return f.read().strip()
@@ -31,12 +40,138 @@ def _load_admin_token():
         return ""
 
 
+def _load_admin_token():
+    # Историческое имя переменной сохранено ради совместимости с уже
+    # настроенными окружениями; SOC_GITLAB_TOKEN — новое, единообразное.
+    return (_os_tok.environ.get("GITLAB_ADMIN_TOKEN", "").strip()
+            or _load_secret_file("SOC_GITLAB_TOKEN", ".gitlab_token"))
+
+
 ADMIN_TOKEN = _load_admin_token()
+
+#: Пришёл ли токен из окружения / отдельного файла, а не из web_config.json.
+#:
+#: Нужно, чтобы save_settings НЕ ПЕРЕПИСЫВАЛ его в web_config.json. Иначе
+#: происходит тихая деградация: администратор аккуратно держит секрет в
+#: переменной окружения (или в .gitlab_token с правами 0600), открывает
+#: страницу настроек, двигает любой ползунок — и токен оказывается ещё и в
+#: web_config.json. Файл в .gitignore, но это второй экземпляр секрета,
+#: которого никто не заводил, и он переживает смену переменной окружения.
+_TOKEN_FROM_ENV = bool(ADMIN_TOKEN)
+
+#: Значения, которые НИКОГДА не уходят клиенту в открытом виде и не попадают
+#: в диагностические выгрузки. Список используется export_settings() и
+#: soclog.bundle().
+SECRET_SETTINGS = ("ADMIN_TOKEN",)
+
+#: Проверка TLS-сертификата GitLab: "auto" | "on" | "off".
+#:
+#: Раньше во ВСЕХ точках создания клиента стояло ssl_verify=False, а
+#: конструктор ещё и глушил предупреждения urllib3 — то есть админский PAT
+#: уходил по непроверенному каналу, и оператору об этом не сообщалось.
+#: Обратная крайность — требовать доверенный сертификат всегда — ломает
+#: основной сценарий стенда: лабораторный GitLab в локальной сети с
+#: самоподписанным сертификатом. Тогда продукт «безопасен» ровно за счёт того,
+#: что не работает, а пользователь всё равно выключает проверку — только уже
+#: глобально и вслепую.
+#:
+#: Поэтому режим по умолчанию — "auto": решение принимается по АДРЕСУ.
+#:   * петля, RFC1918 (10/8, 172.16/12, 192.168/16), CGNAT, .local/.lan/
+#:     .internal/.home/.lab и голое имя хоста без точки  → проверка выключена,
+#:     это лабораторный периметр, публичного CA там взяться неоткуда;
+#:   * любой публичный адрес или доменное имя → проверка ВКЛЮЧЕНА.
+#: Явное значение переменной окружения или настройки перебивает автоопределение
+#: в обе стороны.
+GITLAB_VERIFY_TLS = (_os_tok.environ.get("SOC_GITLAB_VERIFY_TLS", "auto").strip().lower()
+                     or "auto")
+#: Свой CA-бандл (путь к .pem) — правильный способ работать с самоподписанным
+#: сертификатом, не выключая проверку целиком. Задан — значит используется
+#: всегда, независимо от режима.
+GITLAB_CA_BUNDLE = _os_tok.environ.get("SOC_GITLAB_CA_BUNDLE", "").strip() or None
+
+_TLS_OFF = ("0", "false", "no", "off", "none", "skip", "insecure")
+_TLS_ON = ("1", "true", "yes", "on", "strict", "verify")
+
+#: Суффиксы имён, которые не существуют в публичном DNS: сертификат на них
+#: не может быть выписан публичным CA по определению.
+_LAB_SUFFIXES = (".local", ".lan", ".internal", ".intranet", ".home", ".lab",
+                 ".localdomain", ".test", ".localhost")
+
+#: Чтобы не писать одно и то же предупреждение на каждый созданный клиент.
+_tls_notice_shown = set()
+
+
+def _is_lab_host(host: str) -> bool:
+    """Адрес заведомо лабораторный: приватная сеть, петля или непубличное имя."""
+    if not host:
+        return False
+    h = host.strip().lower().strip("[]")
+    if h in ("localhost", "gitlab", "gitlab.local"):
+        return True
+    try:
+        import ipaddress as _ipa
+        ip = _ipa.ip_address(h)
+        # is_private покрывает 10/8, 172.16/12, 192.168/16, ::1, fc00::/7 и петлю.
+        return bool(ip.is_private or ip.is_loopback or ip.is_link_local)
+    except ValueError:
+        pass
+    if h.endswith(_LAB_SUFFIXES):
+        return True
+    if "." not in h:
+        # Короткое имя разрешается только внутренним DNS/hosts.
+        return True
+    return False
+
+
+def gitlab_verify():
+    """Значение для requests: True | путь к CA-бандлу | False.
+
+    Свой CA-бандл важнее режима: если администратор положил корневой
+    сертификат, канал проверяется по нему и в лаборатории тоже.
+    """
+    if GITLAB_CA_BUNDLE:
+        return GITLAB_CA_BUNDLE
+    mode = str(GITLAB_VERIFY_TLS).strip().lower()
+    if mode in _TLS_OFF:
+        return False
+    if mode in _TLS_ON:
+        return True
+    # "auto" и любое непонятное значение — решаем по адресу.
+    host = ""
+    try:
+        import urllib.parse as _up
+        host = _up.urlsplit(globals().get("GITLAB_URL") or "").hostname or ""
+    except (ValueError, AttributeError):
+        host = ""
+    if _is_lab_host(host):
+        if host not in _tls_notice_shown:
+            _tls_notice_shown.add(host)
+            import logging as _lg
+            _lg.getLogger("config").info(
+                "GitLab по адресу %s — локальная сеть: проверка TLS-сертификата "
+                "отключена автоматически (самоподписанный сертификат в лаборатории "
+                "это норма). Чтобы проверять — SOC_GITLAB_CA_BUNDLE=<ca.pem> или "
+                "SOC_GITLAB_VERIFY_TLS=on", host)
+        return False
+    return True
 
 # Offline/dry-run: мир пишет события БЕЗ реального GitLab. Авто-включается, если
 # GitLab недоступен (чтобы не висеть на таймаутах и не «молчать»).
 import os as _os0
-OFFLINE_MODE = _os0.environ.get("SOC_OFFLINE", "").lower() in ("1", "true", "yes")
+
+#: ПРИНУДИТЕЛЬНЫЙ offline — воля пользователя, её не отменяет ничто.
+#: Задаётся переменной окружения и дальше не меняется.
+OFFLINE_FORCED = _os0.environ.get("SOC_OFFLINE", "").lower() in ("1", "true", "yes")
+
+#: ТЕКУЩЕЕ состояние: включает и принудительный offline, и автоматический откат
+#: при недоступном GitLab. Пересчитывается при КАЖДОМ запуске мира.
+#:
+#: Разделение появилось потому, что раньше флаг был один и работал как
+#: односторонняя защёлка: стоило GitLab один раз не ответить (например, ВМ ещё
+#: грузилась), как проверка связи переставала выполняться вовсе, а интерфейс
+#: показывал «offline (включён вручную)» — причём вручную никто ничего не
+#: включал. Вернуть стенд в онлайн можно было только перезапуском процесса.
+OFFLINE_MODE = OFFLINE_FORCED
 
 PROJECTS = {
     "detection-rules":     1,
@@ -193,9 +328,26 @@ LOG_FILE  = "simulator.log"
 # =======================================================================
 #  ВЕБ-АДМИНКА
 # =======================================================================
-WEB_HOST = "127.0.0.1"
-WEB_PORT = 8787
-PURPLE_WEB_PORT = 8788   # Purple Team Console (контур «защита»)
+# Адрес привязки обеих консолей.
+#
+# По умолчанию только петля — консоли не рассчитаны на публикацию в сеть
+# (общий пароль, отсутствие ролей). Но значение ОБЯЗАНО быть настраиваемым:
+# внутри контейнера привязка к 127.0.0.1 делает опубликованные порты
+# недостижимыми, и документированная команда `docker compose up` поднимала два
+# порта, на которых никто не слушает. Dockerfile выставляет SOC_WEB_HOST=0.0.0.0,
+# а compose публикует их только на 127.0.0.1 хоста.
+WEB_HOST = _os_tok.environ.get("SOC_WEB_HOST", "127.0.0.1").strip() or "127.0.0.1"
+WEB_PORT = int(_os_tok.environ.get("SOC_WEB_PORT", "8787"))
+PURPLE_WEB_PORT = int(_os_tok.environ.get("SOC_CONSOLE_PORT", "8788"))  # контур «защита»
+
+#: Срок жизни сессии. По умолчанию Flask держит permanent-сессию 31 день —
+#: слишком долго для консоли, из которой запускаются атакующие кампании.
+SESSION_LIFETIME_HOURS = int(_os_tok.environ.get("SOC_SESSION_HOURS", "8"))
+
+#: Отдавать ли текст исключения в теле HTTP-ответа. По умолчанию НЕТ:
+#: сообщения об ошибках в этом проекте регулярно содержат пути на диске,
+#: адреса GitLab и куски ответов API.
+DEBUG_ERRORS = _os_tok.environ.get("SOC_DEBUG_ERRORS", "").lower() in ("1", "true", "yes")
 
 # =======================================================================
 #  BLUE DETECTION STACK (контур защиты)
@@ -352,9 +504,18 @@ def _load_secret():
     p = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".secret_key")
     try:
         if _os.path.exists(p):
-            return open(p).read().strip()
+            with open(p, encoding="utf-8") as f:
+                return f.read().strip()
         s = _secrets.token_hex(32)
-        open(p, "w").write(s)
+        # Контекстный менеджер, а не open(...).write(...): второе полагается на
+        # финализацию по счётчику ссылок. Плюс права 0600 — ключом подписи
+        # сессий обеих консолей подделывается вход в обе.
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(s)
+        try:
+            _os.chmod(p, 0o600)
+        except (OSError, NotImplementedError):
+            pass          # Windows/FAT — прав как таковых нет, это ожидаемо
         return s
     except Exception:
         return _secrets.token_hex(32)
@@ -366,10 +527,23 @@ RUN_LOG_DIR = "logs"
 # =======================================================================
 #  TELEGRAM-ОТЧЁТЫ
 # =======================================================================
+# Токен И chat_id берутся из окружения (SOC_TELEGRAM_TOKEN / SOC_TELEGRAM_CHAT_ID)
+# либо из git-ignored файлов .telegram_token / .telegram_chat рядом с config.py.
+#
+# Здесь стоял живой Bot API-токен ЛИТЕРАЛОМ, в файле под git. Кто угодно с
+# доступом к репозиторию (или к его истории, или к артефакту CI, или к
+# docker-образу) мог читать чат и писать в него от имени бота. Для продукта,
+# который ищет утёкшие секреты в репозиториях, это особенно неуместно.
+# Закоммиченное значение необходимо ОТОЗВАТЬ у @BotFather.
+_TG_TOKEN = _load_secret_file("SOC_TELEGRAM_TOKEN", ".telegram_token")
+_TG_CHAT = _load_secret_file("SOC_TELEGRAM_CHAT_ID", ".telegram_chat")
+
 TELEGRAM = {
-    "enabled":          True,
-    "token":            "8717621147:AAGd2snyzC4TOfTDCXgyKXx8MimMA_nsmzM",
-    "chat_id":          "465642891",
+    # Включается САМ ФАКТОМ наличия токена: «enabled: True» без токена раньше
+    # означало, что telegram.send() каждый раз ходил в сеть и молча падал.
+    "enabled":          bool(_TG_TOKEN and _TG_CHAT),
+    "token":            _TG_TOKEN,
+    "chat_id":          _TG_CHAT,
     "report_every_min": 60,     # периодический отчёт, РЕАЛЬНЫЕ минуты
     "send_start_stop":  True,    # сообщать о старте/остановке
     "send_anomalies":   True,    # алерт на каждую аномалию (с антифлудом)
@@ -736,7 +910,7 @@ import json as _json
 WEB_CONFIG_FILE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "web_config.json")
 
 EDITABLE_SCALARS = [
-    "GITLAB_URL", "ADMIN_TOKEN",
+    "GITLAB_URL", "ADMIN_TOKEN", "GITLAB_VERIFY_TLS",
     "TIMELAPSE_ENABLED", "SIM_WORKDAY_REAL_MINUTES", "TIME_SCALE_OVERRIDE",
     "SIM_START", "FAST_FORWARD_OFFHOURS", "API_MIN_PAUSE", "MAX_REAL_SLEEP",
     "WORK_HOURS_START", "WORK_HOURS_END",
@@ -744,36 +918,178 @@ EDITABLE_SCALARS = [
     "SPEED_MULTIPLIER", "MAX_OPEN_MRS", "SPRINT_DAYS", "PTO_PROBABILITY_PER_DAY",
     "LOG_LEVEL", "GITLAB_DATES", "ANOMALY_RATE", "ANOMALY_RATE_OFFHOURS", "SECRET_RATE_MULT",
 ]
-EDITABLE_DICTS = ["SCENARIO_INTERVAL", "FEATURES", "PROBS", "ACTIVITY_WEIGHTS", "LUNCH_BREAK", "ANOMALIES", "EVENT_LOG"]
+# EVENT_LOG ЗДЕСЬ БЫТЬ НЕ ДОЛЖЕН.
+#
+# Он содержит ПУТЬ НА ДИСКЕ, а маршрут /api/dataset отдаёт файл по этому пути
+# через send_file. Пока ключ был редактируемым из веба, связка
+#
+#     POST /api/config {"EVENT_LOG": {"file": "/etc/passwd"}}
+#     GET  /api/dataset
+#
+# давала чтение ЛЮБОГО файла, доступного процессу, — на машине, где рядом лежат
+# .gitlab_token и .secret_key. Проверено экспериментально.
+#
+# Путь до журнала — топология развёртывания, а не настройка, которую крутят
+# ползунком. Он задаётся кодом/переменной окружения; из веба можно только
+# включить и выключить запись (см. EDITABLE_SUBKEYS).
+EDITABLE_DICTS = ["SCENARIO_INTERVAL", "FEATURES", "PROBS", "ACTIVITY_WEIGHTS",
+                  "LUNCH_BREAK", "ANOMALIES"]
+
+#: Словари, у которых из веба редактируется ТОЛЬКО перечисленное подмножество
+#: ключей. Всё остальное игнорируется молча — это не ошибка пользователя, а
+#: попытка изменить то, что интерфейс и не показывает.
+EDITABLE_SUBKEYS = {"EVENT_LOG": ("enabled",)}
+
+#: Сколько символов секрета показывать в маске.
+_MASK_TAIL = 4
 
 
-def export_settings() -> dict:
+def mask_secret(v) -> str:
+    """'glpat-abc…u1pu' — достаточно, чтобы узнать значение, недостаточно, чтобы им воспользоваться."""
+    s = str(v or "")
+    if not s:
+        return ""
+    if len(s) <= _MASK_TAIL + 2:
+        return "•" * len(s)
+    return s[:2] + "•" * 6 + s[-_MASK_TAIL:]
+
+
+def is_masked(v) -> bool:
+    return isinstance(v, str) and "•" in v
+
+
+def export_settings(reveal_secrets: bool = False) -> dict:
+    """Настройки для интерфейса.
+
+    Секреты по умолчанию МАСКИРУЮТСЯ. Раньше GET /api/config отдавал админский
+    PAT GitLab открытым текстом — токен со scope api, которым можно создать
+    пользователя, выписать impersonation-токен на кого угодно и прочитать любой
+    репозиторий инстанса. Он попадал в DOM страницы, в HAR-файл, в
+    диагностическую выгрузку, которую продукт сам предлагает приложить к
+    обращению.
+
+    reveal_secrets=True оставлен для внутренних вызовов (save_settings), где
+    значения пишутся на диск, а не отдаются наружу.
+    """
     g = globals()
-    out = {k: g.get(k) for k in EDITABLE_SCALARS}
+    out = {}
+    for k in EDITABLE_SCALARS:
+        v = g.get(k)
+        out[k] = v if (reveal_secrets or k not in SECRET_SETTINGS) else mask_secret(v)
     for k in EDITABLE_DICTS:
         v = g.get(k)
         out[k] = dict(v) if isinstance(v, dict) else v
+    for k, keys in EDITABLE_SUBKEYS.items():
+        v = g.get(k)
+        if isinstance(v, dict):
+            out[k] = {sk: v.get(sk) for sk in keys}
     out["WORK_DAYS"] = list(WORK_DAYS)
     return out
 
 
-def apply_settings(updates: dict):
+#: Схемы, которым разрешено быть в GITLAB_URL.
+_URL_SCHEMES = ("http", "https")
+
+
+def validate_gitlab_url(url: str):
+    """(ok, причина). Проверяется ДО записи, а не при первом обращении.
+
+    GITLAB_URL редактируется из веба, а /api/gitlab/check немедленно шлёт на
+    этот адрес запрос с заголовком PRIVATE-TOKEN: <админский PAT>. То есть
+    одна строка в настройках превращала панель в курьера учётных данных:
+    указываешь свой хост — получаешь токен в его access-логе. Тот же примитив
+    достаёт до внутренних адресов и до endpoint'ов метаданных облака.
+    """
+    import ipaddress
+    import urllib.parse as _up
+    s = (url or "").strip()
+    if not s:
+        return False, "адрес пуст"
+    if len(s) > 2000:
+        return False, "адрес неправдоподобно длинный"
+    try:
+        u = _up.urlparse(s)
+    except Exception:
+        return False, "адрес не разбирается"
+    if u.scheme.lower() not in _URL_SCHEMES:
+        return False, f"допустимы только схемы {'/'.join(_URL_SCHEMES)}"
+    if u.username or u.password:
+        return False, "учётные данные в URL недопустимы"
+    host = (u.hostname or "").strip()
+    if not host:
+        return False, "в адресе нет хоста"
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+    if ip is not None:
+        # Метаданные облака и link-local — классическая цель SSRF. Петля и
+        # частные сети разрешены осознанно: стенд для того и существует,
+        # чтобы работать с GitLab в локальной сети.
+        if ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified:
+            return False, f"адрес {host} недопустим (link-local/reserved)"
+        if ip.version == 6 and ip.ipv4_mapped is not None:
+            m = ip.ipv4_mapped
+            if m.is_link_local or m.is_reserved:
+                return False, f"адрес {host} недопустим (link-local через IPv6-маппинг)"
+    elif host.lower().endswith(".metadata.google.internal") or host.lower() == "metadata":
+        return False, "адрес указывает на сервис метаданных"
+    return True, ""
+
+
+def apply_settings(updates: dict, trusted: bool = False):
+    """Применить правки. Возвращает список отвергнутых ключей с причинами.
+
+    trusted=True — загрузка с диска (web_config.json): значения уже прошли
+    проверку при записи, и маска в них появиться не может.
+    """
     g = globals()
+    rejected = []
     for k, v in (updates or {}).items():
         if k in EDITABLE_SCALARS:
+            if k in SECRET_SETTINGS and is_masked(v):
+                continue          # клиент вернул маску — значение не менялось
+            if k == "GITLAB_URL" and not trusted:
+                ok, why = validate_gitlab_url(v)
+                if not ok:
+                    rejected.append({"key": k, "reason": why})
+                    continue
             g[k] = v
         elif k in EDITABLE_DICTS and isinstance(g.get(k), dict) and isinstance(v, dict):
             # МЕРЖ, а не замена: сохранённые из веба значения накладываются поверх,
             # но НОВЫЕ ключи из кода (новые активности/аномалии/фичи) не теряются.
             g[k].update(v)
+        elif k in EDITABLE_SUBKEYS and isinstance(g.get(k), dict) and isinstance(v, dict):
+            allowed = EDITABLE_SUBKEYS[k]
+            for sk, sv in v.items():
+                if sk in allowed:
+                    g[k][sk] = sv
+                elif not trusted:
+                    rejected.append({"key": f"{k}.{sk}", "reason": "ключ не редактируется из интерфейса"})
         elif k == "WORK_DAYS" and isinstance(v, list):
             g["WORK_DAYS"][:] = v
+    return rejected
 
 
 def save_settings():
     try:
-        with open(WEB_CONFIG_FILE, "w", encoding="utf-8") as f:
-            _json.dump(export_settings(), f, ensure_ascii=False, indent=2)
+        payload = export_settings(reveal_secrets=True)
+        if _TOKEN_FROM_ENV:
+            # см. _TOKEN_FROM_ENV: не создаём второй экземпляр секрета
+            payload.pop("ADMIN_TOKEN", None)
+        # reveal_secrets=True: на диск пишем настоящее значение (файл в
+        # .gitignore и в .dockerignore), иначе первое же сохранение из веба
+        # заменило бы рабочий токен маской.
+        tmp = WEB_CONFIG_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            _json.dump(payload, f, ensure_ascii=False, indent=2)
+            f.flush()
+            _os.fsync(f.fileno())
+        _os.replace(tmp, WEB_CONFIG_FILE)
+        try:
+            _os.chmod(WEB_CONFIG_FILE, 0o600)
+        except (OSError, NotImplementedError):
+            pass
         return True
     except Exception:
         import logging as _lg
@@ -783,11 +1099,28 @@ def save_settings():
         return False
 
 
+#: Ключи, которые РАНЬШЕ редактировались из веба, а теперь нет. Если они есть
+#: в файле, значение оттуда больше НЕ ПРИМЕНЯЕТСЯ, и об этом надо сказать
+#: вслух: молча перестать учитывать настройку — та же тихая деградация, что и
+#: молча её потерять.
+_RETIRED_KEYS = {"EVENT_LOG.file": "путь журнала задаётся кодом/окружением: "
+                                   "через веб он был вектором чтения любого файла"}
+
+
 def _load_web_config():
     if _os.path.exists(WEB_CONFIG_FILE):
         try:
             with open(WEB_CONFIG_FILE, encoding="utf-8") as f:
-                apply_settings(_json.load(f))
+                _data = _json.load(f)
+            for _k, _why in _RETIRED_KEYS.items():
+                _top, _sub = _k.split(".", 1)
+                if isinstance(_data.get(_top), dict) and _sub in _data[_top]:
+                    import logging as _lg
+                    _lg.getLogger("config").warning(
+                        "настройка %s из %s больше не применяется: %s",
+                        _k, _os.path.basename(WEB_CONFIG_FILE), _why,
+                        extra={"ctx": {"значение": _data[_top][_sub]}})
+            apply_settings(_data, trusted=True)
         except Exception:
             # Молчание здесь означает «настройки из веб-админки НЕ ПРИМЕНИЛИСЬ,
             # но никто не узнал»: мир поедет на значениях по умолчанию, а

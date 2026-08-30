@@ -55,7 +55,8 @@ def covered_techniques():
     techs = set()
     for fp in glob.glob(os.path.join(BASE, "detections", "*.json")):
         try:
-            techs.add(json.load(open(fp, encoding="utf-8")).get("technique"))
+            with open(fp, encoding="utf-8") as fh:
+                techs.add(json.load(fh).get("technique"))
         except Exception:
             pass
     techs.discard(None)
@@ -65,8 +66,12 @@ def covered_techniques():
 def draft_rule(technique, decisive_ev, family):
     """Эвристический черновик правила по decisive-событию слепой зоны."""
     when = {"action": decisive_ev.get("action", "push")}
-    if decisive_ev.get("n_regex_hits"):
-        when["n_regex_hits"] = {">=": 1}; when["placeholder_signal"] = False
+    if decisive_ev.get("n_real_hits") or decisive_ev.get("n_regex_hits"):
+        # n_real_hits, а не n_regex_hits + placeholder_signal: последняя пара
+        # выключалась одним словом «TODO» где угодно в файле, потому что
+        # placeholder_signal считался по файлу целиком. Черновик правила не
+        # должен воспроизводить уже исправленный дефект.
+        when["n_real_hits"] = {">=": 1}
     elif decisive_ev.get("project") == "soc-secrets":
         when = {"project": "soc-secrets", "action": {"in": ["push", "branch_create", "mr_merge"]}}
     elif decisive_ev.get("path"):

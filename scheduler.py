@@ -251,6 +251,9 @@ class Scheduler:
                             "filename_signal": ph, "placeholder_signal": ph,
                             "bytes": _r.randint(120, 900), "ext": path.split(".")[-1]})
         self.stats["offhours_benign"] = self.stats.get("offhours_benign", 0) + n
+        # Ночной легитимный шум эмитит настоящие события — итерация обязана
+        # попасть в «Успешно», а не исчезнуть между счётчиками.
+        self.stats["total_ok"] += 1
         logger.info(f"[Scheduler] [night benign @{oncall}] {simclock.stamp()}: {scenario} x{n}")
         return True
 
@@ -367,6 +370,13 @@ class Scheduler:
             if merged + closed >= LIMIT:
                 break
         logger.info(f"[Scheduler] разгрузка очереди: смержено {merged}, закрыто {closed} (просмотрено {processed})")
+        # Разгрузка — такое же действие, как любое другое, и она обязана
+        # попасть в счётчики: раньше итерация увеличивала total_runs, но ни
+        # total_ok, ни total_fail, и на дашборде «Действий» было больше, чем
+        # «Успешно + С ошибкой», без всякого объяснения.
+        # Пустая очередь — не отказ: считаем только когда было что делать.
+        if processed:
+            self.stats["total_ok" if (merged + closed) else "total_fail"] += 1
         simclock.sleep(config.scenario_pause_seconds())
         return (merged + closed) > 0
 
@@ -420,6 +430,10 @@ class Scheduler:
                 return False
             cmd = eventstore.claim_command()
         except Exception:
+            # Молчаливый return False означал бы «команд нет» при недоступном
+            # хранилище — неотличимо от нормы, а кнопки консоли при этом просто
+            # не работают.
+            logger.error("не удалось прочитать очередь команд", exc_info=True)
             return False
         if not cmd:
             return False
@@ -434,16 +448,28 @@ class Scheduler:
                 self.last_activity = "red_campaign(cmd)"
                 res = RedTeamEngine(self.agents, self.state).run_campaign(
                     key=key, evasion=evasion, tempo=tempo)
-                eventstore.set_command_result(cmd["id"],
-                    f"{res.get('key')}: {res.get('ok_steps')}/{res.get('steps')} steps" if res else "failed")
-                self.stats["total_ok"] += 1
+                # Статус в терминальное состояние переводит именно ЭТОТ вызов.
+                # Раньше claim_command сразу ставил 'done', и экран запуска
+                # сценариев показывал кампанию завершённой в момент, когда её
+                # только сняли из очереди.
+                eventstore.set_command_result(
+                    cmd["id"],
+                    f"{res.get('key')}: {res.get('ok_steps')}/{res.get('steps')} steps"
+                    if res else "failed: кампания не выполнилась",
+                    status="done" if res else "failed")
+                # Раньше здесь безусловно увеличивался total_ok — включая ветку,
+                # где той же строкой выше команда помечается 'failed'.
+                self.stats["total_ok" if res else "total_fail"] += 1
                 return True
             elif ctype == "anomaly":
-                self._run_anomaly()
-                eventstore.set_command_result(cmd["id"], "anomaly injected")
+                ok = self._run_anomaly()
+                eventstore.set_command_result(
+                    cmd["id"], "anomaly injected" if ok else "failed: аномалия не выполнилась",
+                    status="done" if ok else "failed")
                 return True
             elif ctype == "response":
                 issue_iid = self._respond_incident(payload)
+                self.stats["total_ok" if issue_iid else "total_fail"] += 1
                 if issue_iid:
                     ns = getattr(config, "PROJECT_NAMESPACE", "soc-team")
                     repo = getattr(self, "_last_ir_repo", None) or "playbooks"
@@ -454,11 +480,30 @@ class Scheduler:
                     eventstore.set_command_result(cmd["id"],
                         "failed: " + (GITLAB_STATUS.get("last_error") or "issue не создан (проверь права/доступ lead)"))
                 return True
+            else:
+                # Неизвестный тип: команда УЖЕ снята из очереди в состояние
+                # 'running'. Без явного отказа она остаётся в нём навсегда, и
+                # экран запуска сценариев показывает вечное «выполняется».
+                logger.warning("неизвестный тип команды — отклоняю",
+                               extra={"ctx": {"type": ctype, "id": cmd.get("id")}})
+                eventstore.set_command_result(
+                    cmd["id"], f"failed: неизвестный тип команды {ctype!r}",
+                    status="failed")
+                return True
         except Exception as e:
             logger.exception(f"command {ctype} failed: {e}")
+            try:
+                eventstore.set_command_result(cmd["id"], "failed: " + str(e)[:180],
+                                              status="failed")
+            except Exception:
+                logger.error("не удалось записать отказ команды", exc_info=True)
         return False
 
-    def _respond_incident(self, payload) -> bool:
+    def _respond_incident(self, payload) -> int:
+        # Аннотация -> int, а не bool: функция возвращает iid созданного issue
+        # (или 0). Это не педантизм: webapp._FakeGL ВЫВОДИТ поведение offline
+        # из аннотаций возврата, и проект уже ловил на себе дефект, вызванный
+        # тем, что выведенный по имени/типу ответ не совпадал с настоящим.
         """Ответное действие защиты (sandbox): завести IR-issue по инциденту."""
         try:
             lead = self._lead()

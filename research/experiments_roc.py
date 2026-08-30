@@ -50,7 +50,7 @@ def roc_auc(pos_scores, neg_scores):
     pos = sorted(pos_scores); neg = sorted(neg_scores)
     if not pos or not neg:
         return 0.0
-    i = j = 0; below = 0.0
+    below = 0.0
     # для каждого pos считаем, сколько neg строго меньше + половина равных
     import bisect
     for p in pos:

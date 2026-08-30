@@ -52,9 +52,12 @@ LEAK = {
     # repo/grantee/for_user/token_scope-детали проставляются через events.tag
     # ТОЛЬКО в аномальных сценариях: само наличие поля выдавало атаку.
     "repo", "grantee", "for_user", "deleted_count", "quirk", "lookalike",
-    # gitlab_ok/gitlab_error — телеметрия обращения к API самого стенда,
-    # а не наблюдаемое свойство события в GitLab.
-    "gitlab_ok", "gitlab_error", "project_id",
+    # gitlab_ok/gitlab_error/simulated — телеметрия обращения к API самого
+    # стенда, а не наблюдаемое свойство события в GitLab. `simulated`
+    # особенно: он означает «мир работал без GitLab», и в offline-прогоне стоял
+    # бы у ВСЕХ событий, то есть был бы константой; но если когда-нибудь режим
+    # смешается в одном журнале, поле мгновенно станет меткой.
+    "gitlab_ok", "gitlab_error", "project_id", "simulated",
     # служебное
     "labels", "activity", "executed",
 }

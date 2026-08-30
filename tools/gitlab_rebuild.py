@@ -37,7 +37,7 @@ from gitlab_client import GitLabClient
 import urllib3
 urllib3.disable_warnings()
 
-gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=False)
+gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=config.gitlab_verify())
 H = {"PRIVATE-TOKEN": config.ADMIN_TOKEN}
 NS = config.PROJECT_NAMESPACE
 

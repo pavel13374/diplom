@@ -94,9 +94,31 @@ def main():
     print("\n  LLM (Ollama, опционально):")
     try:
         import llm_client
-        ok = llm_client.available()
-        line(ok, "Ollama", (", ".join(llm_client.list_models()) or "нет моделей") if ok
-             else "не запущена (LLM-разбор будет на фолбэке) — setup_llm.bat")
+        ok, why, models = llm_client.status(force=True)
+        # Печатаем ПРИЧИНУ целиком, без обрезки: раньше здесь было
+        # «не запущена», и на машине с работающей Ollama это сообщение
+        # уводило в сторону — сервис был жив, мешал системный прокси.
+        line(ok, "Ollama", (", ".join(models) or "нет моделей") if ok else "недоступна")
+        if not ok:
+            print(f"      причина: {why}")
+        # Показываем окружение, влияющее на транспорт: это две самые частые
+        # причины отказа при живом сервисе.
+        import os as _o
+        px = {k: v for k, v in _o.environ.items()
+              if k.lower() in ("http_proxy", "https_proxy", "all_proxy", "no_proxy")}
+        if px:
+            print("      прокси в окружении: "
+                  + ", ".join(f"{k}={v}" for k, v in sorted(px.items())))
+        try:
+            import urllib.request as _ur
+            sysprx = _ur.getproxies()
+            if sysprx:
+                print(f"      системный прокси: {sysprx} "
+                      "(для локального адреса он больше не применяется)")
+        except Exception:
+            pass
+        print(f"      адрес из конфигурации: {llm_client._host()} · "
+              f"модель: {llm_client._model()}")
     except Exception as e:
         line(False, "llm_client", str(e)[:50])
 

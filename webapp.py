@@ -1,4 +1,3 @@
-import os.path as _os_path
 #!/usr/bin/env python3
 """
 Веб-админка SOC-симулятора (красивый дашборд со слайдерами и пояснениями).
@@ -6,8 +5,15 @@ import os.path as _os_path
 Запуск:  python webapp.py   (или run.bat)
 Открыть: http://127.0.0.1:8787   (пароль печатается в консоли при старте,
 свой задаётся переменной окружения SOC_ADMIN_PASS)
+
+Замечание про первую строку файла: здесь стоял `import os.path as _os_path`
+ВЫШЕ shebang и этого литерала, из-за чего литерал переставал быть докстрингом
+модуля и webapp.__doc__ был None. Ровно тот же дефект console.py в своём
+докстринге объявляет исправленным — исправили в одном файле и оставили в
+другом, хотя это самая крупная точка входа проекта.
 """
 import os
+import os.path as _os_path
 import time
 import logging
 import threading
@@ -52,11 +58,13 @@ def _tpl(name):
         return hit[1]
     with open(path, encoding="utf-8") as f:
         text = f.read()
+    text = websec.inject_csrf_meta(text)
     _TPL_CACHE[name] = (mtime, text)
     return text
 import simclock
 import events
 import runlog
+import soclog
 import telegram
 import report
 from state import SimState
@@ -151,24 +159,163 @@ def _last_event_ago():
         return None
 
 
+#: Возврат для методов GitLabClient, у которых НЕТ аннотации типа.
+#:
+#: Перечислены явно и проверяются тестом (tests/test_offline.py): если в клиенте
+#: появится новый неаннотированный метод, тест назовёт его по имени. Это не
+#: «список известных имён» прежней заглушки, а закрытие ровно того зазора,
+#: который не покрывают аннотации.
+_FAKE_UNANNOTATED = {
+    # Служебные обёртки сети: в offline их не зовут напрямую, но контракт
+    # должен быть определён — иначе заглушка вернёт True туда, где ждут
+    # Response/список, и падение случится по месту.
+    "_request":           None,
+    "_api":               {},
+    "_api_paged":         ([], False),
+    "_ok":                False,
+    "create_named_token": True,
+    "server_time":        None,          # None -> берётся локальное время
+    # В offline числа апрувов НЕ СУЩЕСТВУЕТ, и придумывать его нельзя: ноль
+    # апрувов — это алерт (merge-without-approval), а единица — молчаливое
+    # «ревью было». None означает «неизвестно», и agents.base.merge_mr просто
+    # не кладёт поле в событие. Аннотация Optional[int] сама по себе дала бы
+    # int-заглушку (1) и подделала бы ревью на каждом merge в offline-прогоне.
+    "get_mr_approvals":   None,
+    "find_user":          1,
+    "create_user":        1,
+    "ensure_user":        (1, True),     # (id, created)
+    "group_id":           1,
+    "create_group":       1,
+    "unblock_user":       True,
+    "restore_group":      True,
+    "restore_project":    True,
+    "ensure_group":       (1, True),
+    "get_project_id":     1,
+    "ensure_project":     (1, True),
+}
+
+#: Нулевое значение по аннотации возврата.
+#:
+#: `str` пустой строкой, а НЕ None: вызывающий сразу делает `content.rstrip()`,
+#: и None упал бы ровно так же, как раньше падало True.
+_FAKE_BY_TYPE = {
+    bool:  True,             # операция «удалась»: мир не должен считать это отказом
+    int:   0,                # для create_* перекрывается ниже — там нужен живой iid
+    list:  [],
+    dict:  {},
+    str:   "",
+    tuple: (1, True),
+}
+
+
+def _unwrap_optional(ann):
+    """Optional[X] / Union[X, None] -> X; остальное возвращается как есть.
+
+    Отдельной функцией, потому что наивное `ann.__name__` на Optional[str] даёт
+    строку «Optional», а не «str»: у typing-обобщений в Python 3.10+ есть
+    собственный __name__. Из-за этого get_file — единственный метод клиента с
+    Optional — не находил своё правило и проваливался в ветку «не знаю, верну
+    True», то есть ровно в тот дефект, ради которого всё и переписывалось.
+    """
+    import typing
+    if typing.get_origin(ann) is typing.Union:
+        args = [a for a in typing.get_args(ann) if a is not type(None)]  # noqa: E721
+        if len(args) == 1:
+            return args[0]
+    return ann
+
+
 class _FakeGL:
-    """Заглушка GitLab для OFFLINE-режима: любые вызовы безопасны и мгновенны.
-    Мир пишет события локально, реальный GitLab не дёргается."""
+    """Заглушка GitLab для OFFLINE-режима: вызовы безопасны и мгновенны.
+
+    Ответ выводится ИЗ КОНТРАКТА НАСТОЯЩЕГО КЛИЕНТА (аннотации возврата у
+    GitLabClient), а не из списка имён.
+
+    Почему так. Прежняя заглушка перечисляла имена методов руками и на всё
+    остальное возвращала `True`. Клиент с тех пор дорос до 51 метода, список
+    остался на девяти, и каждый неучтённый метод отдавал булево значение туда,
+    где ждут данные:
+
+        revert_bad_rule:  for c in gl.get_commits(...)  -> 'bool' object is not iterable
+        update_parser:    gl.get_file(...).rstrip()     -> 'bool' object has no attribute 'rstrip'
+
+    То есть заявленное в README «без GitLab стенд работает» держалось ровно до
+    первой активности, которой понадобились настоящие данные.
+
+    Тот же приём, что и с ACTIONS в ml_features: рассинхрон не комментируется,
+    а делается невозможным — источник правды один, и он проверяется тестом.
+    """
     import random as _r
+
+    #: Методы, создающие сущность: вызывающий кладёт результат как iid и потом
+    #: обращается по нему, поэтому ноль здесь не годится.
+    _CREATES = ("create_mr", "create_issue", "ensure_milestone")
+
+    #: Правдоподобное содержимое репозитория.
+    #:
+    #: Пустой список — НЕ нейтральный ответ. Активности, которые работают по
+    #: существующим файлам, при нём просто не делают ничего: mass_deletion
+    #: (техника T1485, шаг кампании destructive_insider) выбирал жертв из
+    #: list_files, получал пустоту и возвращал False. Шаг молча выпадал из
+    #: кампании, а правило mass-file-delete не срабатывало ни разу — при том
+    #: что README обещает работу стенда без GitLab.
+    #:
+    #: Мир и так синтетический, имена файлов в нём придуманы, поэтому
+    #: правдоподобный список — не подделка, а ровно та же симуляция, что и
+    #: остальная среда.
+    _FILES = tuple(
+        [f"rules/win/{n}.yml" for n in ("lsass_dump", "susp_powershell", "wmi_persist",
+                                        "svc_install", "rdp_bruteforce", "sam_access")] +
+        [f"rules/linux/{n}.yml" for n in ("sudo_abuse", "cron_persist", "ssh_key_add")] +
+        [f"rules/cloud/{n}.yml" for n in ("iam_priv_esc", "s3_public", "key_create")] +
+        [f"normalizers/{n}.py" for n in ("syslog", "windows_evtx", "cloudtrail")] +
+        [f"playbooks/{n}.md" for n in ("ir_ransomware", "ir_phishing", "ir_insider")] +
+        ["docs/onboarding.md", "docs/runbook.md", "README.md",
+         "ci/deploy.yml", ".gitlab-ci.yml", "requirements.txt"])
+
+    @staticmethod
+    def _hexid():
+        return "".join(_FakeGL._r.choice("0123456789abcdef") for _ in range(40))
+
+    @staticmethod
+    def _ret_for(name):
+        import gitlab_client
+        fn = getattr(gitlab_client.GitLabClient, name, None)
+        if fn is None:
+            # Метода нет и в настоящем клиенте — вызывающий ошибся именем.
+            # Возвращаем None: пусть падает по месту, а не молча «работает».
+            logging.getLogger("webapp").warning(
+                "offline: обращение к несуществующему методу GitLab-клиента",
+                extra={"ctx": {"method": name}})
+            return None
+        if name in _FakeGL._CREATES:
+            return _FakeGL._r.randint(100, 9999)
+        if name in _FAKE_UNANNOTATED:
+            return _FAKE_UNANNOTATED[name]
+        if name == "list_files":
+            return list(_FakeGL._FILES)
+        if name == "get_commits":
+            # Список коммитов нужен revert_bad_rule: он ищет среди них feat-коммит.
+            return [{"id": _FakeGL._hexid(), "short_id": _FakeGL._hexid()[:8],
+                     "title": t, "message": t, "author_name": "offline",
+                     "created_at": "2026-06-08T11:00:00.000Z"}
+                    for t in ("feat: add lsass_dump rule",
+                              "fix: tune threshold in cron_persist",
+                              "feat(cloud): iam privilege escalation rule",
+                              "docs: update runbook",
+                              "chore: bump deps")]
+        ann = _unwrap_optional(getattr(fn, "__annotations__", {}).get("return"))
+        if ann in _FAKE_BY_TYPE:
+            return _FAKE_BY_TYPE[ann]
+        logging.getLogger("webapp").warning(
+            "offline: не знаю, что вернуть за метод GitLab-клиента — верну True. "
+            "Добавь метод в _FAKE_UNANNOTATED или проставь ему аннотацию возврата",
+            extra={"ctx": {"method": name, "annotation": str(ann)}})
+        return True
 
     def __getattr__(self, name):
         def f(*a, **k):
-            if name in ("create_mr", "create_issue"):
-                return _FakeGL._r.randint(100, 9999)
-            if name in ("get_open_mrs", "list_files", "discover_projects", "get_project_members"):
-                return []
-            if name in ("get_mr",):
-                return {}
-            if name in ("get_or_create_user_token", "create_named_token"):
-                return "offline-token"
-            if name in ("_api", "group_id", "get_project_id"):
-                return None
-            return True
+            return _FakeGL._ret_for(name)
         return f
 
 
@@ -177,6 +324,7 @@ class Runner:
         self.thread = None
         self.running = False
         self.stop_flag = False
+        self._start_lock = threading.Lock()
         self.gl = None
         self.state = None
         self.agents = None
@@ -186,6 +334,8 @@ class Runner:
         self.started_real = None
         self.conn_ok = None
         self.conn_msg = ""
+        #: Последняя подробная диагностика связи (gitlab_client.diagnose).
+        self.diag = {}
         self.offline = False
         self._ollama_cache = {"ts": 0.0, "ok": False}
         self._srv = None
@@ -199,22 +349,22 @@ class Runner:
         root = logging.getLogger()
         root.setLevel(getattr(logging, config.LOG_LEVEL, logging.INFO))
         root.addHandler(self.log)
-        # дублируем важные логи в stdout — чтобы они были видны в панели «Логи · Мир»
-        if not any(getattr(h, "_soc_stdout", False) for h in root.handlers):
-            import sys as _sys
-            _sh = logging.StreamHandler(_sys.stdout)
-            _sh.setLevel(logging.INFO)
-            _sh.setFormatter(logging.Formatter("%(asctime)s %(levelname).1s %(name)s: %(message)s",
-                                               "%H:%M:%S"))
-            _sh._soc_stdout = True
-            root.addHandler(_sh)
+        # Вывод в stdout — ЕДИНЫМ форматом для всех процессов (soclog).
+        # Раньше здесь стоял собственный формат "%H:%M:%S I name: msg": без
+        # даты, без имени сервиса и без структурного контекста, а у консоли
+        # защиты консольного вывода не было вовсе. В общей панели строки двух
+        # процессов было не различить, а идентификаторы (инцидент, правило,
+        # актор) не выводились никуда, кроме debug-*.jsonl.
+        soclog.install_console()
         try:
             from logging.handlers import RotatingFileHandler
             fh = RotatingFileHandler(os.path.join(BASE_DIR, config.LOG_FILE),
                                      maxBytes=10 * 1024 * 1024, backupCount=5,
                                      encoding="utf-8")
-            fh.setFormatter(logging.Formatter(
-                "%(asctime)s %(levelname)-7s %(message)s", "%Y-%m-%d %H:%M:%S"))
+            # Тот же формат, что в консоли. Раньше здесь не было даже
+            # %(name)s: по строке simulator.log нельзя было понять, какая
+            # подсистема её написала.
+            fh.setFormatter(soclog.human_formatter())
             fh.setLevel(logging.INFO)
             root.addHandler(fh)
         except Exception:
@@ -258,44 +408,77 @@ class Runner:
             work_days=config.WORK_DAYS, fast_forward_offhours=config.FAST_FORWARD_OFFHOURS,
             api_min_pause=config.API_MIN_PAUSE, max_real_sleep=config.MAX_REAL_SLEEP)
         simclock.init(self.clock)
-        self.gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=False)
-        if getattr(config, "OFFLINE_MODE", False):
+        self.gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=config.gitlab_verify())
+        # OFFLINE ПЕРЕПРОВЕРЯЕТСЯ НА КАЖДОМ ЗАПУСКЕ, А НЕ ЗАЩЁЛКИВАЕТСЯ.
+        #
+        # Было: если GitLab не ответил, config.OFFLINE_MODE становился True — и
+        # при следующем запуске ветка `if OFFLINE_MODE` пропускала проверку
+        # связи вообще. Флаг работал как односторонняя защёлка: поднять GitLab и
+        # нажать «Запустить» было недостаточно, помогал только перезапуск
+        # процесса. Типичный сценарий — мир стартовали, пока ВМ с GitLab ещё
+        # грузилась.
+        #
+        # Хуже того, причина показывалась неверно: сообщение гласило «offline
+        # (включён вручную)», хотя пользователь ничего не включал.
+        #
+        # Теперь принудительный offline (переменная окружения SOC_OFFLINE)
+        # отделён от автоматического отката: первый уважается всегда, второй
+        # каждый раз проверяется заново.
+        if config.OFFLINE_FORCED:
+            # Единственный способ оказаться без GitLab — попросить об этом явно
+            # переменной окружения. Так работают тесты и research/-скрипты.
             self.conn_ok = False
-            self.conn_msg = "offline (включён вручную)"
+            self.diag = {"ok": False, "reason": "offline: включён переменной SOC_OFFLINE",
+                         "detail": "", "url": config.GITLAB_URL}
+            self.conn_msg = self.diag["reason"]
         else:
             self.logger.info(f"Подключение к GitLab {config.GITLAB_URL} ...")
-            try:
-                v = self.gl._api("GET", "/version")
-                if v:
-                    self.conn_ok = True
-                    self.conn_msg = f"GitLab {v.get('version', '?')}"
-                    self.logger.info(f"GitLab OK: {self.conn_msg}")
-                else:
-                    self.conn_ok = False
-                    self.conn_msg = "нет ответа /version (проверь URL/токен)"
-                    self.logger.warning(self.conn_msg)
-            except Exception as e:
-                self.conn_ok = False
-                self.conn_msg = f"ошибка: {e}"
-                self.logger.warning(self.conn_msg)
-        # Авто-offline: если GitLab недоступен (или включён вручную) — переходим в
-        # offline (подменяем клиент на заглушку), чтобы мир не висел и НЕ молчал.
-        if getattr(config, "OFFLINE_MODE", False) or not self.conn_ok:
+            self.diag = self.gl.diagnose()
+            self.conn_ok = bool(self.diag.get("ok"))
+            self.conn_msg = self.diag.get("reason") or "?"
+            if self.conn_ok:
+                self.logger.info("GitLab OK: %s (пользователь @%s)",
+                                 self.conn_msg, self.diag.get("user"))
+                if self.diag.get("detail"):
+                    self.logger.warning("GitLab: %s", self.diag["detail"])
+            else:
+                self.logger.error("GitLab недоступен: %s — %s",
+                                  self.conn_msg, self.diag.get("detail", ""))
+
+        # МИР РАБОТАЕТ ТОЛЬКО ЧЕРЕЗ НАСТОЯЩИЙ GITLAB.
+        #
+        # Раньше при недоступном GitLab клиент молча подменялся заглушкой:
+        # события продолжали писаться, счётчики росли, экран выглядел рабочим —
+        # и отличить «стенд работает» от «стенд рисует пустоту» было нельзя.
+        # Отсюда же брались падения активностей, которым нужны настоящие данные.
+        #
+        # Теперь отказ связи — это ОТКАЗ ЗАПУСКА с названной причиной, а не
+        # тихий переход в другой режим. Заглушка осталась ровно для одного
+        # случая — явно запрошенного SOC_OFFLINE (тесты и офлайн-эксперименты).
+        if config.OFFLINE_FORCED:
             config.OFFLINE_MODE = True
             self.offline = True
             self.gl = _FakeGL()
-            self.logger.warning("РЕЖИМ OFFLINE: события пишутся локально, GitLab не вызывается. "
-                                + ("(включён вручную)" if self.conn_msg.startswith("offline") else "(GitLab недоступен)"))
+            self.logger.warning("SOC_OFFLINE=1: GitLab не вызывается, события пишутся локально")
+        elif not self.conn_ok:
+            config.OFFLINE_MODE = False
+            self.offline = False
+            raise RuntimeError(
+                f"GitLab недоступен ({config.GITLAB_URL}): {self.conn_msg}. "
+                + (self.diag.get("detail") or "")
+                + " Мир не запущен — исправьте связь и нажмите «Запустить» ещё раз.")
         else:
             config.OFFLINE_MODE = False
             self.offline = False
+            self.logger.info("GitLab на связи: %s", self.conn_msg)
+
         if not config.OFFLINE_MODE:
             try:
                 import bootstrap
                 self.logger.info("Инициализация среды (репозитории, сотрудники, права)...")
                 bootstrap.ensure_environment(self.gl)
             except Exception as e:
-                self.logger.warning(f"bootstrap не удался: {e}")
+                self.logger.error("bootstrap не удался: %s", e, exc_info=True)
         self.state = SimState(os.path.join(BASE_DIR, config.STATE_FILE))
         events.init()
         self.agents = self._build_agents()
@@ -313,15 +496,22 @@ class Runner:
         self.logger.info("Симуляция остановлена")
 
     def start(self):
-        if self.running:
-            return False, "уже запущена"
+        # ПОД ЗАМКОМ: проверка `if self.running` и присваивание были разными
+        # операциями, а маршрут /api/start обслуживается многопоточным
+        # сервером. Два одновременных нажатия «Запустить» поднимали ДВА цикла
+        # симуляции на одном состоянии и одном журнале.
+        with self._start_lock:
+            if self.running:
+                return False, "уже запущена"
+            self.running = True          # занимаем место до долгой инициализации
         try:
             self._build()
         except Exception as e:
             self.logger.exception(f"Не удалось инициализировать: {e}")
+            with self._start_lock:
+                self.running = False
             return False, str(e)
         self.stop_flag = False
-        self.running = True
         self.started_real = time.time()
         self.series.clear()
         self._last_runs = 0
@@ -330,25 +520,41 @@ class Runner:
         self._sampler_thread = threading.Thread(target=self._sampler, daemon=True)
         self._sampler_thread.start()
         if config.TELEGRAM.get('send_start_stop'):
-            telegram.send_async(f'▶️ SOC-симулятор запущен (web) · scale x{self.scale:.0f}')
+            telegram.send_async(f'▶️ SOC-симулятор запущен (web) · scale x{self.scale:.0f}',
+                                kind='lifecycle')
         self._report_thread = threading.Thread(target=self._reporter, daemon=True)
         self._report_thread.start()
         return True, "запущена"
 
     def stop(self):
-        if not self.running:
-            return False, "не запущена"
-        self.stop_flag = True
+        with self._start_lock:
+            if not self.running:
+                return False, "не запущена"
+            self.stop_flag = True
         if self.state:
             try:
                 self.state.save()
             except Exception:
-                pass
+                # Молчание здесь означало ПОТЕРЮ накопленного состояния прогона
+                # (жизненный цикл правил, спринт, ротация дежурств) без единой
+                # строки в логе — ровно в том месте, где его и надо сохранить.
+                self.logger.error("не удалось сохранить состояние при остановке — "
+                                  "прогресс прогона потерян", exc_info=True)
+        # ХВОСТ ЖУРНАЛА ЗАКРЫВАЕТСЯ ЯВНО.
+        #
+        # events.close() не вызывался нигде на пути веб-панели: буфер файла
+        # events.jsonl оставался незакрытым, и самые свежие записи прогона —
+        # то есть обычно самые интересные — могли не дойти до диска.
+        try:
+            events.close()
+        except Exception:
+            self.logger.error("не удалось закрыть журнал событий — хвост записей "
+                              "может быть потерян", exc_info=True)
         try:
             if config.TELEGRAM.get("send_start_stop"):
-                telegram.send_async(report.build_report(self.scheduler, title="SOC-симулятор остановлен"))
+                telegram.send_async(report.build_report(self.scheduler, title="Мир (симуляция) остановлен"))
         except Exception:
-            pass
+            self.logger.warning("не удалось отправить отчёт об остановке", exc_info=True)
         return True, "остановка инициирована"
 
     def apply_live(self):
@@ -373,9 +579,13 @@ class Runner:
                 _t.sleep(1)
             try:
                 up = int(_t.time() - (self.started_real or _t.time()))
-                telegram.send(report.build_report(self.scheduler, uptime_s=up))
+                telegram.send(report.build_report(self.scheduler, uptime_s=up),
+                              kind="world_report")
             except Exception:
-                pass
+                # Молчаливый pass здесь означал: периодический отчёт перестал
+                # уходить, и узнать об этом было неоткуда.
+                self.logger.error("периодический отчёт мира в Telegram не "
+                                  "отправлен", exc_info=True)
 
     def _server_time(self):
         if self.gl and (time.time() - self._srv_ts > 20):
@@ -461,6 +671,14 @@ class Runner:
             "sprint": (self.state.data["sprint_number"] if self.state else None),
             "rules": (self.state.rule_count() if self.state else 0),
             "uptime": int(time.time() - self.started_real) if self.started_real and self.running else 0,
+            # «Действий» на дашборде — это ok+fail, а НЕ total_runs.
+            # total_runs считает итерации планировщика, среди которых есть
+            # холостые: опрос очереди команд, обеденный перерыв, ночной
+            # поллинг. Плитки стояли рядом и читались как разбиение целого
+            # («Действий 6 = Успешно 5 + С ошибкой 0 + Пропущено 0»), хотя
+            # им не были: одна итерация просто исчезала. Итерации остаются
+            # в журнале планировщика, где они и нужны.
+            "total_actions": st.get("total_ok", 0) + st.get("total_fail", 0),
             "total_runs": st.get("total_runs", 0),
             "total_ok": st.get("total_ok", 0),
             "total_fail": st.get("total_fail", 0),
@@ -488,26 +706,41 @@ runner = Runner()
 import soclog
 soclog.install()   # структурные JSON-логи + errors.log
 
+import websec
+
 app = Flask(__name__)
-app.secret_key = config.WEB_SECRET
-app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
+# Имя cookie у каждой консоли своё: cookie не разделяются по портам, поэтому
+# с общим именем «session» две консоли на 127.0.0.1 перетирали друг другу
+# атрибуты (в частности SameSite) и сталкивались с любым другим локальным
+# Flask-приложением.
+websec.setup_app(app, "sentinel_env")
+
+
+@app.errorhandler(websec.BadArg)
+def _bad_arg(e):
+    return jsonify({"error": "bad_request", "field": e.name, "detail": e.detail}), 400
 
 
 @app.errorhandler(Exception)
 def _unhandled(e):
-    """Любая необработанная ошибка — в errors.log с полным трейсбеком."""
+    """Любая необработанная ошибка — в errors.log с полным трейсбеком.
+
+    Наружу уходит только идентификатор: текст исключения здесь регулярно
+    содержит пути на диске, адрес GitLab и куски ответов API.
+    """
     from werkzeug.exceptions import HTTPException
     if isinstance(e, HTTPException):
         return e
-    logging.getLogger("webapp").error(
-        "необработанная ошибка в маршруте %s %s",
-        request.method, request.path, exc_info=True,
-        extra={"ctx": {"path": request.path, "method": request.method}})
-    return jsonify({"error": "internal", "detail": str(e)[:300]}), 500
+    return websec.error_ref(logging.getLogger("webapp"), e)
+
+
+#: Форма входа отправляется обычным POST без JS — токен в ней ещё неоткуда взять.
+app.before_request(websec.csrf_protect(exempt_paths={"/login"}))
 
 
 @app.after_request
 def _sec_headers(resp):
+    websec.issue_csrf(resp)
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["Referrer-Policy"] = "same-origin"
@@ -529,7 +762,9 @@ def login_required(f):
     return w
 
 
-_LOGIN_FAILS = {"n": 0, "until": 0.0}
+#: Ограничение подбора — ПО ИСТОЧНИКУ. Общий счётчик на процесс позволял
+#: одному подбирающему блокировать вход настоящему аналитику.
+_GUARD = websec.LoginGuard()
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -537,21 +772,21 @@ def login():
     import hmac
     error = ""
     if request.method == "POST":
-        now = time.time()
-        if now < _LOGIN_FAILS["until"]:
-            return _tpl("login.html").replace("{{ERROR}}", "Слишком много попыток — подождите немного")
+        wait = _GUARD.blocked_for()
+        if wait:
+            return _tpl("login.html").replace(
+                "{{ERROR}}", f"Слишком много попыток — подождите {wait} с")
         u_ok = hmac.compare_digest(request.form.get("username", ""), config.WEB_ADMIN_USER)
         p_ok = hmac.compare_digest(request.form.get("password", ""), config.WEB_ADMIN_PASS)
         if u_ok and p_ok:
-            _LOGIN_FAILS["n"] = 0
+            _GUARD.record_success()
+            session.clear()          # новый идентификатор сессии после входа
             session["user"] = config.WEB_ADMIN_USER
             session.permanent = True
             return redirect(url_for("dashboard"))
-        _LOGIN_FAILS["n"] += 1
-        if _LOGIN_FAILS["n"] >= 5:
-            _LOGIN_FAILS["until"] = now + 15
-            _LOGIN_FAILS["n"] = 0
-        time.sleep(0.5)
+        # Без блокирующего sleep: поток обработчика тут дороже, чем задержка
+        # для подбирающего, — сервер многопоточный и без потолка числа потоков.
+        _GUARD.record_failure()
         error = "Неверный логин или пароль"
     return _tpl("login.html").replace("{{ERROR}}", error)
 
@@ -575,20 +810,77 @@ def api_status():
 
 
 # --- Health: строка здоровья (GitLab / Ollama / Мир / события) -------------
-_HEALTH_CACHE = {"ollama": None, "ollama_ts": 0.0}
+_HEALTH_CACHE = {"ollama": None, "ollama_ts": 0.0, "ollama_reason": ""}
 
 
-def _ollama_ok():
-    """Доступность Ollama, кэш 30 с (сетевой вызов)."""
+def _ollama_state():
+    """(доступна, причина), кэш 30 с (сетевой вызов)."""
     now = time.time()
     if now - _HEALTH_CACHE["ollama_ts"] > 30:
         try:
             import llm_client
-            _HEALTH_CACHE["ollama"] = bool(llm_client.available())
-        except Exception:
+            ok, why, _m = llm_client.status()
+            _HEALTH_CACHE["ollama"] = bool(ok)
+            _HEALTH_CACHE["ollama_reason"] = why
+        except Exception as e:
             _HEALTH_CACHE["ollama"] = False
+            _HEALTH_CACHE["ollama_reason"] = f"проверка не выполнилась: {type(e).__name__}"
         _HEALTH_CACHE["ollama_ts"] = now
-    return _HEALTH_CACHE["ollama"]
+    return _HEALTH_CACHE["ollama"], _HEALTH_CACHE["ollama_reason"]
+
+
+def _ollama_ok():
+    return _ollama_state()[0]
+
+
+@app.route("/api/gitlab/check", methods=["GET", "POST"])
+@login_required
+def api_gitlab_check():
+    """Проверить связь с GitLab ПРЯМО СЕЙЧАС и назвать причину отказа.
+
+    Отдельно от /api/health: health показывает состояние с момента запуска
+    мира, а здесь связь проверяется заново — чтобы после «поднял ВМ» было
+    видно результат, не перезапуская процесс.
+    """
+    from gitlab_client import GitLabClient
+    gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=config.gitlab_verify())
+    d = gl.diagnose()
+    runner.diag = d
+    runner.conn_ok = bool(d.get("ok"))
+    runner.conn_msg = d.get("reason") or "?"
+    logging.getLogger("webapp").info("проверка связи с GitLab: %s", runner.conn_msg)
+    return jsonify(d)
+
+
+@app.route("/api/client-error", methods=["POST"])
+@login_required
+def api_client_error():
+    """Приём ошибки, случившейся в браузере (см. console_app/system.py)."""
+    import soclog as _sl
+    d = request.get_json(silent=True) or {}
+    rec = _sl.client_error(where=d.get("where", "?"), message=d.get("message", ""),
+                           stack=d.get("stack", ""), url=d.get("url", ""),
+                           ua=request.headers.get("User-Agent", ""), app="env")
+    return jsonify({"ok": True, "ts": rec["ts"]})
+
+
+@app.route("/api/diag/bundle")
+@login_required
+def api_diag_bundle():
+    """ВСЯ диагностика одним JSON."""
+    import soclog as _sl
+    return jsonify(_sl.bundle("env"))
+
+
+@app.route("/api/diag/bundle.json")
+@login_required
+def api_diag_bundle_file():
+    import json as _j, soclog as _sl
+    from flask import Response
+    data = _j.dumps(_sl.bundle("env"), ensure_ascii=False, indent=2)
+    return Response(data, mimetype="application/json",
+                    headers={"Content-Disposition":
+                             "attachment; filename=sentinel-diag-env.json"})
 
 
 @app.route("/api/health")
@@ -620,19 +912,28 @@ def api_health():
             age = None
     return jsonify({
         "gitlab": {"state": gl_state, "msg": runner.conn_msg,
+                   # ПОДРОБНОСТИ ОТКАЗА уходят на экран целиком: раньше наверх
+                   # доходило только «нет ответа /version», и по нему нельзя было
+                   # понять, что чинить — адрес, токен, TLS или сеть.
+                   "detail": (runner.diag or {}).get("detail", ""),
+                   "status": (runner.diag or {}).get("status"),
+                   "user": (runner.diag or {}).get("user"),
+                   "url": config.GITLAB_URL,
                    "errors": GITLAB_STATUS["errors"], "ok_calls": GITLAB_STATUS["ok"],
                    "last_error": GITLAB_STATUS["last_error"]},
         "offline_mode": offline,
         "world": {"running": runner.running},
         "events": {"total": st.get("events", 0), "last": last, "last_age_s": age},
-        "ollama": _ollama_ok(),
+        "ollama": _ollama_state()[0],
+        "ollama_reason": _ollama_state()[1],
+        "ollama_model": getattr(config, "LLM", {}).get("model", ""),
     })
 
 
 @app.route("/api/logs")
 @login_required
 def api_logs():
-    since = int(request.args.get("since", 0))
+    since = websec.int_arg("since", 0, 0, 10 ** 9)
     return jsonify({"logs": runner.log.since(since)})
 
 
@@ -646,8 +947,8 @@ def api_series():
 @app.route("/api/actor")
 @login_required
 def api_actor():
-    u = request.args.get("u", "")
-    n = int(request.args.get("n", 80))
+    u = websec.bounded_str(request.args.get("u", ""), "u", 120)
+    n = websec.int_arg("n", 80, 1, 500)
     return jsonify({"summary": events.actors_summary().get(u, {}),
                     "feed": events.actor_feed(u, n)})
 
@@ -655,7 +956,7 @@ def api_actor():
 @app.route("/api/events")
 @login_required
 def api_events():
-    n = int(request.args.get("n", 120))
+    n = websec.int_arg("n", 120, 1, 600)
     return jsonify({"stats": events.stats(), "items": events.tail(n)})
 
 
@@ -671,14 +972,45 @@ def api_repos():
     return jsonify({"repos": events.repo_streams()})
 
 
+#: Куда разрешено отдавать файлы. Второй рубеж к тому, что EVENT_LOG больше не
+#: редактируется из веба: маршрут не должен доверять пути из конфигурации.
+_DATA_DIR = os.path.realpath(os.path.join(BASE_DIR, "data"))
+
+
+def _inside_data(path):
+    try:
+        rp = os.path.realpath(path)
+    except OSError:
+        return False
+    return rp == _DATA_DIR or rp.startswith(_DATA_DIR + os.sep)
+
+
 @app.route("/api/dataset")
 @login_required
 def api_dataset():
+    """Выгрузка журнала событий.
+
+    Путь берётся из конфигурации и ПРОВЕРЯЕТСЯ на принадлежность data/.
+    Раньше проверки не было, а EVENT_LOG редактировался из веба, поэтому
+
+        POST /api/config {"EVENT_LOG": {"file": "/etc/passwd"}}
+        GET  /api/dataset
+
+    отдавало любой файл, доступный процессу, — на машине, где рядом лежат
+    .gitlab_token и .secret_key. Проверено экспериментально.
+    """
     st = events.stats()
     f = st.get("file")
-    if f and os.path.exists(f):
-        return send_file(f, as_attachment=True, download_name="events.jsonl")
-    return jsonify({"error": "нет файла журнала"}), 404
+    if not f:
+        return jsonify({"error": "нет файла журнала"}), 404
+    if not _inside_data(f):
+        logging.getLogger("webapp").error(
+            "попытка отдать файл вне каталога данных",
+            extra={"ctx": {"path": str(f)[:300], "разрешено": _DATA_DIR}})
+        return jsonify({"error": "путь журнала вне каталога данных"}), 403
+    if not os.path.exists(f):
+        return jsonify({"error": "нет файла журнала"}), 404
+    return send_file(f, as_attachment=True, download_name="events.jsonl")
 
 
 @app.route("/api/runlog")
@@ -719,12 +1051,20 @@ def api_stop():
 @login_required
 def api_config():
     if request.method == "GET":
+        # Секреты маскируются: раньше здесь открытым текстом уезжал админский
+        # PAT GitLab (scope api — создание пользователей, impersonation-токенов,
+        # чтение любого репозитория инстанса). Он попадал в DOM, в HAR и в
+        # диагностическую выгрузку, которую продукт сам предлагает приложить.
         return jsonify(config.export_settings())
     data = request.get_json(force=True, silent=True) or {}
-    config.apply_settings(data)
+    rejected = config.apply_settings(data)
     config.save_settings()
     runner.apply_live()
-    runner.logger.info("Параметры обновлены из админки")
+    runner.logger.info("Параметры обновлены из админки",
+                       extra={"ctx": {"ключей": len(data), "отвергнуто": rejected}})
+    if rejected:
+        return jsonify({"ok": False, "rejected": rejected,
+                        "settings": config.export_settings()}), 400
     return jsonify({"ok": True, "settings": config.export_settings()})
 
 
@@ -756,27 +1096,23 @@ def api_reset_repos():
     if runner.running:
         return jsonify({"ok": False, "msg": "сначала останови симуляцию"})
     try:
-        gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=False)
+        gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=config.gitlab_verify())
         repos = dict(config.PROJECTS)
         try:
             repos.update(gl.discover_projects(config.PROJECT_NAMESPACE) or {})
         except Exception:
             pass
-        H = {"PRIVATE-TOKEN": config.ADMIN_TOKEN}
         mr_n = br_n = fl_n = 0
         for name, pid in repos.items():
             for mr in gl.get_open_mrs(pid):
                 iid = mr.get("iid")
                 if iid and gl.close_mr(pid, iid):
                     mr_n += 1
-            try:
-                r = gl.session.get(f"{gl.url}/api/v4/projects/{pid}/repository/branches",
-                                   params={"per_page": 100}, headers=H, timeout=20)
-                branches = r.json() if r.status_code == 200 else []
-            except Exception:
-                branches = []
-            for b in branches:
-                nm = b.get("name")
+            # Через клиент и СО ВСЕМИ страницами: здесь стоял свой запрос
+            # в API мимо клиента, с per_page=100 и без листания, поэтому
+            # чистка останавливалась на сотой ветке и всё равно
+            # рапортовала об успешной полной очистке.
+            for nm in gl.list_branches(pid):
                 if nm not in ("main", "master") and gl.delete_branch(pid, nm):
                     br_n += 1
             victims = [f for f in gl.list_files(pid, "") if f.lower() != "readme.md"]
@@ -851,7 +1187,7 @@ def api_fresh_start():
         steps.append("GitLab пропущен (offline-режим)")
     else:
         try:
-            gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=False)
+            gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=config.gitlab_verify())
             if not gl._api("GET", "/version"):
                 steps.append("GitLab недоступен — пропущен")
             else:
@@ -860,21 +1196,14 @@ def api_fresh_start():
                     repos.update(gl.discover_projects(config.PROJECT_NAMESPACE) or {})
                 except Exception:
                     pass
-                H = {"PRIVATE-TOKEN": config.ADMIN_TOKEN}
                 mr_n = br_n = fl_n = 0
                 for name, pid in repos.items():
                     for mr in gl.get_open_mrs(pid):
                         iid = mr.get("iid")
                         if iid and gl.close_mr(pid, iid):
                             mr_n += 1
-                    try:
-                        r = gl.session.get(f"{gl.url}/api/v4/projects/{pid}/repository/branches",
-                                           params={"per_page": 100}, headers=H, timeout=20)
-                        branches = r.json() if r.status_code == 200 else []
-                    except Exception:
-                        branches = []
-                    for b in branches:
-                        nm = b.get("name")
+                    # см. комментарий в api_reset_repos: листаем все страницы
+                    for nm in gl.list_branches(pid):
                         if nm not in ("main", "master") and gl.delete_branch(pid, nm):
                             br_n += 1
                     victims = [f for f in gl.list_files(pid, "") if f.lower() != "readme.md"]
@@ -909,11 +1238,14 @@ def main():
     print("========================================================")
     print("  SOC Simulator — веб-панель")
     print(f"  Откройте: http://{config.WEB_HOST}:{config.WEB_PORT}")
+    print(f"  Логин: {config.WEB_ADMIN_USER}")
+    # Пароль печатаем ТОЛЬКО когда сгенерировали сами: заданный оператором
+    # уезжал в журнал контейнера и в скриншот терминала без всякой нужды.
     if getattr(config, "_WEB_PASS_GENERATED", False):
-        print(f"  Логин: {config.WEB_ADMIN_USER}  ·  ПАРОЛЬ (сгенерирован): {config.WEB_ADMIN_PASS}")
+        print(f"  ПАРОЛЬ (сгенерирован): {config.WEB_ADMIN_PASS}")
         print("  (задайте свой: переменная окружения SOC_ADMIN_PASS)")
-    else:
-        print(f"  Логин/пароль: {config.WEB_ADMIN_USER} / {config.WEB_ADMIN_PASS}")
+    if config.WEB_HOST not in ("127.0.0.1", "localhost", "::1"):
+        print(f"  ВНИМАНИЕ: слушаем {config.WEB_HOST} — панель доступна из сети.")
     print("========================================================")
     app.run(host=config.WEB_HOST, port=config.WEB_PORT, threaded=True, debug=False, use_reloader=False)
 

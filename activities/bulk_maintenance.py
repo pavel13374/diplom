@@ -7,7 +7,7 @@ import random
 import logging
 from datetime import date
 import config
-from config import PROJECTS, USERS, DELAYS
+from config import USERS, DELAYS
 from content import commit_messages as cm
 
 logger = logging.getLogger(__name__)

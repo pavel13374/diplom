@@ -7,7 +7,7 @@ SOC живёт в тикетах: баг-репорты на FP, фич-рекв
 import random
 import logging
 import config
-from config import PROJECTS, USERS, DELAYS, FEATURES
+from config import USERS, DELAYS, FEATURES
 from content import rules as rc, comments, commit_messages as cm
 from activities import flow
 

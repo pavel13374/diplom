@@ -25,6 +25,11 @@ logger = logging.getLogger("red_team")
 
 # Каталог кампаний. Шаг = (anom_method, technique_id, tactic).
 # anom_method должен совпадать с _a_<...> в activities/anomaly.py.
+#: Профили уклонения. Перечислены ЯВНО, потому что значение приходит из
+#: очереди команд (кнопка на консоли защиты) и записывается в разметку
+#: событий как evasion_profile.
+EVASIONS = ("noisy", "stealthy", "adaptive")
+
 CAMPAIGNS = {
     "ci_token_to_exfil": {
         "title": "CI-токен → отключение защиты → эксфильтрация",
@@ -185,6 +190,16 @@ class RedTeamEngine:
 
     def run_campaign(self, key=None, evasion="noisy", actor=None, avoid_techniques=None,
                      dwell_days=0, persona=None, motive=None, tempo="fast"):
+        # ВТОРАЯ проверка, помимо маршрута: evasion попадает в поле разметки
+        # evasion_profile КАЖДОГО порождённого события, а по нему стратифицируют
+        # результаты metrics.py и research/. Произвольная строка тихо создаёт
+        # фантомную страту, поэтому валидируем и здесь — источник команды может
+        # быть не только HTTP-маршрутом.
+        if evasion not in EVASIONS:
+            logger.warning("неизвестный профиль уклонения — беру noisy",
+                        extra={"ctx": {"передан": str(evasion)[:40],
+                                       "допустимо": sorted(EVASIONS)}})
+            evasion = "noisy"
         """Исполнить кампанию по шагам одним актором. Возвращает summary.
         avoid_techniques — для adaptive: техники, которые blue уже ловил, противник
         пропускает (co-evolution: атакующий адаптируется под защиту).

@@ -531,7 +531,7 @@ def main():
     print(f"  эпизодов атак в test: {n_ep_test}")
     if n_ep_test < 30:
         print(f"  [!] эпизодов мало ({n_ep_test}): доверительный интервал эпизодного")
-        print(f"      recall будет шире 30 п.п. Увеличь --seeds или days в workload.")
+        print("      recall будет шире 30 п.п. Увеличь --seeds или days в workload.")
     print("-" * 74)
 
     # --- подбор силы регуляризации ПО ВАЛИДАЦИИ ---

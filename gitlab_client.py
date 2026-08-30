@@ -3,6 +3,7 @@ GitLab API клиент.
 Все операции с GitLab проходят через этот модуль.
 """
 import time
+import random
 import logging
 import requests
 import urllib.parse
@@ -11,47 +12,297 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+#: Сколько страниц максимум пролистываем в одном перечислении и сколько
+#: элементов суммарно. Верхняя граница нужна против репозитория/инстанса,
+#: который отвечает бесконечным списком: без неё сканирование одного проекта
+#: могло бы не завершиться никогда.
+MAX_PAGES = 50
+MAX_ITEMS = 5000
+
+#: Верхняя граница ожидания по Retry-After. GitLab за прокси может прислать
+#: сутки; блокировать на них поток ингеста нельзя.
+MAX_RETRY_AFTER_S = 120
+
+
+def _retry_after_seconds(value, default=10.0):
+    """Retry-After в обеих формах, разрешённых RFC 9110: секунды и HTTP-дата.
+
+    Раньше здесь стоял голый int(): на форме-дате он бросал ValueError, общий
+    except его глушил, и ОТВЕТ О ПРЕВЫШЕНИИ ЛИМИТА превращался в «данных нет».
+    То есть при активном rate limiting репозиторий выглядел пустым.
+    """
+    if value is None:
+        return default
+    s = str(value).strip()
+    try:
+        return max(0.0, min(float(s), MAX_RETRY_AFTER_S))
+    except ValueError:
+        pass
+    try:
+        from email.utils import parsedate_to_datetime
+        import datetime as _dt
+        when = parsedate_to_datetime(s)
+        if when is None:
+            return default
+        now = _dt.datetime.now(when.tzinfo) if when.tzinfo else _dt.datetime.now()
+        return max(0.0, min((when - now).total_seconds(), MAX_RETRY_AFTER_S))
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
+#: Адреса, по которым уже сказали, что проверка TLS выключена.
+_TLS_WARNED = set()
+
+
 class GitLabClient:
-    def __init__(self, url: str, token: str, ssl_verify: bool = False):
-        self.url     = url.rstrip("/")
+    """Клиент GitLab.
+
+    ssl_verify=None означает «взять из конфигурации» (config.gitlab_verify()).
+    Явные True/False остаются для тестов и для осознанного обхода.
+    """
+
+    def __init__(self, url: str, token: str, ssl_verify=None):
+        self.url     = (url or "").rstrip("/")
         self.token   = token
+        if ssl_verify is None:
+            try:
+                import config as _cfg
+                ssl_verify = _cfg.gitlab_verify()
+            except Exception:
+                ssl_verify = True
         self.verify  = ssl_verify
         self.session = requests.Session()
         self.session.verify = ssl_verify
         self.session.headers.update({"PRIVATE-TOKEN": token})
-        if not ssl_verify:
+        if ssl_verify is False:
+            # Глушим предупреждения ТОЛЬКО когда проверку выключили осознанно,
+            # и один раз говорим об этом вслух: администраторский PAT уходит по
+            # непроверенному каналу, и это должно быть видно в журнале, а не
+            # спрятано вместе с предупреждением urllib3.
+            #
+            # Именно ОДИН раз на адрес: клиент создаётся в нескольких местах
+            # (мир, ресинк, инструменты), и предупреждение на каждый экземпляр
+            # превращается в фон, который перестают читать.
             import urllib3
             urllib3.disable_warnings()
+        if ssl_verify is False and self.url not in _TLS_WARNED:
+            _TLS_WARNED.add(self.url)
+            logger.warning(
+                "проверка TLS-сертификата GitLab ОТКЛЮЧЕНА — токен уходит по "
+                "непроверенному каналу",
+                extra={"ctx": {"url": self.url,
+                               "подсказка": "SOC_GITLAB_CA_BUNDLE=<path.pem> "
+                                            "лучше, чем SOC_GITLAB_VERIFY_TLS=off"}})
 
     # ------------------------------------------------------------------
     # Вспомогательные методы
     # ------------------------------------------------------------------
-    def _api(self, method: str, path: str, **kwargs) -> dict:
-        url = f"{self.url}/api/v4{path}"
+    def _request(self, method: str, url: str, **kwargs) -> Optional[requests.Response]:
+        """Единая политика сети: таймаут, ретраи, 429, никаких исключений наверх.
+
+        Возвращает Response или None.
+
+        Раньше _api() применял эту политику, а примерно тридцать методов ходили
+        через self.session.* напрямую: без ретраев, без обработки 429 и с
+        исключением, улетающим в вызывающего, который ждёт bool. Сеть моргнула —
+        активность «упала», а причина не отличалась от «GitLab отказал».
+        """
+        kwargs.setdefault("timeout", 30)
+        delay = 1.0
+        last = None
         for attempt in range(3):
             try:
-                r = self.session.request(method, url, timeout=30, **kwargs)
-                if r.status_code == 429:
-                    wait = int(r.headers.get("Retry-After", 10))
-                    logger.warning(f"Rate limited, waiting {wait}s")
-                    time.sleep(wait)
-                    continue
-                if r.status_code in (403, 404):
-                    # «нет доступа / не найдено» — это НОРМАЛЬНО для проверок
-                    # существования (get_project_id/group_id): без ретраев и без ERROR.
-                    logger.debug(f"{method} {path}: {r.status_code}")
-                    return {}
-                r.raise_for_status()
-                return r.json() if r.text else {}
-            except requests.exceptions.HTTPError as e:
+                r = self.session.request(method, url, **kwargs)
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.Timeout) as e:
+                # Именно эти отказы и осмысленно повторять — раньше они,
+                # наоборот, возвращали пустоту сразу, а повторялся HTTPError.
+                last = e
                 if attempt == 2:
-                    logger.error(f"API error {method} {path}: {e} — {r.text[:200]}")
-                    return {}
-                time.sleep(2 ** attempt)
-            except Exception as e:
-                logger.error(f"Request failed {method} {path}: {e}")
-                return {}
-        return {}
+                    logger.warning("сеть GitLab: %s %s — %s", method, url, e,
+                                   extra={"ctx": {"attempt": attempt + 1}})
+                    return None
+                time.sleep(delay + random.uniform(0, 0.3))
+                delay *= 2
+                continue
+            except requests.exceptions.RequestException as e:
+                logger.warning("запрос к GitLab не выполнен: %s %s — %s",
+                               method, url, e)
+                return None
+            if r.status_code == 429:
+                wait = _retry_after_seconds(r.headers.get("Retry-After"))
+                logger.warning("GitLab rate limit, ждём %.1fs", wait,
+                               extra={"ctx": {"url": url, "attempt": attempt + 1}})
+                time.sleep(wait)
+                continue
+            if r.status_code >= 500 and attempt < 2:
+                time.sleep(delay + random.uniform(0, 0.3))
+                delay *= 2
+                continue
+            return r
+        if last is not None:
+            logger.warning("GitLab недоступен после ретраев: %s", last)
+        return None
+
+    @staticmethod
+    def _ok(r, extra=()) -> bool:
+        return r is not None and r.status_code in ((200, 201) + tuple(extra))
+
+    def _api(self, method: str, path: str, **kwargs) -> dict:
+        url = f"{self.url}/api/v4{path}"
+        r = self._request(method, url, **kwargs)
+        if r is None:
+            return {}
+        if r.status_code in (403, 404):
+            # «нет доступа / не найдено» — это НОРМАЛЬНО для проверок
+            # существования (get_project_id/group_id): без ретраев и без ERROR.
+            logger.debug(f"{method} {path}: {r.status_code}")
+            return {}
+        if r.status_code >= 400:
+            logger.error("API error %s %s: %s", method, path, r.status_code,
+                         extra={"ctx": {"status": r.status_code,
+                                        "body": (r.text or "")[:200]}})
+            return {}
+        try:
+            return r.json() if r.text else {}
+        except ValueError:
+            logger.error("GitLab вернул не-JSON на %s %s", method, path,
+                         extra={"ctx": {"content_type": r.headers.get("Content-Type"),
+                                        "body": (r.text or "")[:200]}})
+            return {}
+
+    def _api_paged(self, path: str, params=None, max_items=MAX_ITEMS) -> tuple:
+        """Перечисление СО ВСЕМИ страницами. Возвращает (items, truncated).
+
+        Пагинации в клиенте не было вообще: каждый листинг брал per_page=100 и
+        возвращал первую страницу. Для продукта, который ищет секреты в
+        репозиториях, это тихая слепая зона неограниченного размера —
+        репозиторий из 300 файлов сканировался на треть, и НИГДЕ не было
+        сказано, что просмотр неполный. Тем же способом терялись проекты
+        инстанса, открытые MR и ветки при чистке.
+        """
+        params = dict(params or {})
+        params.setdefault("per_page", 100)
+        out = []
+        page = 1
+        while page <= MAX_PAGES:
+            params["page"] = page
+            r = self._request("GET", f"{self.url}/api/v4{path}", params=params)
+            if r is None or r.status_code >= 400:
+                if page == 1:
+                    logger.debug("листинг %s отклонён: %s", path,
+                                 r.status_code if r is not None else "нет ответа")
+                break
+            try:
+                chunk = r.json()
+            except ValueError:
+                break
+            if not isinstance(chunk, list) or not chunk:
+                break
+            out.extend(chunk)
+            if len(out) >= max_items:
+                logger.warning("листинг обрезан по лимиту элементов",
+                               extra={"ctx": {"path": path, "limit": max_items}})
+                return out[:max_items], True
+            nxt = r.headers.get("X-Next-Page") or ""
+            if not nxt.strip():
+                return out, False
+            try:
+                page = int(nxt)
+            except ValueError:
+                return out, False
+        truncated = page > MAX_PAGES
+        if truncated:
+            logger.warning("листинг обрезан по лимиту страниц",
+                           extra={"ctx": {"path": path, "limit": MAX_PAGES}})
+        return out, truncated
+
+    def diagnose(self) -> dict:
+        """ПОЧЕМУ связь с GitLab не работает — конкретно, а не «нет ответа».
+
+        Обычный _api() возвращает пустой словарь на ЛЮБОЙ отказ: и на протухший
+        токен (401), и на неверный адрес, и на отказ TLS, и на таймаут. Наверху
+        от этого оставалось только «нет ответа /version (проверь URL/токен)» —
+        сообщение, по которому нельзя понять, что чинить.
+
+        Здесь ошибка НЕ глушится: возвращается код ответа, класс исключения и
+        первые строки тела. Зовётся при старте мира и кнопкой «Проверить связь».
+
+        Возвращает {ok, reason, detail, url, status, version, user}.
+        """
+        import requests as _rq
+        out = {"ok": False, "reason": "", "detail": "", "url": self.url,
+               "status": None, "version": None, "user": None}
+        if not self.url:
+            out["reason"] = "не задан адрес GitLab"
+            out["detail"] = "GITLAB_URL пуст — впишите адрес в web_config.json"
+            return out
+        if not self.token:
+            out["reason"] = "не задан токен"
+            out["detail"] = "ADMIN_TOKEN пуст — впишите токен в web_config.json"
+            return out
+        try:
+            # НАМЕРЕННО через session, а не через _request: _request гасит
+            # исключения и ретраит, а diagnose существует ровно для того,
+            # чтобы НАЗВАТЬ причину — отказ TLS, таймаут, DNS.
+            r = self.session.get(f"{self.url}/api/v4/version", timeout=15)
+            out["status"] = r.status_code
+            if r.status_code == 200:
+                data = r.json()
+                out["ok"] = True
+                out["version"] = data.get("version")
+                out["reason"] = f"GitLab {data.get('version', '?')}"
+                # Кто мы под этим токеном и хватает ли прав.
+                try:
+                    u = self.session.get(f"{self.url}/api/v4/user", timeout=15)
+                    if u.status_code == 200:
+                        d = u.json()
+                        out["user"] = d.get("username")
+                        if not d.get("is_admin"):
+                            out["detail"] = (f"токен принадлежит @{d.get('username')} "
+                                             "без прав администратора: часть операций "
+                                             "(создание пользователей, групп) будет отказывать")
+                except _rq.RequestException:
+                    logger.warning("не удалось прочитать /user", exc_info=True)
+                return out
+            if r.status_code == 401:
+                out["reason"] = "токен не принят (401)"
+                out["detail"] = ("ADMIN_TOKEN недействителен или просрочен. "
+                                 "Создайте новый personal access token со scope api "
+                                 "и впишите в web_config.json")
+            elif r.status_code == 403:
+                out["reason"] = "доступ запрещён (403)"
+                out["detail"] = "токен есть, но прав не хватает — нужен scope api"
+            elif r.status_code in (404, 502, 503):
+                out["reason"] = f"GitLab отвечает {r.status_code}"
+                out["detail"] = ("адрес указывает не на GitLab либо сервис ещё "
+                                 "поднимается: " + (r.text or "")[:200])
+            else:
+                out["reason"] = f"неожиданный ответ {r.status_code}"
+                out["detail"] = (r.text or "")[:200]
+        except _rq.exceptions.SSLError as e:
+            out["reason"] = "отказ TLS"
+            # Названия причины мало: у пользователя лабораторный GitLab с
+            # самоподписанным сертификатом, и он должен из сообщения понять,
+            # что делать, а не идти искать переменную окружения по исходникам.
+            out["detail"] = (
+                f"сертификат не принят: {e}. "
+                "Если это ваш собственный GitLab с самоподписанным "
+                "сертификатом — укажите корневой сертификат "
+                "(SOC_GITLAB_CA_BUNDLE=<путь к ca.pem>) либо выключите проверку "
+                "для этого адреса: GITLAB_VERIFY_TLS=off в настройках "
+                "(или SOC_GITLAB_VERIFY_TLS=off)")
+        except _rq.exceptions.ConnectTimeout:
+            out["reason"] = "таймаут подключения"
+            out["detail"] = "адрес есть, но соединение не устанавливается — проверьте сеть и порт"
+        except _rq.exceptions.ConnectionError as e:
+            out["reason"] = "нет соединения"
+            out["detail"] = f"хост недоступен (DNS/сеть/порт): {e}"
+        except Exception as e:
+            out["reason"] = f"{type(e).__name__}"
+            out["detail"] = str(e)[:300]
+        logger.warning("диагностика GitLab: %s — %s", out["reason"], out["detail"])
+        return out
 
     def _encode(self, path: str) -> str:
         return urllib.parse.quote(path, safe="")
@@ -69,8 +320,8 @@ class GitLabClient:
     def server_time(self):
         """Время GitLab-сервера из HTTP-заголовка Date (или None)."""
         try:
-            r = self.session.get(f"{self.url}/api/v4/version", timeout=10)
-            return r.headers.get("Date")
+            r = self._request("GET", f"{self.url}/api/v4/version", timeout=10)
+            return r.headers.get("Date") if r is not None else None
         except Exception:
             logger.warning("не удалось получить время сервера GitLab", exc_info=True,
                            extra={"ctx": {"url": self.url}})
@@ -80,19 +331,19 @@ class GitLabClient:
     # Файлы в репозитории
     # ------------------------------------------------------------------
     def file_exists(self, project_id: int, path: str, ref: str = "main") -> bool:
-        r = self.session.get(
+        r = self._request("GET", 
             f"{self.url}/api/v4/projects/{project_id}/repository/files/{self._encode(path)}",
             params={"ref": ref},
             timeout=15,
         )
-        return r.status_code == 200
+        return r is not None and r.status_code == 200
 
     def get_file(self, project_id: int, path: str, ref: str = "main") -> Optional[str]:
         """Содержимое файла. 404 (нет файла) -> None без ERROR в лог."""
         url = f"{self.url}/api/v4/projects/{project_id}/repository/files/{self._encode(path)}"
         try:
-            r = self.session.get(url, params={"ref": ref}, timeout=20)
-            if r.status_code != 200:
+            r = self._request("GET", url, params={"ref": ref}, timeout=20)
+            if r is None or r.status_code != 200:
                 return None
             import base64
             return base64.b64decode(r.json().get("content", "")).decode("utf-8")
@@ -120,64 +371,77 @@ class GitLabClient:
         })
         r = self.session.request(method, url, data=payload,
                                  headers=headers, timeout=30)
-        ok = r.status_code in (200, 201)
+        ok = self._ok(r)
         if not ok:
-            logger.warning(f"push_file failed ({r.status_code}): {r.text[:200]}")
+            logger.warning("push_file failed", extra={"ctx": {
+                "project_id": project_id, "path": path, "branch": branch,
+                "status": (r.status_code if r is not None else None),
+                "body": ((r.text or "") if r is not None else "нет ответа")[:200]}})
         return ok
 
     def list_files(self, project_id: int, path: str = "",
                    ref: str = "main", recursive: bool = True) -> list:
-        """Список файлов. 404 (пустой репозиторий / нет пути) -> [] без ошибок в лог."""
-        params = {"ref": ref, "recursive": str(recursive).lower(), "per_page": 100}
+        """ВСЕ файлы дерева, а не первая страница.
+
+        Раньше здесь стоял per_page=100 без листания страниц: репозиторий из
+        трёхсот файлов просматривался на треть, причём молча — ни в ответе, ни
+        в интерфейсе не было признака, что просмотр неполный. Для продукта,
+        который ищет секреты в репозиториях, это слепая зона без границ.
+        """
+        files, truncated = self.list_files_ex(project_id, path, ref, recursive)
+        return files
+
+    def list_files_ex(self, project_id: int, path: str = "",
+                      ref: str = "main", recursive: bool = True) -> tuple:
+        """(файлы, обрезано_ли). Отдельный метод, чтобы вызывающий, которому
+        важна полнота просмотра, мог об этом узнать и сказать аналитику."""
+        params = {"ref": ref, "recursive": str(recursive).lower()}
         if path:
             params["path"] = path
-        try:
-            r = self.session.get(
-                f"{self.url}/api/v4/projects/{project_id}/repository/tree",
-                params=params, timeout=20)
-            if r.status_code == 200:
-                return [f["path"] for f in r.json() if f.get("type") == "blob"]
-            logger.warning("листинг дерева отклонён",
+        items, truncated = self._api_paged(
+            f"/projects/{project_id}/repository/tree", params=params)
+        if truncated:
+            logger.warning("дерево репозитория просмотрено НЕ ПОЛНОСТЬЮ",
                            extra={"ctx": {"project_id": project_id, "path": path,
-                                          "status": r.status_code,
-                                          "body": r.text[:200]}})
-        except Exception:
-            logger.warning("листинг дерева не удался", exc_info=True,
-                           extra={"ctx": {"project_id": project_id, "path": path}})
-        return []
+                                          "получено": len(items)}})
+        return [f["path"] for f in items
+                if isinstance(f, dict) and f.get("type") == "blob"], truncated
 
     # ------------------------------------------------------------------
     # Ветки
     # ------------------------------------------------------------------
     def branch_exists(self, project_id: int, branch: str) -> bool:
-        r = self.session.get(
+        r = self._request("GET", 
             f"{self.url}/api/v4/projects/{project_id}/repository/branches/{self._encode(branch)}",
             timeout=15,
         )
-        return r.status_code == 200
+        return r is not None and r.status_code == 200
 
     def create_branch(self, project_id: int, branch: str,
                       ref: str = "main",
                       user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/repository/branches",
             json={"branch": branch, "ref": ref},
             headers=headers, timeout=15,
         )
-        ok = r.status_code in (200, 201)
-        if not ok and "already exists" not in r.text:
-            logger.warning(f"create_branch failed: {r.text[:150]}")
+        ok = self._ok(r)
+        body = (r.text or "") if r is not None else "нет ответа"
+        if not ok and "already exists" not in body:
+            logger.warning("create_branch failed",
+                           extra={"ctx": {"project_id": project_id,
+                                          "branch": branch, "body": body[:150]}})
         return ok
 
     def delete_branch(self, project_id: int, branch: str,
                       user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.delete(
+        r = self._request("DELETE", 
             f"{self.url}/api/v4/projects/{project_id}/repository/branches/{self._encode(branch)}",
             headers=headers, timeout=15,
         )
-        return r.status_code == 204
+        return r is not None and r.status_code == 204
 
     # ------------------------------------------------------------------
     # Merge Requests
@@ -195,23 +459,25 @@ class GitLabClient:
         }
         if assignee_id:
             payload["assignee_id"] = assignee_id
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/merge_requests",
             json=payload, headers=headers, timeout=15,
         )
-        if r.status_code in (200, 201):
+        if self._ok(r):
             return r.json().get("iid", 0)
-        logger.warning(f"create_mr failed: {r.text[:150]}")
+        logger.warning("create_mr failed", extra={"ctx": {
+            "project_id": project_id, "source": source,
+            "body": ((r.text or "") if r is not None else "нет ответа")[:150]}})
         return 0
 
     def comment_mr(self, project_id: int, mr_iid: int, body: str,
                    user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/notes",
             json={"body": body}, headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def merge_mr(self, project_id: int, mr_iid: int,
                  user_token: Optional[str] = None) -> bool:
@@ -238,33 +504,34 @@ class GitLabClient:
         attempts = [user_token or self.token, self.token]
         last = ""
         for i, tok in enumerate(attempts):
-            r = self.session.put(url, json={"should_remove_source_branch": True},
+            r = self._request("PUT", url, json={"should_remove_source_branch": True},
                                  headers={"PRIVATE-TOKEN": tok}, timeout=15)
-            if r.status_code in (200, 201):
+            if self._ok(r):
                 return True
-            last = r.text[:150]
-            if r.status_code == 405:
+            last = ((r.text or "") if r is not None else "нет ответа")[:150]
+            status = r.status_code if r is not None else 0
+            if status == 405:
                 # mergeability ещё пересчитывается — короткая пауза и ретрай
                 time.sleep(2)
-                r2 = self.session.put(url, json={"should_remove_source_branch": True},
+                r2 = self._request("PUT", url, json={"should_remove_source_branch": True},
                                       headers={"PRIVATE-TOKEN": self.token}, timeout=15)
-                if r2.status_code in (200, 201):
+                if self._ok(r2):
                     return True
-                last = r2.text[:150]
+                last = ((r2.text or "") if r2 is not None else "нет ответа")[:150]
                 # ветка могла отстать от main — пробуем rebase и ещё раз merge
                 try:
                     if self.rebase_mr(project_id, mr_iid):
-                        r3 = self.session.put(url, json={"should_remove_source_branch": True},
+                        r3 = self._request("PUT", url, json={"should_remove_source_branch": True},
                                               headers={"PRIVATE-TOKEN": self.token}, timeout=15)
-                        if r3.status_code in (200, 201):
+                        if self._ok(r3):
                             return True
-                        last = r3.text[:150]
+                        last = ((r3.text or "") if r3 is not None else "нет ответа")[:150]
                 except Exception:
                     logger.warning("повторный merge после rebase не удался",
                                    exc_info=True,
                                    extra={"ctx": {"project_id": project_id,
                                                   "mr_iid": mr_iid}})
-            elif r.status_code not in (401, 403, 406, 409, 422):
+            elif status not in (401, 403, 406, 409, 422):
                 break  # иные ошибки повтором не лечатся
         why = ""
         try:
@@ -286,8 +553,8 @@ class GitLabClient:
         """Асинхронный rebase MR на target. Возвращает True, если прошёл без
         конфликта (помогает «отставшим» от main веткам стать mergeable)."""
         url = f"{self.url}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/rebase"
-        r = self.session.put(url, headers={"PRIVATE-TOKEN": self.token}, timeout=15)
-        if r.status_code not in (200, 202):
+        r = self._request("PUT", url, headers={"PRIVATE-TOKEN": self.token}, timeout=15)
+        if not self._ok(r, (202,)):
             return False
         for _ in range(6):                       # ждём завершения rebase
             time.sleep(1.2)
@@ -300,7 +567,7 @@ class GitLabClient:
         """Делает merge надёжным: снимает требование успешного пайплайна и
         резолва дискуссий (иначе без раннера merge -> 405). Вызывается один раз
         на старте под админ-токеном."""
-        r = self.session.put(
+        r = self._request("PUT", 
             f"{self.url}/api/v4/projects/{project_id}",
             json={
                 "only_allow_merge_if_pipeline_succeeds": False,
@@ -310,7 +577,7 @@ class GitLabClient:
             },
             headers={"PRIVATE-TOKEN": self.token}, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def bootstrap_projects(self, project_ids) -> int:
         ok = 0
@@ -328,9 +595,9 @@ class GitLabClient:
     def ensure_member(self, project_id, user_id, access_level=50) -> bool:
         """Идемпотентно делает пользователя участником проекта с нужным уровнем.
         Если уже есть с >= уровнем — ничего не делает. 50=Owner, 40=Maintainer."""
-        cur = self.session.get(
+        cur = self._request("GET", 
             f"{self.url}/api/v4/projects/{project_id}/members/{user_id}", timeout=15)
-        if cur.status_code == 200:
+        if cur is not None and cur.status_code == 200:
             try:
                 if cur.json().get("access_level", 0) >= access_level:
                     return True
@@ -340,20 +607,20 @@ class GitLabClient:
                                extra={"ctx": {"project_id": project_id,
                                               "user_id": user_id}})
             # повысить уровень
-            r = self.session.put(
+            r = self._request("PUT", 
                 f"{self.url}/api/v4/projects/{project_id}/members/{user_id}",
                 json={"access_level": access_level},
                 headers={"PRIVATE-TOKEN": self.token}, timeout=15)
-            return r.status_code in (200, 201)
+            return self._ok(r)
         # добавить нового участника
         for lvl in (access_level, 40):
-            r = self.session.post(
+            r = self._request("POST", 
                 f"{self.url}/api/v4/projects/{project_id}/members",
                 json={"user_id": user_id, "access_level": lvl},
                 headers={"PRIVATE-TOKEN": self.token}, timeout=15)
-            if r.status_code in (200, 201):
+            if self._ok(r):
                 return True
-            if r.status_code == 409:   # уже участник
+            if r is not None and r.status_code == 409:   # уже участник
                 return True
         return False
 
@@ -418,9 +685,9 @@ class GitLabClient:
     def unblock_user(self, uid):
         """Снять блокировку с пользователя (после пересоздания он может быть blocked)."""
         try:
-            r = self.session.post(f"{self.url}/api/v4/users/{uid}/unblock",
+            r = self._request("POST", f"{self.url}/api/v4/users/{uid}/unblock",
                                   headers={"PRIVATE-TOKEN": self.token}, timeout=15)
-            return r.status_code in (200, 201, 204)
+            return self._ok(r, (204,))
         except Exception:
             logger.warning("не удалось разблокировать пользователя", exc_info=True,
                            extra={"ctx": {"user_id": uid}})
@@ -429,9 +696,9 @@ class GitLabClient:
     def restore_group(self, gid):
         """Отменить запланированное удаление группы (вернуть из scheduled)."""
         try:
-            r = self.session.post(f"{self.url}/api/v4/groups/{gid}/restore",
+            r = self._request("POST", f"{self.url}/api/v4/groups/{gid}/restore",
                                   headers={"PRIVATE-TOKEN": self.token}, timeout=15)
-            return r.status_code in (200, 201, 204)
+            return self._ok(r, (204,))
         except Exception:
             logger.warning("не удалось восстановить группу", exc_info=True,
                            extra={"ctx": {"group_id": gid}})
@@ -439,9 +706,9 @@ class GitLabClient:
 
     def restore_project(self, pid):
         try:
-            r = self.session.post(f"{self.url}/api/v4/projects/{pid}/restore",
+            r = self._request("POST", f"{self.url}/api/v4/projects/{pid}/restore",
                                   headers={"PRIVATE-TOKEN": self.token}, timeout=15)
-            return r.status_code in (200, 201, 204)
+            return self._ok(r, (204,))
         except Exception:
             logger.warning("не удалось восстановить проект", exc_info=True,
                            extra={"ctx": {"project_id": pid}})
@@ -479,12 +746,12 @@ class GitLabClient:
         found = {}
         data = None
         if namespace:
-            data = self._api("GET", f"/groups/{self._encode(namespace)}/projects",
-                             params={"per_page": 100, "simple": True,
-                                     "include_subgroups": True, "archived": False})
+            data, _ = self._api_paged(
+                f"/groups/{self._encode(namespace)}/projects",
+                params={"simple": True, "include_subgroups": True, "archived": False})
         if not isinstance(data, list) or not data:
-            data = self._api("GET", "/projects",
-                             params={"per_page": 100, "simple": True, "membership": False})
+            data, _ = self._api_paged("/projects",
+                                      params={"simple": True, "membership": False})
         if isinstance(data, list):
             for pr in data:
                 pwn = pr.get("path_with_namespace", "")
@@ -499,15 +766,27 @@ class GitLabClient:
                     found[name] = pr["id"]
         return found
 
+    def list_branches(self, project_id: int) -> list:
+        """Все ветки проекта. Появился, потому что маршруты сброса в webapp.py
+        ходили в API мимо клиента и останавливались на первой сотне веток,
+        сообщая при этом об успешной полной очистке."""
+        items, truncated = self._api_paged(
+            f"/projects/{project_id}/repository/branches")
+        if truncated:
+            logger.warning("список веток обрезан",
+                           extra={"ctx": {"project_id": project_id}})
+        return [b.get("name") for b in items
+                if isinstance(b, dict) and b.get("name")]
+
     def close_mr(self, project_id: int, mr_iid: int,
                  user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.put(
+        r = self._request("PUT", 
             f"{self.url}/api/v4/projects/{project_id}/merge_requests/{mr_iid}",
             json={"state_event": "close"},
             headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def mark_mr_ready(self, project_id: int, mr_iid: int,
                       user_token: Optional[str] = None) -> bool:
@@ -523,20 +802,54 @@ class GitLabClient:
         if new == title and not (mr.get("draft") or mr.get("work_in_progress")):
             return True  # уже ready
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.put(
+        r = self._request("PUT", 
             f"{self.url}/api/v4/projects/{project_id}/merge_requests/{mr_iid}",
             json={"title": new or "ready"}, headers=headers, timeout=15)
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def get_open_mrs(self, project_id: int) -> list:
-        data = self._api("GET",
-            f"/projects/{project_id}/merge_requests",
-            params={"state": "opened", "per_page": 50})
-        return data if isinstance(data, list) else []
+        # Со всеми страницами: с per_page=50 без листания «открытых MR» больше
+        # полусотни просто не существовало — ни для счётчика бэклога, ни для
+        # чистки репозиториев.
+        items, _ = self._api_paged(f"/projects/{project_id}/merge_requests",
+                                   params={"state": "opened"})
+        return items
 
     def get_mr(self, project_id: int, mr_iid: int) -> dict:
         return self._api("GET",
             f"/projects/{project_id}/merge_requests/{mr_iid}")
+
+    def get_mr_approvals(self, project_id: int, mr_iid: int) -> Optional[int]:
+        """Сколько апрувов у MR на момент вызова.
+
+        ОТДЕЛЬНАЯ РУЧКА, А НЕ ПОЛЕ ОБЪЕКТА MR. Объект merge request в
+        GitLab API НЕ содержит ни `approvals_count`, ни `approved_by` —
+        они живут в /merge_requests/:iid/approvals. Код в
+        agents/base.merge_mr читал их из get_mr() и всегда получал None,
+        поэтому поле `approvals_count` не попадало НИ В ОДНО событие
+        mr_merge, а правила merge-without-approval и self-merged-mr —
+        единственные, что закрывают T1562 Impair Defenses, — не могли
+        сработать ни разу за всю историю журнала (проверено на 78 682
+        событиях: поле отсутствует в 100% mr_merge).
+
+        Возвращает int, либо None — если GitLab недоступен или ответ без
+        нужных полей. None означает «неизвестно» и поле в событие не
+        пишется: выдумывать ноль нельзя, ноль апрувов — это алерт.
+        """
+        data = self._api("GET",
+            f"/projects/{project_id}/merge_requests/{mr_iid}/approvals")
+        if not isinstance(data, dict) or not data:
+            return None
+        n = data.get("approvals_count")
+        if n is None:
+            by = data.get("approved_by")
+            if by is None:
+                return None
+            n = len(by)
+        try:
+            return int(n)
+        except (TypeError, ValueError):
+            return None
 
     # ------------------------------------------------------------------
     # Impersonation tokens
@@ -576,14 +889,17 @@ class GitLabClient:
                     "file_path": "...", "content": "..."}]
         """
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/repository/commits",
             json={"branch": branch, "commit_message": message, "actions": actions},
             headers=headers, timeout=30,
         )
-        ok = r.status_code in (200, 201)
+        ok = self._ok(r)
         if not ok:
-            logger.warning(f"create_commit failed: {r.text[:200]}")
+            logger.warning("create_commit failed", extra={"ctx": {
+                "project_id": project_id, "branch": branch,
+                "actions": len(actions),
+                "body": ((r.text or "") if r is not None else "нет ответа")[:200]}})
         return ok
 
     # ------------------------------------------------------------------
@@ -592,19 +908,22 @@ class GitLabClient:
     def revert_commit(self, project_id: int, sha: str, branch: str = "main",
                       user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/repository/commits/{sha}/revert",
             json={"branch": branch},
             headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def get_commits(self, project_id: int, ref: str = "main",
-                    per_page: int = 20) -> list:
-        data = self._api("GET",
-            f"/projects/{project_id}/repository/commits",
-            params={"ref_name": ref, "per_page": per_page})
-        return data if isinstance(data, list) else []
+                    per_page: int = 20, limit: int = None) -> list:
+        """История коммитов. per_page сохранён как «сколько взять» для
+        совместимости с вызывающими; limit листает дальше первой страницы."""
+        items, _ = self._api_paged(f"/projects/{project_id}/repository/commits",
+                                   params={"ref_name": ref,
+                                           "per_page": min(100, max(1, per_page))},
+                                   max_items=limit or per_page)
+        return items
 
     # ------------------------------------------------------------------
     # Merge Request — расширенные операции
@@ -612,31 +931,31 @@ class GitLabClient:
     def update_mr(self, project_id: int, mr_iid: int, fields: dict,
                   user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.put(
+        r = self._request("PUT", 
             f"{self.url}/api/v4/projects/{project_id}/merge_requests/{mr_iid}",
             json=fields, headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def approve_mr(self, project_id: int, mr_iid: int,
                    user_token: Optional[str] = None) -> bool:
         """Настоящий approve через Approvals API (нужен токен апрувера)."""
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/merge_requests/{mr_iid}/approve",
             headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def award_emoji(self, project_id: int, target_type: str, target_iid: int,
                     name: str, user_token: Optional[str] = None) -> bool:
         """target_type: 'merge_requests' | 'issues'. name: 'thumbsup','rocket'..."""
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/{target_type}/{target_iid}/award_emoji",
             json={"name": name}, headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     # ------------------------------------------------------------------
     # Issues
@@ -655,37 +974,39 @@ class GitLabClient:
             payload["assignee_id"] = assignee_id
         if created_at:
             payload["created_at"] = created_at   # учитывается только для admin
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/issues",
             json=payload, headers=headers, timeout=15,
         )
-        if r.status_code in (200, 201):
+        if self._ok(r):
             return r.json().get("iid", 0)
-        logger.warning(f"create_issue failed: {r.text[:150]}")
+        logger.warning("create_issue failed", extra={"ctx": {
+            "project_id": project_id,
+            "body": ((r.text or "") if r is not None else "нет ответа")[:150]}})
         return 0
 
     def comment_issue(self, project_id: int, issue_iid: int, body: str,
                       user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/issues/{issue_iid}/notes",
             json={"body": body}, headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def update_issue(self, project_id: int, issue_iid: int, fields: dict,
                      user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.put(
+        r = self._request("PUT", 
             f"{self.url}/api/v4/projects/{project_id}/issues/{issue_iid}",
             json=fields, headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def get_open_issues(self, project_id: int) -> list:
-        data = self._api("GET", f"/projects/{project_id}/issues",
-                         params={"state": "opened", "per_page": 50})
-        return data if isinstance(data, list) else []
+        items, _ = self._api_paged(f"/projects/{project_id}/issues",
+                                   params={"state": "opened"})
+        return items
 
     # ------------------------------------------------------------------
     # Labels / Milestones
@@ -693,11 +1014,11 @@ class GitLabClient:
     def ensure_label(self, project_id: int, name: str, color: str = "#428BCA",
                      user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/labels",
             json={"name": name, "color": color}, headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201, 409)  # 409 = уже есть
+        return self._ok(r, (409,))  # 409 = уже есть
 
     def ensure_milestone(self, project_id: int, title: str,
                          user_token: Optional[str] = None) -> int:
@@ -707,11 +1028,11 @@ class GitLabClient:
         if isinstance(data, list) and data:
             return data[0].get("id", 0)
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/milestones",
             json={"title": title}, headers=headers, timeout=15,
         )
-        if r.status_code in (200, 201):
+        if self._ok(r):
             return r.json().get("id", 0)
         return 0
 
@@ -721,22 +1042,24 @@ class GitLabClient:
     def create_tag(self, project_id: int, tag: str, ref: str = "main",
                    message: str = "", user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/repository/tags",
             json={"tag_name": tag, "ref": ref, "message": message},
             headers=headers, timeout=15,
         )
-        return r.status_code in (200, 201)
+        return self._ok(r)
 
     def create_release(self, project_id: int, tag: str, name: str,
                        description: str, user_token: Optional[str] = None) -> bool:
         headers = {"PRIVATE-TOKEN": user_token or self.token}
-        r = self.session.post(
+        r = self._request("POST", 
             f"{self.url}/api/v4/projects/{project_id}/releases",
             json={"tag_name": tag, "name": name, "description": description},
             headers=headers, timeout=15,
         )
-        ok = r.status_code in (200, 201)
+        ok = self._ok(r)
         if not ok:
-            logger.warning(f"create_release failed: {r.text[:150]}")
+            logger.warning("create_release failed", extra={"ctx": {
+                "project_id": project_id, "tag": tag,
+                "body": ((r.text or "") if r is not None else "нет ответа")[:150]}})
         return ok

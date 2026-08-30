@@ -1,16 +1,24 @@
 # SOC Purple-Team Platform — одной командой: docker compose up
 # Открой: http://127.0.0.1:8787 (среда) и http://127.0.0.1:8788 (Purple Team)
-# Логин admin / admin (демо). LLM-триаж опционален: docker compose --profile llm up
+# Пароль печатается в логе контейнера при старте (или задай SOC_ADMIN_PASS).
+# LLM-триаж опционален: docker compose --profile llm up
 services:
   soc:
     build: .
     container_name: soc-platform
     ports:
-      - "8787:8787"
-      - "8788:8788"
+      # ТОЛЬКО НА ПЕТЛЮ ХОСТА. Без префикса Docker публикует на 0.0.0.0, и
+      # админ-консоль с общим паролем оказывалась доступна всей сети.
+      - "127.0.0.1:8787:8787"
+      - "127.0.0.1:8788:8788"
     environment:
       SOC_OFFLINE: "1"
-      SOC_ADMIN_PASS: "admin"
+      # Внутри контейнера слушаем все интерфейсы, иначе опубликованные порты
+      # ведут в никуда; наружу они выставлены только на 127.0.0.1 (см. ports).
+      SOC_WEB_HOST: "0.0.0.0"
+      # Пароль НЕ зашит: entrypoint сгенерирует и напечатает. Свой задаётся так:
+      #   SOC_ADMIN_PASS=... docker compose up
+      SOC_ADMIN_PASS: "${SOC_ADMIN_PASS:-}"
       # если поднят профиль llm — консоль увидит Ollama по имени сервиса:
       OLLAMA_HOST: "http://ollama:11434"
     volumes:
@@ -26,7 +34,7 @@ services:
     container_name: soc-ollama
     profiles: ["llm"]
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - ollama-data:/root/.ollama
     restart: unless-stopped

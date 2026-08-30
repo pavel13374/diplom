@@ -163,19 +163,27 @@ class Launcher:
             self.q[key].put(f"[ошибка] {e}")
 
     def _reader(self, key, p, logf):
+        """Перекачивает вывод дочернего процесса в панель и в файл.
+
+        `logf` закрывается в finally: файл открывается на каждый запуск, и без
+        этого дескрипторы копились бы по одному за «Запустить/Остановить», а на
+        Windows открытый файл ещё и не даёт переименовать себя при ротации.
+        """
         try:
             for line in p.stdout:
                 line = line.rstrip("\n")
                 self.q[key].put(line)
                 try:
                     logf.write(line + "\n"); logf.flush()
-                except Exception:
+                except OSError:
                     pass
         except Exception:
             pass
         finally:
-            try: logf.close()
-            except Exception: pass
+            try:
+                logf.close()
+            except OSError:
+                pass
         self.q[key].put("[панель] процесс завершился.")
         self.q["_x"].put(("_down", key))
 

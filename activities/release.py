@@ -5,7 +5,7 @@
 import random
 import logging
 import config
-from config import PROJECTS, USERS, FEATURES
+from config import USERS, FEATURES
 from activities import flow
 import simclock
 

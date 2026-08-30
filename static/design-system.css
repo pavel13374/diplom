@@ -64,20 +64,28 @@
 :root{
   color-scheme:dark;
 
-  /* поверхности: холодные, четыре ступени */
+  /* ПОВЕРХНОСТИ: четыре РАЗЛИЧИМЫЕ ступени вложенности.
+     Было: surface-1 и surface-2 — один и тот же #121722, поэтому рабочая
+     область и карточка на ней не отличались ничем, и уровень вложенности
+     читался только по рамке. Теперь ступени идут ровным шагом светлоты:
+     фон приложения -> рабочая область -> карточка -> строка/вложенный блок. */
   --bg:#080B11;
-  --surface-1:#121722;
-  --surface-2:#121722;
-  --surface-3:#1A202C;
-  --surface-4:#222A38;
+  --surface-1:#0E131C;   /* рабочая область под карточками */
+  --surface-2:#151B27;   /* карточка, панель, модалка      */
+  --surface-3:#1C2331;   /* строка при наведении, вложенный блок */
+  --surface-4:#242C3C;   /* активная строка, чип           */
   --overlay:rgba(3,5,9,.76);
 
   --line:#242C3A;
   --line-strong:#333E50;
 
-  --text-1:#DCE3EC;
-  --text-2:#96A1B2;
-  --text-3:#8E99A9;
+  /* ТЕКСТ: три ступени, которые действительно различаются.
+     text-2 (#96A1B2) и text-3 (#8E99A9) отличались на три единицы яркости —
+     вторичный и приглушённый текст выглядели одинаково, и типографическая
+     иерархия внутри карточки не работала. */
+  --text-1:#DFE5EE;
+  --text-2:#9AA6B8;
+  --text-3:#8894AA;
   --text-inverse:#0B0E14;
 
   --accent:#3D7EFF;
@@ -88,7 +96,7 @@
   --sev-critical:#F26D75;
   --sev-high:#E0924A;
   --sev-medium:#CBA63E;
-  --sev-low:#8E99A9;
+  --sev-low:#7E9BBC;   /* свой холодный тон: раньше совпадал с --text-3 и не читался как уровень */
   --success:#48B85C;
 
   --critical-bg:rgba(242,109,117,.11);  --critical-border:rgba(242,109,117,.30);
@@ -98,6 +106,11 @@
   --neutral-bg:rgba(132,143,159,.11);   --neutral-border:rgba(132,143,159,.26);
 
   /* --- типографика: шесть размеров --- */
+  /* ОДИН ШРИФТ НА ВСЁ ПРИЛОЖЕНИЕ. Моноширинный — только для того, что
+     является техническим идентификатором или кодом: путь к файлу, техника
+     ATT&CK, идентификатор правила, лог, hash. Для чисел и времени вместо
+     моноширинного используется font-variant-numeric:tabular-nums — выравнивание
+     колонок сохраняется, а начертание остаётся единым. */
   --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
   --font-mono:ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,'Liberation Mono',monospace;
 
@@ -591,7 +604,8 @@ a:hover,.link:hover{text-decoration:underline}
 .kpi{display:flex;flex-direction:column;justify-content:center}
 .kpi .n{
   display:block;color:var(--text-1);-webkit-text-fill-color:currentColor;background:none;
-  font-family:var(--font-sans);font-size:var(--fs-num);font-weight:var(--fw-semibold);
+  font-family:var(--font-sans);font-variant-numeric:tabular-nums;
+  font-size:var(--fs-num);font-weight:var(--fw-semibold);
   letter-spacing:-.02em;line-height:1.05}
 /* Селекторы по атрибуту ([crit], [ok]) остались от разметки
    «class=kpi crit»: без кавычек это класс kpi плюс отдельный булев
@@ -610,7 +624,7 @@ a:hover,.link:hover{text-decoration:underline}
 .met .l,.stat .l{order:-1;font-size:var(--fs-2xs);font-weight:var(--fw-medium);
   letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
 .met .s,.stat .s{font-size:var(--fs-xs);color:var(--text-3)}
-.mets{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--gutter)}
+.mets{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--sp-3)}
 .met.card{padding:10px 12px}
 .met.card .n{font-size:var(--fs-num);letter-spacing:-.02em}
 .met.card .n.bad{color:var(--sev-critical)}
@@ -639,7 +653,7 @@ a:hover,.link:hover{text-decoration:underline}
   height:20px;padding:0 8px;border-radius:var(--r-ctl);
   background:var(--neutral-bg);border:1px solid var(--neutral-border);color:var(--text-2);
   font-family:var(--font-sans);font-size:var(--fs-2xs);font-weight:var(--fw-semibold);
-  letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
+  letter-spacing:.02em;white-space:nowrap}
 /* форма кружка дублирует цвет: уровень читается и в оттенках серого */
 .badge:before{content:'';flex:none;width:6px;height:6px;border-radius:50%;
   border:1.5px solid currentColor;background:currentColor}
@@ -795,7 +809,7 @@ label,.field label{display:block;color:var(--text-2);font-size:var(--fs-xs);
 .field{display:flex;flex-direction:column;gap:4px}
 .field .help,.cfg-intro,.cfg-note,.help{color:var(--text-3);font-size:var(--fs-xs)}
 .field .val{color:var(--text-1);background:var(--surface-3);border:1px solid var(--line);
-  border-radius:var(--r-ctl);padding:0 5px;font-family:var(--font-mono);font-size:var(--fs-xs)}
+  border-radius:var(--r-ctl);padding:0 5px;font-variant-numeric:tabular-nums;font-size:var(--fs-xs)}
 /* ПЕРЕКЛЮЧАТЕЛЬ
    Разметка — нативный чекбокс внутри <label class=switch> со span.track.
    Прежние правила ждали div с классом .on: дорожка красилась, а кружок
@@ -859,13 +873,23 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
   min-height:var(--row-h);padding:0 var(--pad-x);margin:0;
   background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;
   box-shadow:none;color:var(--text-2);font-size:var(--fs-sm);
-  cursor:pointer;animation:none;
+  animation:none;
   transition:background var(--dur-fast) var(--ease)}
 .al:last-child,.inc:last-child,.ds-q-item:last-child,.wfi:last-child,.rule:last-child,
 .ds-ev-item:last-child,.frow:last-child,.evrow:last-child,.case-inc:last-child,
 .ds-feed-item:last-child{border-bottom:none}
-.al:hover,.inc:hover,.ds-q-item:hover,.wfi:hover,.rule:hover,.ds-ev-item:hover,
-.frow:hover,.evrow:hover,.case-inc:hover,.ds-feed-item:hover{
+/* Палец и подсветка под курсором — только у строк, которые куда-то ведут.
+   Один класс .al используется и в списке алертов (строка открывает
+   карточку), и в панели актора, и в ленте обзора, где она ничего не
+   открывает. Раньше правило красило и подсвечивало все три случая
+   одинаково: аналитик наводил курсор, видел отклик и клик, который ничем
+   не заканчивается. Признак — наличие обработчика, а не класс. */
+.al[onclick],.inc[onclick],.ds-q-item[onclick],.wfi[onclick],.rule[onclick],
+.ds-ev-item[onclick],.frow[onclick],.evrow[onclick],.case-inc[onclick],
+.ds-feed-item[onclick]{cursor:pointer}
+.al[onclick]:hover,.inc[onclick]:hover,.ds-q-item[onclick]:hover,.wfi[onclick]:hover,
+.rule[onclick]:hover,.ds-ev-item[onclick]:hover,.frow[onclick]:hover,.evrow[onclick]:hover,
+.case-inc[onclick]:hover,.ds-feed-item[onclick]:hover{
   background:var(--surface-3);border-color:var(--line);transform:none;box-shadow:none}
 .inc.sel,.ds-q-item.sel,.wfi.sel,.al.sel{
   background:var(--accent-bg);box-shadow:inset 3px 0 0 var(--accent);border-color:var(--line)}
@@ -880,25 +904,40 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
 
 .al .ts,.ds-feed-time,.ds-tl-time,.wfi .meta,.ds-q-meta,.rc-sub{
   flex:none;color:var(--text-3);font-family:var(--font-sans);font-size:var(--fs-xs)}
-.al .ts,.ds-feed-time{font-family:var(--font-mono);font-size:var(--fs-xs)}
+.al .ts,.ds-feed-time{font-variant-numeric:tabular-nums;font-size:var(--fs-xs)}
 .al .who,.ds-q-who,.inc .a,.rule b,.rc-name,.m-name,.rk-dyn-n{
   color:var(--text-1);font-weight:var(--fw-medium)}
-.al .tech,.rule .tech,.ds-table td .tech{
+/* Идентификатор техники ATT&CK — один и тот же тип значения везде, значит и
+   начертание одно. Селектор требовал предка .al/.rule/td, поэтому в таймлайне
+   карточки инцидента T1059 набирался обычным шрифтом, а в таблице правил —
+   моноширинным. */
+.al .tech,.rule .tech,.ds-table td .tech,.ds-tl-title .tech,.kcx .tech{
   flex:none;background:transparent;border:0;color:var(--text-3);
   border-radius:0;font-family:var(--font-mono);font-size:var(--fs-xs);
   font-weight:var(--fw-normal);padding:0;height:auto}
 .rule .tech{flex:0 0 78px}
-.al .rk,.ds-table td .rk{margin-left:auto;font-family:var(--font-mono);
+.al .rk,.ds-table td .rk{margin-left:auto;font-variant-numeric:tabular-nums;
   font-weight:var(--fw-normal);color:var(--text-2)}
 .al .rk.hi,.ds-table td .rk.hi{color:var(--sev-critical)}
 .al .rk.high,.ds-table td .rk.high{color:var(--sev-high)}
 .al .rk.md,.ds-table td .rk.md{color:var(--sev-medium)}
 .ds-q-main{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px}
-.ds-q-meta{margin:0}
+.ds-q-meta{margin:0;flex:none;white-space:nowrap}
+/* Имя актора и его сводка стояли в одну строку без ограничения ширины:
+   на 1280 «@anna.smirnova + campaign + 2 алерта · 2 тактики · риск 0.62»
+   не помещались в карточку очереди и вылезали за её край на 42px.
+   Ужимать имя в многоточие здесь нельзя — на сводку уходит почти вся
+   строка, от актора остался бы огрызок. Поэтому на узких экранах
+   сводка уходит под имя: актор первичен, счётчики вторичны. */
+.ds-q-who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:1440px){
+  .ds-q-main{flex-direction:column;align-items:flex-start;gap:0}
+  .ds-q-item{min-height:38px}
+}
 .frow .atag,.evrow .atag{color:var(--sev-critical);font-family:var(--font-sans);
   font-weight:var(--fw-medium);font-size:var(--fs-2xs);text-transform:uppercase;
   letter-spacing:.06em}
-.frow .mono,.evrow .mono{color:var(--text-3);font-family:var(--font-mono);font-size:var(--fs-xs)}
+.frow .mono,.evrow .mono{color:var(--text-3);font-family:var(--font-mono);font-size:var(--fs-xs);opacity:.92}
 .case-inc-id{font-family:var(--font-mono);color:var(--text-2);flex:none}
 .case-tags{display:flex;align-items:center;gap:10px;flex:none;margin-left:auto}
 .case-row{display:flex;gap:var(--sp-2);flex-wrap:wrap}
@@ -916,8 +955,13 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
   font-size:var(--fs-2xs);font-weight:var(--fw-medium);letter-spacing:.08em;
   text-transform:uppercase;text-align:left;
   padding:0 var(--pad-x);border-bottom:1px solid var(--line-strong);white-space:nowrap;
-  cursor:pointer;user-select:none}
-.ds-table thead th:hover{color:var(--text-1)}
+  user-select:none}
+/* Курсор-палец обещает клик. Сортировка есть только у таблицы алертов
+   (её заголовки несут data-k), а палец стоял на заголовках всех таблиц:
+   на правилах, профиле риска и трендах он обещал сортировку, которой
+   нет. Обещание привязано к признаку сортируемости, а не к тегу. */
+.ds-table thead th[data-k],.ds-table thead th[data-sort]{cursor:pointer}
+.ds-table thead th[data-k]:hover,.ds-table thead th[data-sort]:hover{color:var(--text-1)}
 .ds-table thead th[data-sort]:after{content:"";display:inline-block;width:0;height:0;
   margin-left:5px;border:3px solid transparent;border-top-color:currentColor;opacity:.35}
 .ds-table thead th[data-sort="asc"]:after{border-top-color:transparent;
@@ -928,7 +972,10 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
   color:var(--text-2);vertical-align:middle;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .ds-table tbody td.wrap{white-space:normal;line-height:var(--lh-base);padding:6px var(--pad-x)}
-.ds-table tbody tr{cursor:pointer;transition:background var(--dur-fast) var(--ease)}
+/* То же и для строк: кликабельны те, у кого есть обработчик. Таблица
+   порогов на «Трендах» — справочная, строка в ней никуда не ведёт. */
+.ds-table tbody tr{transition:background var(--dur-fast) var(--ease)}
+.ds-table tbody tr[onclick]{cursor:pointer}
 /* Чередование строк. На таблице в сорок строк одни только разделители
    не держат глаз на горизонтали: взгляд соскальзывает на соседнюю
    строку, и значение читается не от того актора. Полтона хватает —
@@ -970,8 +1017,14 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
 .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-width:0}
 .split>*{min-width:0}
 .split>*+*{border-left:1px solid var(--line)}
-.split-list{overflow:auto;max-height:calc(100vh - 190px)}
-.split-detail{overflow:auto;max-height:calc(100vh - 190px);padding:10px}
+/* Двухпанельный экран ЗАНИМАЕТ рабочую область, а не схлопывается по
+   содержимому. Со списком из пяти акторов карточка заканчивалась на 240px,
+   и три четверти экрана оставались пустым фоном — страница выглядела
+   недоделанной, хотя данные на ней были. */
+.split-list,.split-detail{
+  overflow:auto;
+  height:calc(100vh - 190px)}
+.split-detail{padding:10px}
 @media(max-width:1200px){.split{grid-template-columns:1fr}
   .split>*+*{border-left:0;border-top:1px solid var(--line)}
   .split-list,.split-detail{max-height:none}}
@@ -1028,7 +1081,7 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
 .ds-feed-txt{flex:1;min-width:0;font-size:var(--fs-sm);color:var(--text-2);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ds-feed-txt b{color:var(--text-1);font-weight:var(--fw-medium)}
-.ds-feed-repo{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-3);
+.ds-feed-repo{font-size:var(--fs-xs);color:var(--text-3);
   background:none;border-radius:0;padding:0;margin-left:4px}
 .ds-feed-item.is-new{animation:none}
 
@@ -1047,7 +1100,7 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
 .ds-tl-item.medium:before{background:var(--sev-medium)}
 .ds-tl-item.low:before,.ds-tl-item.info:before,.ds-tl-item.ai:before{background:var(--text-3)}
 .ds-tl-item.success:before{background:var(--success)}
-.ds-tl-time{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-3)}
+.ds-tl-time{font-variant-numeric:tabular-nums;font-size:var(--fs-xs);color:var(--text-3)}
 .ds-tl-title{color:var(--text-1);font-weight:var(--fw-normal);font-size:var(--fs-sm)}
 .ds-tl-desc{color:var(--text-3);font-size:var(--fs-xs)}
 .ds-tl-desc code{background:var(--surface-3);border-radius:var(--r-ctl);padding:0 4px;
@@ -1080,7 +1133,7 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
 .rk-bar.high i{background:var(--sev-high)}
 .rk-bar.medium i{background:var(--sev-medium)}
 .rk-bar.low i{background:var(--text-3)}
-.rk-n{font-family:var(--font-mono);font-size:var(--fs-xs);
+.rk-n{font-variant-numeric:tabular-nums;font-size:var(--fs-xs);
   min-width:24px;text-align:right;color:var(--text-2)}
 .rk-n.critical{color:var(--sev-critical)} .rk-n.high{color:var(--sev-high)}
 .rk-n.medium{color:var(--sev-medium)} .rk-n.low{color:var(--text-3)}
@@ -1115,7 +1168,7 @@ input[readonly],textarea[readonly]{background:var(--surface-3);color:var(--text-
   font-size:var(--fs-xs);color:var(--text-3)}
 .ds-cov-legend b{color:var(--text-1);font-weight:var(--fw-medium)}
 .spark-now{color:var(--text-2);background:none;padding:0;
-  font-family:var(--font-mono);font-size:var(--fs-xs)}
+  font-variant-numeric:tabular-nums;font-size:var(--fs-xs)}
 
 /* ============================================================
    17. ПУСТЫЕ СОСТОЯНИЯ
@@ -1369,6 +1422,13 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
    промежутки между колонками — по ней ведут разбор весь день. */
 .wfq{display:flex;flex-direction:column}
 .wfq .wfi{min-height:52px;padding:8px var(--pad-x);gap:var(--sp-3);align-items:center}
+/* Бейдж уровня — колонка фиксированной ширины, а не поток.
+   Строка очереди была обычным flex'ом, поэтому имя актора начиналось там,
+   где кончался бейдж: «CRITICAL» и «MEDIUM» почти совпали по ширине и
+   выстроились случайно, а под коротким «LOW» третья строка уехала влево
+   на 24 пикселя. Ширина та же (76px), что у колонки уровня в списке
+   инцидентов, — две очереди читаются по одной вертикали. */
+.wfq .wfi>.badge{flex:0 0 76px}
 .wfq .wfi>div{min-width:0;display:flex;flex-direction:column;gap:3px}
 .wfi .who{color:var(--text-1);font-weight:var(--fw-medium);
   font-size:var(--fs-md);line-height:1.3;
@@ -1378,7 +1438,7 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
 .wfq .wfi .vpill,.wfq .wfi .stpill{flex:none}
 .wfq .wfi .sla{flex:none;min-width:56px;text-align:right}
 .wfq .wfi.sel{box-shadow:inset 3px 0 0 var(--accent);background:var(--accent-bg)}
-.sla{font-family:var(--font-mono);border-radius:0;background:none;padding:0;
+.sla{font-variant-numeric:tabular-nums;border-radius:0;background:none;padding:0;
   font-size:var(--fs-xs);color:var(--text-3);animation:none}
 .sla.ok{color:var(--success)} .sla.warn{color:var(--sev-medium)}
 .sla.breach{color:var(--sev-critical);animation:none}
@@ -1457,7 +1517,7 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
 .kcx{display:flex;align-items:baseline;gap:var(--sp-2);flex-wrap:wrap}
 .kcl{margin-left:auto;font-size:var(--fs-2xs);flex:none}
 .kcf{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:auto}
-.kcf .rk{font-size:var(--fs-xs);font-family:var(--font-mono);color:var(--text-2)}
+.kcf .rk{font-size:var(--fs-xs);font-variant-numeric:tabular-nums;color:var(--text-2)}
 .kcf .rk.hi{color:var(--sev-critical)} .kcf .rk.md{color:var(--sev-medium)}
 .kcg{font-size:var(--fs-2xs);color:var(--text-3);white-space:nowrap}
 .kcx{font-size:var(--fs-xs);color:var(--text-3);min-width:0}
@@ -1472,7 +1532,7 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
 .iocv{color:var(--text-2);font-family:var(--font-mono);font-size:var(--fs-xs)}
 .ds-inc-head{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
   padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
-.ds-inc-risk{font-family:var(--font-mono);color:var(--sev-critical);
+.ds-inc-risk{font-variant-numeric:tabular-nums;color:var(--sev-critical);
   background:none;border:0;border-radius:0;padding:0;font-size:var(--fs-sm)}
 
 .ds-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin:0;overflow-x:auto}
@@ -1560,7 +1620,7 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
   letter-spacing:.06em;text-transform:uppercase}
 .clock .lab .ic{display:none}
 .clock .val{display:block;margin-top:2px;color:var(--text-1);
-  font-family:var(--font-mono);font-size:var(--fs-md);font-weight:var(--fw-normal)}
+  font-variant-numeric:tabular-nums;font-size:var(--fs-md);font-weight:var(--fw-normal)}
 .clock.sim .val{font-size:var(--fs-lg);font-weight:var(--fw-medium)}
 .clock .sub{color:var(--text-3);font-size:var(--fs-2xs)}
 .clock:hover{box-shadow:none;transform:none}
@@ -1606,13 +1666,13 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
   transition:background var(--dur-fast) var(--ease)}
 .stream-row:hover{background:var(--surface-3)}
 .stream-row.anom{border-left-color:var(--sev-critical)}
-.stream-t{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-3)}
-.stream-who{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-1);
+.stream-t{font-variant-numeric:tabular-nums;font-size:var(--fs-xs);color:var(--text-3)}
+.stream-who{font-size:var(--fs-xs);color:var(--text-1);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stream-what{color:var(--text-2);min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stream-obj{color:var(--text-3);font-family:var(--font-mono);font-size:var(--fs-xs)}
-.stream-repo{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-3);
+.stream-obj{color:var(--text-3);font-size:var(--fs-xs)}
+.stream-repo{font-size:var(--fs-xs);color:var(--text-3);
   white-space:nowrap}
 @media(max-width:1000px){
   .stream-row{grid-template-columns:40px 1fr}
@@ -1714,7 +1774,7 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
 .anom-dot.sev-medium{fill:var(--sev-medium)}
 .anom-dot.sev-low{fill:var(--text-3)}
 .anom-range{display:flex;justify-content:space-between;padding:0 10px 8px;
-  font-family:var(--font-mono);font-size:var(--fs-2xs);color:var(--text-3)}
+  font-variant-numeric:tabular-nums;font-size:var(--fs-2xs);color:var(--text-3)}
 .sevdot[data-sev=critical]{background:var(--sev-critical)}
 .sevdot[data-sev=high]{background:var(--sev-high)}
 .sevdot[data-sev=medium]{background:var(--sev-medium)}
@@ -1748,18 +1808,21 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
 .act b{text-align:right;color:var(--text-1);font-weight:var(--fw-normal);
   font-variant-numeric:tabular-nums}
 @media(max-width:1400px){.act{grid-template-columns:minmax(0,1fr) 60px 44px}}
-.group{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r);
+.group{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:var(--shadow-panel);margin-bottom:var(--sp-3);overflow:hidden}
-.group>summary{list-style:none;cursor:pointer;min-height:42px;padding:9px var(--pad-x);
-  display:flex;align-items:center;gap:var(--sp-3);background:var(--surface-3);
+.group>summary{list-style:none;cursor:pointer;min-height:var(--sec-h);padding:0 var(--pad-x);
+  display:flex;align-items:center;gap:var(--sp-3);
+  background:var(--surface-2);border-bottom:1px solid transparent;
   transition:background var(--dur-fast) var(--ease)}
+.group[open]>summary{border-bottom-color:var(--line)}
 .group>summary:hover{background:var(--surface-3)}
 .group>summary::-webkit-details-marker{display:none}
 .group .g-ic{width:14px;height:14px;background:none;color:var(--text-3);
   display:flex;align-items:center;justify-content:center;flex:none}
 .group .g-ic svg{width:14px;height:14px}
-.group .g-tt{font-weight:var(--fw-medium);font-size:var(--fs-sm);color:var(--text-1)}
-.group .g-sub{font-size:var(--fs-xs);color:var(--text-3)}
+.group .g-tt{font-weight:var(--fw-medium);font-size:var(--fs-sm);color:var(--text-1);flex:none}
+.group .g-sub{font-size:var(--fs-xs);color:var(--text-3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .group .g-chev{margin-left:auto;color:var(--text-3);
   transition:transform var(--dur-fast) var(--ease)}
 .group .g-chev svg{width:14px;height:14px}
@@ -1802,7 +1865,7 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
 .rp-sep{width:1px;height:16px;background:var(--line-strong);margin:0 2px}
 .rp-bar{position:absolute;height:10px;min-width:4px;
   display:flex;align-items:center;justify-content:center;
-  font-family:var(--font-mono);font-size:9px;white-space:nowrap;
+  font-variant-numeric:tabular-nums;font-size:var(--fs-2xs);white-space:nowrap;
   border-radius:2px;cursor:pointer;overflow:hidden;
   background:var(--neutral-bg);color:var(--text-3);
   border:1px solid var(--neutral-border);opacity:.35;
@@ -1816,11 +1879,11 @@ kbd{background:var(--surface-3);border:1px solid var(--line-strong);border-radiu
   box-shadow:none;pointer-events:none}
 .rp-axis{position:relative;height:14px;margin-left:88px}
 .rp-tick{position:absolute;transform:translateX(-50%);white-space:nowrap;
-  font-family:var(--font-mono);font-size:var(--fs-2xs);color:var(--text-3)}
+  font-variant-numeric:tabular-nums;font-size:var(--fs-2xs);color:var(--text-3)}
 .rp-axis .rp-tick:first-child{transform:none}
 .rp-axis .rp-tick:last-child{transform:translateX(-100%)}
 .rp-range{width:calc(100% - 88px);margin:8px 0 0 88px;accent-color:var(--accent);cursor:pointer}
-.rp-clock{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-2)}
+.rp-clock{font-variant-numeric:tabular-nums;font-size:var(--fs-xs);color:var(--text-2)}
 .rp-tiles{display:flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 .rp-tile{flex:1;padding:6px 10px;border-left:1px solid var(--line);text-align:left}
 .rp-tile:first-child{border-left:0}
@@ -1973,7 +2036,7 @@ svg text{fill:var(--text-3);font-family:var(--font-sans);font-size:var(--fs-2xs)
 .s,.src,.note,.pmeta{font-size:var(--fs-xs);color:var(--text-3)}
 .src{margin-top:4px}
 .note{margin-top:var(--sp-4);line-height:var(--lh-base)}
-.pnode{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r);
+.pnode{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);
   padding:10px;min-width:0}
 .pnode b{display:block;color:var(--text-1);font-size:var(--fs-sm);
   font-weight:var(--fw-semibold);margin-bottom:3px}
@@ -2093,17 +2156,32 @@ main:focus{outline:none}
    ============================================================ */
 .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:var(--gutter)}
-.chart{background:var(--surface-1);border:1px solid var(--line);
+.chart{background:var(--surface-2);border:1px solid var(--line);
   border-radius:var(--r);box-shadow:var(--shadow-panel);overflow:hidden}
-.chart-h{display:flex;align-items:baseline;gap:var(--sp-2);flex-wrap:wrap;
-  padding:10px var(--pad-x);border-bottom:1px solid var(--line);
+/* ШАПКА КАРТОЧКИ МЕТРИКИ — СЕТКА ФИКСИРОВАННОЙ ВЫСОТЫ.
+   Было: flex с flex-wrap. У метрик с длинным названием и знаковой дельтой
+   («Доля обнаруженных атак · % ЭПИЗОДОВ · 88.2% · −11.8 п.п.») строка не
+   помещалась и переносилась, шапка становилась на 26px выше — а с ней
+   уезжали вниз и область графика, и подпись. Внешние размеры карточек при
+   этом совпадали (272px), поэтому дефект и не ловился измерением карточек:
+   разъезжались ВНУТРЕННОСТИ, и четыре графика в ряду переставали лежать на
+   общей базовой линии. Сравнивать метрики глазами по ряду становилось
+   нельзя — каждый раз приходится заново искать, где начинается полотно.
+   Две строки заданы явно, поэтому высота шапки не зависит от длины текста. */
+.chart-h{display:grid;grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:auto auto;row-gap:2px;column-gap:var(--sp-2);
+  align-items:baseline;
+  padding:8px var(--pad-x);border-bottom:1px solid var(--line);
   background:var(--surface-3)}
-.chart-t{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--text-1)}
-.chart-u{font-size:var(--fs-2xs);text-transform:uppercase;letter-spacing:.07em;
-  color:var(--text-3)}
-.chart-v{margin-left:auto;font-size:var(--fs-xl);font-weight:var(--fw-semibold);
-  line-height:1;font-variant-numeric:tabular-nums;color:var(--c)}
-.chart-d{font-size:var(--fs-xs);font-variant-numeric:tabular-nums;color:var(--text-3);
+.chart-t{grid-column:1;grid-row:1;font-size:var(--fs-sm);font-weight:var(--fw-medium);
+  color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chart-u{grid-column:2;grid-row:1;justify-self:end;
+  font-size:var(--fs-2xs);text-transform:uppercase;letter-spacing:.07em;
+  color:var(--text-3);white-space:nowrap}
+.chart-v{grid-column:1;grid-row:2;font-size:var(--fs-xl);font-weight:var(--fw-semibold);
+  line-height:1.1;font-variant-numeric:tabular-nums;color:var(--c)}
+.chart-d{grid-column:2;grid-row:2;justify-self:end;
+  font-size:var(--fs-xs);font-variant-numeric:tabular-nums;color:var(--text-3);
   white-space:nowrap}
 .chart-d.up{color:var(--success)} .chart-d.down{color:var(--sev-critical)}
 .chart-d.flat{color:var(--text-3)}
@@ -2143,7 +2221,8 @@ main:focus{outline:none}
 .chart-x{display:flex;justify-content:space-between;gap:var(--sp-2);
   padding:6px var(--pad-x) 8px 44px;
   font-size:var(--fs-2xs);color:var(--text-3);font-variant-numeric:tabular-nums}
-.chart-foot{padding:8px var(--pad-x);border-top:1px solid var(--line);
+.chart{display:flex;flex-direction:column}
+.chart-foot{margin-top:auto;padding:8px var(--pad-x);border-top:1px solid var(--line);
   font-size:var(--fs-xs);color:var(--text-3);background:var(--surface-1)}
 
 /* Строка автообновления над аналитическим экраном: состояние фонового
@@ -2176,3 +2255,101 @@ main:focus{outline:none}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
 .rt-v{font-size:var(--fs-xs);white-space:nowrap;color:var(--text-2)}
 .rt-v.ok{color:var(--success)} .rt-v.warn{color:var(--sev-medium)} .rt-v.bad{color:var(--sev-critical)}
+
+/* Строка сценария атаки: имя | кнопка | цепочка ATT&CK.
+   Сетка, а не flex: у пятнадцати сценариев имена разной длины, и в общем
+   flex-контейнере кнопка запуска вставала у каждой строки на свою позицию —
+   список читался как рассыпанный. */
+.scen{display:grid;grid-template-columns:minmax(0,21rem) max-content minmax(0,1fr);
+  align-items:center;gap:var(--sp-3);
+  min-height:var(--row-h);padding:var(--sp-2) var(--pad-x);
+  border-bottom:1px solid var(--line);color:var(--text-2);font-size:var(--fs-sm)}
+.scen:last-child{border-bottom:none}
+.scen:hover{background:var(--surface-3)}
+.scen-n{color:var(--text-1);min-width:0;overflow-wrap:anywhere}
+.scen-go{justify-self:start;white-space:nowrap}
+@media (max-width:1200px){
+  .scen{grid-template-columns:minmax(0,1fr) max-content;row-gap:var(--sp-2)}
+  .scen .chain{grid-column:1/-1}}
+
+/* СТРОКА ИНЦИДЕНТА — СЕТКА, А НЕ FLEX-ПОТОК.
+   Элементы шли обычным flex-потоком, поэтому длинный список репозиториев или
+   пять тактик переносили строку на вторую линию: в списке из двадцати
+   инцидентов часть строк была в одну строку, часть в две, и ритм списка
+   ломался. Колонки фиксированы, лишнее обрезается многоточием — сканировать
+   список глазами снова можно. */
+#incList .inc{
+  display:grid;
+  grid-template-columns:76px minmax(112px,158px) 132px minmax(96px,1fr) minmax(0,232px) 44px;
+  align-items:center;column-gap:var(--sp-3);
+  min-height:var(--row-h);padding:0 var(--pad-x)}
+#incList .inc>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#incList .inc .rk{margin-left:0;text-align:right;justify-self:end}
+.inc-badges{display:flex;gap:var(--sp-1);align-items:center;justify-content:flex-end;
+  overflow:hidden}
+.inc-camp{color:var(--accent-text);font-size:var(--fs-2xs);
+  border:1px solid var(--accent-border);background:var(--accent-bg);
+  border-radius:var(--r-ctl);padding:0 6px;height:20px;
+  display:inline-flex;align-items:center;white-space:nowrap}
+/* На 1440 и уже колонок пять, а не шесть: колонка репозиториев убирается,
+   её содержимое остаётся в подсказке строки.
+
+   Скрывалась она правилом `.sub:nth-of-type(2)`, которое не совпадало ни
+   с чем: nth-of-type считает по ТЕГУ, а не по классу, и вторым span'ом в
+   строке идёт имя актора — у него класса .sub нет. В сетке из пяти
+   колонок оставалось шесть детей, шестой уезжал во вторую неявную строку:
+   значение риска висело под бейджем уровня, чип «кампания» вылезал за
+   правый край карточки, а строка вырастала с 26 до 50 пикселей.
+   Ячейка помечена своим классом — правило больше не зависит от порядка
+   тегов внутри строки. */
+@media (max-width:1440px){
+  #incList .inc{grid-template-columns:72px minmax(100px,136px) 124px minmax(0,200px) 42px}
+  #incList .inc>.inc-repos{display:none}}
+
+/* Ссылка на объект в GitLab внутри плотной строки: иконка проявляется при
+   наведении на строку, чтобы не соперничать с текстом сработки. */
+.tl-open{display:inline-flex;align-items:center;vertical-align:-2px;
+  margin-left:var(--sp-1);color:var(--text-3);opacity:0;
+  transition:opacity var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease)}
+.tl-open .ico{width:12px;height:12px}
+.ds-tl-item:hover .tl-open,.tl-open:focus-visible{opacity:1}
+.tl-open:hover{color:var(--accent-text)}
+
+/* Блок опасного действия: обычная карточка с красной левой кромкой.
+   Цвет отмечает границу, а не заливает область. */
+.danger-card{border-left:2px solid var(--sev-critical)}
+.danger-card>h2{color:var(--text-1)}
+
+/* Кнопка внутри заголовка панели.
+   Класс `.btn.sm` в разметке существовал, а правила для него не было: кнопка
+   рисовалась полноразмерной (28px) в полосе заголовка высотой 32px, налезала
+   на её фон и читалась как незакреплённый элемент. Кнопка в заголовке —
+   вторичное действие: приглушённая, по высоте полосы. */
+.card>h2 .btn,.card>h2 a.btn{
+  height:22px;padding:0 8px;font-size:var(--fs-2xs);
+  background:transparent;border:1px solid var(--line-strong);color:var(--text-2);
+  align-self:center}
+.card>h2 .btn:hover,.card>h2 a.btn:hover{
+  background:var(--surface-3);border-color:var(--accent-border);color:var(--text-1)}
+
+/* Уровень строки лога: цветная кромка только там, где она что-то значит.
+   Синяя полоса стояла у КАЖДОЙ строки INFO — шесть акцентов подряд на экране,
+   где ничего не случилось. Кромку получают предупреждение и ошибка. */
+.logrow{border-left-color:transparent}
+.logrow.warn{border-left-color:var(--sev-medium)}
+.logrow.error,.logrow.critical{border-left-color:var(--sev-critical)}
+
+/* ДВУХПАНЕЛЬНЫЙ ЭКРАН-УКАЗАТЕЛЬ.
+   `.split` делит ширину пополам. Для инцидентов это верно: слева таблица из
+   шести колонок, ей нужна половина экрана. Для сущностей и дел слева —
+   УКАЗАТЕЛЬ из коротких строк («@dmitry.kozlov · 11 алертов»): при пяти
+   акторах 660px из 810 оставались пустыми, и половина экрана читалась как
+   недогруженная страница.
+   Указателю хватает колонки постоянной ширины; всё остальное отдаётся
+   содержимому, ради которого на экран и пришли. Ширина не зависит от числа
+   строк, поэтому раскладка не дёргается при появлении новой сущности. */
+.split.split-index{grid-template-columns:minmax(232px,264px) minmax(0,1fr)}
+@media (max-width:1280px){
+  .split.split-index{grid-template-columns:minmax(200px,232px) minmax(0,1fr)}}
+@media (max-width:1000px){
+  .split.split-index{grid-template-columns:1fr}}

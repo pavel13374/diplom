@@ -6,10 +6,9 @@ containment → investigation → eradication, lead закрывает с lesson
 """
 import random
 import logging
-from datetime import datetime
 import config
 import simclock
-from config import PROJECTS, USERS, DELAYS
+from config import USERS, DELAYS
 from content import commit_messages as cm, comments
 
 logger = logging.getLogger(__name__)

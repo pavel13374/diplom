@@ -1,6 +1,6 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1"><title>Sentinel SOC — Detection &amp; Response</title>
-<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
+<meta name=viewport content="width=device-width,initial-scale=1"><meta name=csrf-cookie content="{{ CSRF_COOKIE }}"><title>Sentinel SOC — Detection &amp; Response</title>
+<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
@@ -15,7 +15,7 @@
       <a data-v=cases>Дела</a>
       <a data-v=workflow>Очередь триажа</a>
       <a data-v=attack>Покрытие ATT&CK</a>
-      <a data-v=detections>Детекты</a>
+      <a data-v=detections>Правила</a>
       <a data-v=entities>Сущности</a>
       <a data-v=risk>Профиль риска</a>
       <a data-v=red>Запуск сценариев</a>
@@ -62,7 +62,7 @@
               как <span class=tip tabindex=0>SIEM<span class=tipbox>Security Information & Event Management — система, собирающая события из всех источников в один поток для анализа. Здесь её роль играет event-store на SQLite.</span></span></div></div></div>
             <div class=ob id=ob3><span class=obn>3</span><div><b>Запусти кампанию</b>
               <div class=sub><a onclick="goView('red')">Запуск сценариев</a> — многошаговая атака по матрице
-              <span class=tip tabindex=0>ATT&CK<span class=tipbox>MITRE ATT&CK — общепринятый каталог тактик и техник атакующих. По нему измеряется покрытие детекта.</span></span></div></div></div>
+              <span class=tip tabindex=0>ATT&CK<span class=tipbox>MITRE ATT&CK — общепринятый каталог тактик и техник атакующих. По нему измеряется покрытие правилами.</span></span></div></div></div>
             <div class=ob id=ob4><span class=obn>4</span><div><b>Появились алерты</b>
               <div class=sub><a onclick="goView('alerts')">Лента алертов</a>: правила +
               <span class=tip tabindex=0>UEBA<span class=tipbox>User & Entity Behavior Analytics — профиль «нормального» поведения актора (часы, репозитории, действия); отклонения повышают риск.</span></span>
@@ -119,7 +119,7 @@
            без названия. Читатель видел «Критический ≥0.85» и не знал,
            к чему это относится. Разные вопросы — разные панели. -->
       <div class=dash-dyn>
-        <div class="card mt-3"><h2>Детекты во времени
+        <div class="card mt-3"><h2>Алерты во времени
             <span class=grow></span>
             <span class=sub id=alSparkSub>—</span></h2>
           <div class=pulse>
@@ -133,10 +133,10 @@
             <div class=pulse-leg id=alSparkLeg></div>
           </div>
         </div>
-        <div class="card mt-3"><h2>Распределение по уровню риска
+        <div class="card mt-3"><h2>Распределение алертов по риску
             <span class=grow></span>
             <span class=sub id=riskHistSub>—</span></h2>
-          <div id=riskHist><div class="help empty">Детектов пока нет.</div></div>
+          <div id=riskHist><div class="help empty">Алертов пока нет.</div></div>
         </div>
       </div>
 
@@ -150,9 +150,8 @@
     </section>
 
     <section class=view id=v-alerts>
-      <p class=page-sub>Срабатывания детектора: по одному на событие, до склейки в инциденты.</p>
       <div class=card>
-        <h2>Алерты<span class=grow></span><span class=sub id=alCount></span></h2>
+        <h2><span class=grow></span><span class=sub id=alCount></span></h2>
         <div class=ds-toolbar id=alFilters>
           <div class=ds-search>
             <svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3"/></svg>
@@ -188,7 +187,6 @@
     </section>
 
     <section class=view id=v-incidents>
-      <p class=page-sub>Алерты одного актора за три часа, собранные в один случай.</p>
       <div class=card>
         <h2>Инциденты<span class=grow></span><span class=sub id=incTtl>Разбор</span></h2>
         <div class=split>
@@ -199,7 +197,6 @@
     </section>
 
     <section class=view id=v-cases>
-      <p class=page-sub>Инциденты с принятым решением: вердикт, статус, ответственный.</p>
       <div class=ds-toolbar>
         <div class=ds-search>
           <svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3"/></svg>
@@ -211,8 +208,8 @@
         <button class=btn onclick="caseNew()">Новое дело</button>
       </div>
       <div class="card mt-2">
-        <h2>Дела<span class=grow></span><span class=sub id=caseTtl>Карточка</span></h2>
-        <div class=split>
+        <h2><span class=grow></span><span class=sub id=caseTtl></span></h2>
+        <div class="split split-index">
           <div class=split-list id=caseList></div>
           <div class=split-detail id=caseDetail><div class="help empty">Выберите дело или создайте новое.</div></div>
         </div>
@@ -220,7 +217,6 @@
     </section>
 
     <section class=view id=v-risk>
-      <p class=page-sub>Накопленный риск по разработчикам и репозиториям.</p>
       <div class=ds-covstrip id=riskStrip></div>
       <div class="grid2 mt-4">
         <div class=card><h2>Разработчики по риску</h2><div id=riskDev></div></div>
@@ -231,8 +227,7 @@
 
     <section class=view id=v-replay>
       <div class=card>
-        <h2>Повтор прогона</h2>
-        <div class="ds-toolbar mt-1">
+                <div class="ds-toolbar mt-1">
           <button class=btn id=rpPlay onclick="rpToggle()"><svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Играть</button>
           <button class="btn ghost" onclick="rpSpeed()">скорость <b id=rpSpeedT>1×</b></button>
           <span class=rp-sep></span>
@@ -277,8 +272,7 @@
     </section>
 
     <section class=view id=v-detections>
-      <p class=page-sub>Каталог правил детектирования и их срабатывания.</p>
-      <div class=card><h2>Правила детектирования<span class=grow></span><span class=sub id=ruleCount></span></h2>
+      <div class=card><h2><span class=grow></span><span class=sub id=ruleCount></span></h2>
         <div class=ds-toolbar id=ruleFilters>
           <div class=ds-search>
             <svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3"/></svg>
@@ -311,10 +305,9 @@
     </section>
 
     <section class=view id=v-entities>
-      <p class=page-sub>Базовая линия поведения: обычные часы, репозитории и действия актора.</p>
       <div class=card>
         <h2>Акторы<span class=grow></span><span class=sub id=entTtl>Профиль</span></h2>
-        <div class=split>
+        <div class="split split-index">
           <div class=split-list id=entList></div>
           <div class=split-detail id=entDetail><div class="help empty">Выберите актора в списке.</div></div>
         </div>
@@ -322,7 +315,6 @@
     </section>
 
     <section class=view id=v-workflow>
-      <p class=page-sub>Очередь инцидентов по важности: статус, ответственный, SLA.</p>
       <div class=wfcounts id=wfCounts></div>
       <div class="dash mt-3">
         <div class="card dash-main"><h2>Очередь<span class=grow></span>
@@ -335,7 +327,6 @@
     </section>
 
     <section class=view id=v-trends>
-      <p class=page-sub>Как метрики защиты меняются по ходу прогона.</p>
       <div class=refresh-bar>
         <span class="dot" id=trendDot></span>
         <span id=trendStatus>метрики пересчитываются автоматически</span>
@@ -348,14 +339,13 @@
       <div class="card mt-4">
         <h2>Выбор рабочего порога<span class=grow></span>
           <span class=sub id=wlSub>—</span></h2>
-        <p class=page-sub>Порог действия решает, какой инцидент попадёт в очередь.
-          Ниже — чем платит смена за каждый вариант и что при этом ловится.</p>
+        <p class=page-sub>Чем платит смена за каждый порог и что при этом ловится.</p>
         <details class=explain><summary>Как это замерено</summary><div>
           Прогон повторяется на нескольких сидах и обоих профилях скрытности; для каждого
           порога считается доля пойманных эпизодов атак (с 95% интервалом Уилсона),
           очередь в инцидентах на симулированный день и доля настоящих атак в очереди.
           Счёт ведётся по инцидентам, а не по событиям: единица работы аналитика —
-          инцидент, один инцидент склеен из нескольких детектов.
+          инцидент, один инцидент склеен из нескольких алертов.
           Нагрузка в инцидентах на день нагляднее доли ложных срабатываний: «2%» на потоке
           в 20 тысяч событий — это 400 тревог, а на потоке в 200 — четыре.
         </div></details>
@@ -364,31 +354,48 @@
     </section>
 
     <section class=view id=v-red>
-      <p class=page-sub>Ручной запуск многошаговых атак по матрице ATT&amp;CK.</p>
-      <div class=card><h2>Сценарии атак</h2>
-        <div style=display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap>
-          <select class=sel id=evasion aria-label="Профиль скрытности атаки" title="Профиль скрытности атаки"><option value=noisy>noisy (быстро, явно)</option>
-            <option value=stealthy>stealthy (low-and-slow)</option></select>
-          <select class=sel id=tempo aria-label="Скорость атаки" title="Как быстро аналитик увидит поступление детектов"><option value=fast>темп: быстро</option>
+      <div class=card>        <div style=display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap>
+          <select class=sel id=evasion aria-label="Профиль скрытности атаки" title="Профиль скрытности атаки"><option value=noisy>скрытность: не маскируется</option>
+            <option value=stealthy>скрытность: медленно и незаметно</option></select>
+          <select class=sel id=tempo aria-label="Скорость атаки" title="Как быстро аналитик увидит поступление алертов"><option value=fast>темп: быстро</option>
             <option value=realistic>темп: реалистично</option>
             <option value=slow>темп: медленно</option></select>
           <span class=toast id=redToast></span></div>
-        <div id=redResult></div>
+        <div id=redResult hidden></div>
         <div id=camps></div>
         <h2 class=mt-4>Очередь команд</h2><div id=cmds class=sub></div>
       </div>
     </section>
 
     <section class=view id=v-diag>
-      <p class=page-sub>Состояние подсистем и журнал ошибок.</p>
       <div class=kpis id=diagCounts></div>
       <div class="card mb-4"><h2>Инфраструктура</h2>
         <div class=ds-health id=diagInfra></div></div>
+      <!-- Канал уведомлений: состояние и две кнопки. Раньше про Telegram в
+           диагностике не было ничего — доходят ли сообщения и почему не
+           доходят, выяснялось только чтением логов. -->
+      <div class="card mb-4"><h2>Уведомления в Telegram<span class=grow></span>
+        <button class="btn sm" type=button onclick="tgTest()"
+          title="Проверить связь с Bot API и отправить тестовое сообщение">Проверить связь</button>
+        <button class="btn sm" type=button onclick="tgReport()"
+          title="Отправить сводку SOC прямо сейчас — те же числа, что на экране">Отправить сводку</button></h2>
+        <div id=tgState class="help empty">состояние не загружено</div></div>
       <div class=grid2>
-        <div class=card><h2>Ошибки текущего запуска</h2>
+        <div class=card><h2>Ошибки текущего запуска<span class=grow></span>
+          <a class="btn sm" href="/api/diag/bundle.json"
+             title="Серверные и клиентские ошибки, окружение и хвост лога — одним файлом">Выгрузить диагностику</a></h2>
           <div id=diagErrSummary class="help empty">Ошибок не зафиксировано.</div>
           <details class=explain id=diagErrWrap hidden><summary>Показать трейсбек</summary>
             <pre class="llmctx scrollbox h-md" id=diagErrors>—</pre></details></div>
+        <div class=card><h2>Ошибки интерфейса<span class=grow></span>
+          <span class=sub id=uiErrCount></span></h2>
+          <div id=uiErrList class=mt-2></div></div>
+      </div>
+      <!-- Лог лежал третьей карточкой в сетке из двух колонок: он занимал
+           левую половину второго ряда, правая половина оставалась пустой,
+           а строки лога из-за узкой колонки ломались пополам — сообщение
+           на одной строке, JSON-контекст на другой. Ему нужна вся ширина. -->
+      <div class="mt-4">
         <div class=card><h2>Структурный лог</h2>
           <div class=ds-toolbar>
             <select class=sel id=diagLvl onchange=pollDiag() aria-label="Уровень подробности лога">
@@ -418,7 +425,30 @@ function uiErr(where,e){
  if(_uiErrSeen[key])return; _uiErrSeen[key]=1;
  try{console.error('[ui] '+where+': '+msg,e);}catch(x){}
  try{if(window.toast)window.toast('Сбой в интерфейсе: '+where,'error',6000);}catch(x){}
+ /* ОТПРАВКА НА СЕРВЕР.
+    Раньше ошибка жила только в консоли разработчика: на экране был тост
+    «Сбой в интерфейсе», и передать по нему было нечего, кроме скриншота.
+    Теперь она ложится рядом с серверными и уходит в общую выгрузку
+    /api/diag/bundle.json — одним файлом на разбор.
+    Отправка сама обёрнута в catch(x): если недоступен и он, повторно
+    сообщать уже некуда, и падать в репортёре ошибок нельзя. */
+ try{
+  fetch('/api/client-error',{method:'POST',headers:csrfHeaders({'Content-Type':'application/json'}),
+   body:JSON.stringify({where:where,message:msg,
+    stack:(e&&e.stack)?String(e.stack).slice(0,4000):'',
+    url:location.pathname+location.hash})}).catch(function(){});
+ }catch(x){}
 }
+
+/* Ошибки, до которых uiErr не дотягивается: синтаксические, из обработчиков
+   событий и из промисов без catch. Без этих двух подписок они не попадали
+   никуда вообще. */
+window.addEventListener('error',function(ev){
+ try{uiErr('window.onerror',ev.error||ev.message);}catch(x){}
+});
+window.addEventListener('unhandledrejection',function(ev){
+ try{uiErr('promise',ev.reason);}catch(x){}
+});
 
 const $=x=>document.getElementById(x);
 /* Экранирование значений, попадающих в разметку. Закрываем не только
@@ -432,9 +462,55 @@ function esc(x){return (x==null?'':(''+x)).replace(/[&<>"']/g,c=>_ESC[c]);}
    ДО того, как разберёт JS, поэтому одного esc() мало: сначала
    экранируем как строку JS, потом как атрибут. */
 function escJs(x){return esc(String(x==null?'':x).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));}
-async function jget(u){const r=await fetch(u);return r.json();}
-async function jpost(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});return r.json();}
-const TTL={overview:'Обзор',alerts:'Алерты',incidents:'Инциденты',cases:'Дела',workflow:'Очередь триажа',attack:'Покрытие ATT&CK',detections:'Детекты',entities:'Сущности',risk:'Профиль риска команды',red:'Запуск сценариев',replay:'Повтор прогона',trends:'Тренды метрик',diag:'Диагностика'};
+/* ЕДИНАЯ ТОЧКА СЕТЕВОГО ВЫЗОВА.
+   Раньше здесь стояло `return r.json()` без единой проверки. Любой ответ,
+   который не является JSON — 500 с пустым телом, редирект на /login после
+   истечения сессии, отдача HTML вместо данных — приводил к необработанному
+   SyntaxError «Unexpected end of input». В журнал ошибок интерфейса попадала
+   ровно эта фраза: без URL, без кода ответа, без ссылки на инцидент, которую
+   сервер уже вернул в теле. Найти по такому сообщению нечего.
+   Теперь отказ называет запрос, код и ref, а вызывающая сторона может его
+   показать пользователю. */
+async function jfetch(u,opt){
+ const r=await fetch(u,opt||{});
+ const txt=await r.text();
+ let data=null,perr=null;
+ if(txt){try{data=JSON.parse(txt);}catch(e){perr=e;}}
+ if(!r.ok){
+  const ref=(data&&(data.ref||data.error))||'';
+  const err=new Error('HTTP '+r.status+' · '+u+(ref?(' · '+ref):''));
+  err.status=r.status;err.url=u;err.payload=data;throw err;
+ }
+ if(data===null){
+  const err=new Error(perr?('ответ не JSON · '+u+' · '+perr.message)
+                          :('пустой ответ · '+u));
+  err.status=r.status;err.url=u;throw err;
+ }
+ return data;
+}
+async function jget(u){return jfetch(u);}
+// Имя cookie приходит С СЕРВЕРА: у консолей оно РАЗНОЕ, потому что cookie
+// не различаются по порту и общий `sentinel_csrf` две консоли на одном
+// localhost перезаписывали друг у друга — вторая получала 403 на каждый POST.
+const CSRF_COOKIE=(document.querySelector('meta[name=csrf-cookie]')||{}).content||'sentinel_csrf';
+// CSRF: токен выдаётся сервером в этом cookie и обязан приходить
+// обратно заголовком X-CSRF-Token на каждом изменяющем запросе. До этого у
+// консолей не было никакой защиты от межсайтовых запросов, а именно через них
+// запускаются атакующие кампании, заводятся issue в GitLab и выставляются
+// вердикты, три из которых приглушают правило детектирования.
+function csrfToken(){
+  const m = document.cookie.match(new RegExp('(?:^|;\\s*)'+CSRF_COOKIE+'=([^;]+)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+function csrfHeaders(extra){
+  return Object.assign({'X-CSRF-Token': csrfToken()}, extra || {});
+}
+async function jpost(u,b){return jfetch(u,{method:'POST',headers:csrfHeaders({'Content-Type':'application/json'}),body:JSON.stringify(b||{})});}
+/* Имена статусов — ОДИН словарь на всё приложение. Их было три копии, и они
+   расходились: карточка писала «локализовано», очередь — «локализован», а
+   список инцидентов показывал сырое `contained` из API. */
+const WF_NAME={new:'новый',investigating:'в работе',contained:'локализован',closed:'закрыт'};
+const TTL={overview:'Обзор',alerts:'Алерты',incidents:'Инциденты',cases:'Дела',workflow:'Очередь триажа',attack:'Покрытие ATT&CK',detections:'Правила',entities:'Сущности',risk:'Профиль риска',red:'Запуск сценариев',replay:'Повтор прогона',trends:'Тренды',diag:'Диагностика'};
 let view='overview';
 document.querySelectorAll('#nav a').forEach(a=>a.onclick=()=>{
   document.querySelectorAll('#nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
@@ -458,15 +534,42 @@ function setN(id,v){const e=$(id);if(!e)return;
  if(e.textContent!==t)e.textContent=t;
  // прочерк «нет данных» не должен читаться как крупное значение
  e.classList.toggle('is-empty',empty);}
-function gapLabel(a,b){try{const da=new Date((a||'').replace(' ','T')),db=new Date((b||'').replace(' ','T'));const m=(db-da)/60000;if(m>=1440)return '+'+Math.round(m/1440)+'д';if(m>=60)return '+'+Math.round(m/60)+'ч';if(m>=2)return '+'+Math.round(m)+'м';return '';}catch(e){return '';}}
+/* Единицы времени зависят от языка: «14м» в английском интерфейсе
+   читается как опечатка. Одна функция на весь файл, чтобы суффиксы не
+   разъехались между SLA-таймером, лентой и таймлайном. */
+/* Строка с ПОДСТАВЛЕННЫМ ЧИСЛОМ мимо словаря: он сопоставляет текст
+   целиком, а «(всего в журнале 56)» собирается на месте. Для таких мест —
+   явная пара вариантов. */
+function tWord(ru,en){return ((typeof window.socLang==='function')&&window.socLang()==='en')?en:ru;}
+
+function tUnit(k){const en=(typeof window.socLang==='function')?window.socLang()==='en':false;
+ return en?{d:'d',h:'h',m:'m'}[k]:{d:'д',h:'ч',m:'м'}[k];}
+function gapLabel(a,b){try{const da=new Date((a||'').replace(' ','T')),db=new Date((b||'').replace(' ','T'));const m=(db-da)/60000;if(m>=1440)return '+'+Math.round(m/1440)+tUnit('d');if(m>=60)return '+'+Math.round(m/60)+tUnit('h');if(m>=2)return '+'+Math.round(m)+tUnit('m');return '';}catch(e){return '';}}
 const TCOL={'Reconnaissance':'var(--accent)','Initial Access':'var(--accent)','Execution':'var(--text-3)','Persistence':'var(--text-3)','Privilege Escalation':'var(--text-3)','Defense Evasion':'var(--text-3)','Credential Access':'var(--sev-critical)','Discovery':'var(--accent)','Lateral Movement':'var(--accent)','Collection':'var(--sev-medium)','Command and Control':'var(--text-3)','Exfiltration':'var(--sev-critical)','Impact':'var(--sev-critical)','Behavioral':'var(--success)'};
 function tcol(t){return TCOL[t]||'var(--text-3)';}
-function killchain(chain,alerts){if(!chain||!chain.length)return '<div class=sub>—</div>';
+function killchain(chain,alerts){if(!chain||!chain.length){
+ // Пустая цепочка — НЕ ошибка и НЕ «нет данных». Коррелятор намеренно не
+ // кладёт в kill-chain сработки поведенческого слоя и модели: техники ATT&CK
+ // у них нет, а раньше они задваивали каждый шаг. Но экран показывал голый
+ // прочерк, и инцидент выглядел сломанным. Объясняем, почему цепочки нет и
+ // куда смотреть вместо неё.
+ var beh=(alerts||[]).filter(function(a){return a.layer==='ueba'||a.layer==='ml';}).length;
+ var tot=(alerts||[]).length;
+ if(tot&&beh===tot)return '<div class="ds-empty">Цепочки ATT&amp;CK нет: инцидент подняли '+
+  '<b>поведенческий слой и модель</b>, а у них нет техники MITRE — они отвечают на вопрос '+
+  '«насколько это необычно для этого человека», а не «какой приём применён».<br>'+
+  'Что произошло — на вкладке <b>Таймлайн</b>, почему сработало — на вкладке <b>Доказательства</b>.</div>';
+ return '<div class="ds-empty">Шагов с техникой ATT&amp;CK в этом инциденте нет. '+
+  'Смотрите <b>Таймлайн</b>: там все сработки, включая те, у которых техника не определена.</div>';}
  // ХРОНОЛОГИЯ: шаги упорядочиваем по времени (в сторе порядок может быть иной)
  chain=chain.slice().sort((a,b)=>String(a.ts||'').localeCompare(String(b.ts||'')));
  // слой детекта на шаг: сопоставляем по ts+technique
  const lay={};(alerts||[]).forEach(a=>{lay[(a.ts_sim||'')+'|'+(a.technique||'')]=a.layer||'';});
- let ru=0,ue=0;(alerts||[]).forEach(a=>{if(a.layer==='ueba')ue++;else if(a.layer)ru++;});
+ /* Слой ML — не правило. Здесь он считался в «ПРАВИЛАМИ», а разбор на
+    соседней вкладке считал его поведенческим: один и тот же инцидент
+    описывался как «ПОВЕДЕНИЕМ 0» и «2 поведенческих» одновременно. */
+ let ru=0,ue=0;(alerts||[]).forEach(a=>{
+   if(a.layer==='ueba'||a.layer==='ml')ue++;else if(a.layer)ru++;});
  const t0=new Date((chain[0].ts||'').replace(' ','T')),t1=new Date((chain[chain.length-1].ts||'').replace(' ','T'));
  const dur=Math.max(0,Math.round((t1-t0)/60000));
  const durTxt=dur>=60?(Math.floor(dur/60)+' ч '+(dur%60)+' мин'):(dur+' мин');
@@ -480,7 +583,7 @@ function killchain(chain,alerts){if(!chain||!chain.length)return '<div class=sub
   '<div title="от первого до последнего шага атаки"><span class=mk>Развитие</span>'+
    '<span class=mv>'+durTxt+'</span></div>'+
   '<div><span class=mk>Правилами</span><span class="mv'+(ru?' acc':'')+'">'+ru+'</span></div>'+
-  '<div><span class=mk>Поведением</span><span class="mv'+(ue?' warn':'')+'">'+ue+'</span></div>'+
+  '<div title="сработки поведенческого слоя (UEBA) и модели — у них нет техники ATT&CK"><span class=mk>Поведением и моделью</span><span class="mv'+(ue?' warn':'')+'">'+ue+'</span></div>'+
   '</div>';
  h+='<div class=kc id=kcwrap>';
  for(let n=0;n<chain.length;n++){const c=chain[n];const d=(c.ts||'').replace('T',' ').slice(5,16);
@@ -488,8 +591,8 @@ function killchain(chain,alerts){if(!chain||!chain.length)return '<div class=sub
   const col=tcol(c.tactic);
   h+='<div class=kcs id=kcs-'+n+'><div class=kcb style="border-top:3px solid '+col+'">'+
    '<div class=kct style="color:'+col+'">'+esc(c.tactic||'?')+'</div>'+
-   '<div class=kcx><b>'+esc(c.technique||'')+'</b>'+(L?('<span class=kcl title="какой слой детекта увидел шаг">'+(L==='ueba'?'<span class="ly u">поведение</span>':'<span class="ly r">правило</span>')+'</span>'):'')+'</div>'+
-   '<div class=sub>'+esc(c.action||'')+'</div>'+
+   '<div class=kcx><b>'+esc(c.technique||'')+'</b>'+(L?('<span class=kcl title="какой слой обнаружения увидел шаг">'+(L==='ueba'?'<span class="ly u">поведение</span>':'<span class="ly r">правило</span>')+'</span>'):'')+'</div>'+
+   '<div class=sub>'+esc(actName(c.action))+'</div>'+
    '<div class=kcf><span class=sub>'+d+'</span><span class="rk '+rkcls(c.risk||0)+'">'+(c.risk!=null?c.risk:'')+'</span></div></div></div>';
   if(n<chain.length-1){const g=gapLabel(c.ts,chain[n+1].ts);
    // стрелка между шагами цепочки — иконка, а не типографский символ
@@ -527,7 +630,7 @@ function bars(o){
    ============================================================ */
 const HUNT_KEY='soc_hunts';
 const HUNT_PRESET=[
- {n:'Секреты в коммитах',q:'секрет',hint:'что детект уже ловит по сигнатурам'},
+ {n:'Секреты в коммитах',q:'секрет',hint:'что правила уже ловят по сигнатурам'},
  {n:'Ночная активность',q:'нераб',hint:'действия вне рабочего окна'},
  {n:'Обход ревью',q:'ревью',hint:'самоапрув и merge без апрува'},
  {n:'Работа с токенами',q:'токен',hint:'создание и утечка токенов'},
@@ -549,7 +652,7 @@ function huntOpen(){
    '<button class="btn ghost" style=padding:3px_8px onclick="huntDel('+i+')">Удалить</button></div>';}).join('')
   :'<div class=sub>сохранённых запросов пока нет</div>';
  dsDrawer('Охота на угрозы',
-  '<div class=sub>Проверка гипотезы по потоку детектов. Нашли закономерность — сохраните запрос '+
+  '<div class=sub>Проверка гипотезы по потоку алертов. Нашли закономерность — сохраните запрос '+
    'и заведите правило в Detection-as-Code.</div>'+
   '<div class=ds-drawer-sec><div class=t-label>Свой запрос</div>'+
    '<div style="display:flex;gap:8px;margin-top:8px">'+
@@ -575,11 +678,11 @@ async function huntRun(q){
  hits.forEach(a=>{if(a.technique)byTech[a.technique]=(byTech[a.technique]||0)+1;
                   if(a.actor)byActor[a.actor]=(byActor[a.actor]||0)+1;});
  const top=o=>Object.keys(o).sort((x,y)=>o[y]-o[x]).slice(0,4).map(k=>k+' ('+o[k]+')').join(', ')||'—';
- if(box)box.innerHTML='<b style=color:var(--text-1)>Найдено: '+hits.length+'</b> из '+plural(al.length,'детекта','детектов','детектов')+
+ if(box)box.innerHTML='<b style=color:var(--text-1)>Найдено: '+hits.length+'</b> из '+plural(al.length,'алерта','алертов','алертов')+
   '<div class=mt-2>Техники: '+esc(top(byTech))+'</div>'+
   '<div>Разработчики: '+esc(top(byActor))+'</div>'+
   (hits.length?'<button class="btn ghost mt-3" onclick="dsDrawerClose();goView(\'alerts\');'+
-    'setTimeout(function(){$(\'alSearch\').value='+JSON.stringify(q)+';alSearchGo();},200)">Открыть в ленте детектов</button>':'');
+    'setTimeout(function(){$(\'alSearch\').value='+JSON.stringify(q)+';alSearchGo();},200)">Открыть в ленте алертов</button>':'');
  if($('huntQ'))$('huntQ').value=q;}
 
 function huntAdd(){
@@ -673,14 +776,14 @@ async function execReport(){
  '<div class=meta>Сформирован '+E(now)+' · платформа обнаружения угроз в процессе разработки</div>'+
  '<div class=kpis>'+
   '<div class=k><b>'+(s.store_events||0)+'</b><span>событий</span></div>'+
-  '<div class=k><b>'+(s.alerts||0)+'</b><span>детектов</span></div>'+
+  '<div class=k><b>'+(s.alerts||0)+'</b><span>алертов</span></div>'+
   '<div class=k><b>'+(s.incidents||0)+'</b><span>инцидентов</span></div>'+
   '<div class=k><b>'+(s.campaigns_detected||0)+'</b><span>кампаний</span></div>'+
   '<div class=k><b>'+(s.coverage_pct||0)+'%</b><span>покрытие ATT&amp;CK</span></div>'+
  '</div>'+
  '<h2>Что происходило</h2><table>'+
   row('Событий обработано защитой',(s.processed||0))+
-  row('Поднято детектов',(s.alerts||0))+
+  row('Поднято алертов',(s.alerts||0))+
   row('Сгруппировано в инциденты',(s.incidents||0))+
   row('Из них многошаговых кампаний',(s.campaigns_detected||0))+
   row('Активных правил детектирования',(s.rules||0))+
@@ -693,7 +796,7 @@ async function execReport(){
   row('Закрыто инцидентов',closed)+
   row('Медианное время жизни инцидента',med<3600?(Math.round(med/60)+' мин'):(Math.round(med/360)/10+' ч'))+
  '</table>'+
- '<h2>Распределение детектов по критичности</h2><table>'+
+ '<h2>Распределение алертов по критичности</h2><table>'+
   row('Критические (≥0.85)',sevCount.critical)+
   row('Высокие (0.7–0.85)',sevCount.high)+
   row('Средние (0.5–0.7)',sevCount.medium)+
@@ -711,7 +814,7 @@ async function execReport(){
  '</table>'+
  '<h2>Инциденты</h2><table><tr><th scope=row>Инцидент</th><td>Детали</td></tr>'+
   (inc.length?inc.map(i=>'<tr><th scope=row>#'+i.id+' · @'+E(i.actor)+'</th><td>'+
-     E(i.severity)+' · риск '+i.max_risk+' · '+plural(i.alerts,'детект','детекта','детектов')+' · '+
+     E(i.severity)+' · риск '+fmtRisk(i.max_risk)+' · '+plural(i.alerts,'алерт','алерта','алертов')+' · '+
      E((i.tactics||[]).join(' → '))+(i.verdict?(' · вердикт '+E(i.verdict.toUpperCase())):'')+
      '</td></tr>').join(''):'<tr><th scope=row>—</th><td>инцидентов нет</td></tr>')+
  '</table>'+
@@ -732,12 +835,45 @@ async function execReport(){
 
 /* Согласование числительного: «1 алерт», «2 алерта», «5 алертов».
    Без него интерфейс выдаёт «1 алертов» и сразу читается как черновик. */
+/* СЧЁТНЫЕ ФОРМЫ С УЧЁТОМ ЯЗЫКА.
+
+   Словарь i18n сопоставляет строки ЦЕЛИКОМ, а «3 алерта» собирается из
+   числа и слова прямо здесь — под словарь такая строка не попадает никогда.
+   Поэтому при английском языке на экране оставались «46 алертов»,
+   «1 тактика», «6 инцидентов» вперемешку с переведённым интерфейсом.
+
+   Русские формы остаются основанием вызова (их 15 по файлу, менять все —
+   лишний риск), а английская пара берётся отсюда по форме единственного
+   числа. Незнакомое слово возвращается как есть: лучше одно русское слово,
+   чем пустое место. */
+const PLURAL_EN={
+ 'алерт':['alert','alerts'],
+ 'инцидент':['incident','incidents'],
+ 'тактика':['tactic','tactics'],
+ 'репозиторий':['repository','repositories'],
+ 'событие':['event','events'],
+ 'техника':['technique','techniques'],
+ 'правило':['rule','rules'],
+ 'сбой':['failure','failures'],
+ 'эпизод':['episode','episodes'],
+ 'актор':['actor','actors'],
+ 'день':['day','days'],
+ 'дело':['case','cases']};
+
 function plural(n,one,few,many){
  n=Math.abs(Number(n)||0);
+ // socLang в i18n.js — это ФУНКЦИЯ (window.socLang = currentLang), а не
+ // строка. Прямое сравнение с 'en' не сработало бы никогда; поддерживаем
+ // оба варианта, чтобы правка i18n не сломала счётные формы молча.
+ const _L=(typeof window.socLang==='function')?window.socLang():(window.socLang||'ru');
+ if(_L==='en'){
+  const p=PLURAL_EN[one];
+  return n+' '+(p?(n===1?p[0]:p[1]):one);
+ }
  const d=n%10, dd=n%100;
  const w=(dd>10&&dd<20)?many:(d===1?one:(d>=2&&d<=4?few:many));
  return n+' '+w;}
-function nAlerts(n){return plural(n,'детект','детекта','детектов');}
+function nAlerts(n){return plural(n,'алерт','алерта','алертов');}
 function nInc(n){return plural(n,'инцидент','инцидента','инцидентов');}
 function nTac(n){return plural(n,'тактика','тактики','тактик');}
 function nRepo(n){return plural(n,'репозиторий','репозитория','репозиториев');}
@@ -749,6 +885,13 @@ function fmtNum(n){if(n==null||n==='')return '—';
  const m=String(n).match(/^(-?\d+)(\D*)$/);
  if(!m)return String(n);
  return m[1].replace(/\B(?=(\d{3})+(?!\d))/g,'\u2009')+m[2];}
+/* \u0420\u0438\u0441\u043a \u2014 \u0432\u0435\u0440\u043e\u044f\u0442\u043d\u043e\u0441\u0442\u044c 0..1, \u0438 \u043f\u0435\u0447\u0430\u0442\u0430\u043b\u0441\u044f \u043e\u043d \u0432 \u0441\u0435\u043c\u0438 \u043c\u0435\u0441\u0442\u0430\u0445 \u043f\u043e-\u0440\u0430\u0437\u043d\u043e\u043c\u0443: \u0441\u044b\u0440\u044b\u043c
+   \u0447\u0438\u0441\u043b\u043e\u043c (0.3 \u0440\u044f\u0434\u043e\u043c \u0441 0.55 \u0432 \u043e\u0434\u043d\u043e\u0439 \u043f\u0440\u0430\u0432\u043e\u0439 \u043a\u043e\u043b\u043e\u043d\u043a\u0435), \u0447\u0435\u0440\u0435\u0437 Math.round(x*100)/100
+   \u0438 \u0447\u0435\u0440\u0435\u0437 toFixed(2). \u0420\u0430\u0437\u043d\u043e\u0435 \u0447\u0438\u0441\u043b\u043e \u0437\u043d\u0430\u043a\u043e\u0432 \u043f\u043e\u0441\u043b\u0435 \u0437\u0430\u043f\u044f\u0442\u043e\u0439 \u0432 \u043a\u043e\u043b\u043e\u043d\u043a\u0435 \u0441
+   \u0432\u044b\u0440\u0430\u0432\u043d\u0438\u0432\u0430\u043d\u0438\u0435\u043c \u043f\u043e \u043f\u0440\u0430\u0432\u043e\u043c\u0443 \u043a\u0440\u0430\u044e \u043b\u043e\u043c\u0430\u0435\u0442 \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0439 \u0433\u043b\u0430\u0437\u043e\u043c.
+   \u041e\u0434\u0438\u043d \u0444\u043e\u0440\u043c\u0430\u0442 \u043d\u0430 \u0432\u0441\u0451 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435; 0 \u2014 \u044d\u0442\u043e \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435, \u0430 \u043d\u0435 \u0435\u0433\u043e \u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u0435. */
+function fmtRisk(v){const n=(v==null||v==='')?null:Number(v);
+ return (n==null||!isFinite(n))?'\u2014':n.toFixed(2);}
 function healthTile(name,state,val,hint){
  const cls=state==='ok'?'ok':(state==='warn'?'warn':(state==='bad'?'bad':''));
  return '<div class="ds-h-tile '+cls+'" title="'+esc(hint||'')+'">'+
@@ -773,8 +916,8 @@ function renderLiveFeed(alerts,incs){
    (a.project?' <span class=ds-feed-repo>'+esc(a.project)+'</span>':''),key:'a'+a.id});});
  (incs||[]).slice(0,6).forEach(i=>{
   items.push({t:i.last_ts||i.start_ts||'',cls:'critical',ic:'inc',
-   html:'Инцидент <b>#'+i.id+'</b> по <b>@'+esc(i.actor)+'</b> · риск '+i.max_risk+
-    (i.is_campaign?' <span class="badge b-camp">campaign</span>':''),key:'i'+i.id});
+   html:'Инцидент <b>#'+i.id+'</b> по <b>@'+esc(i.actor)+'</b> · риск '+fmtRisk(i.max_risk)+
+    (i.is_campaign?' <span class="badge b-camp" title="многошаговая кампания: два и более этапа ATT&amp;CK">кампания</span>':''),key:'i'+i.id});
   if(i.triage)items.push({t:i.last_ts||'',cls:'ai',ic:'ai',
    html:'AI-разбор инцидента <b>#'+i.id+'</b> — оценка <b>'+esc(i.triage)+'</b>',key:'t'+i.id});});
  items.sort((x,y)=>(y.t||'').localeCompare(x.t||''));
@@ -805,15 +948,15 @@ function renderIncQueue(items){
  box.innerHTML=items.slice(0,6).map(x=>
   '<div class="ds-q-item'+(String(x.id)===String(_incSel)?' sel':'')+'" data-inc="'+x.id+'" onclick="goView(\'incidents\');setTimeout(function(){openInc('+x.id+');},150)">'+
    sevBadge(x.severity)+'<div class=ds-q-main>'+
-   '<div class=ds-q-who>@'+esc(x.actor)+(x.is_campaign?' <span class="badge b-camp">campaign</span>':'')+'</div>'+
-   '<div class=ds-q-meta>'+nAlerts(x.alerts)+' · '+nTac((x.tactics||[]).length)+' · риск '+x.max_risk+'</div></div>'+
-   '<span class="sla '+esc(x.sla||'ok')+'">'+(x.age_s<3600?Math.floor(x.age_s/60)+'м':Math.floor(x.age_s/3600)+'ч')+'</span>'+
+   '<div class=ds-q-who>@'+esc(x.actor)+(x.is_campaign?' <span class="badge b-camp" title="многошаговая кампания: два и более этапа ATT&amp;CK">кампания</span>':'')+'</div>'+
+   '<div class=ds-q-meta>'+nAlerts(x.alerts)+' · '+nTac((x.tactics||[]).length)+' · риск '+fmtRisk(x.max_risk)+'</div></div>'+
+   '<span class="sla '+esc(x.sla||'ok')+'">'+(x.age_s<3600?Math.floor(x.age_s/60)+tUnit('m'):Math.floor(x.age_s/3600)+tUnit('h'))+'</span>'+
    (x.verdict?'<span class="vpill '+esc(x.verdict)+'">'+(x.verdict==='tp'?'TP':'FP')+'</span>':'')+'</div>').join('');}
 
 function renderLayers(alerts){
  const box=$('layerBox');if(!box)return;
  const a=alerts||[];
- if(!a.length){box.innerHTML='<div class="ds-empty">Детектов пока нет</div>';return;}
+ if(!a.length){box.innerHTML='<div class="ds-empty">Алертов пока нет</div>';return;}
  // Слоёв три, а не два. Срабатывания модели помечены техникой ML и
  // раньше попадали в «Сигнатуры» — то есть обученный слой отчитывался
  // как правило, написанное руками.
@@ -842,7 +985,7 @@ function renderQuality(wf){
  const tp=items.filter(x=>x.verdict==='tp').length;
  const fp=items.filter(x=>x.verdict==='fp').length;
  const judged=tp+fp;
- if(!judged){box.innerHTML='<div class="row"><span class=muted-t>Точность детекта</span>'+
+ if(!judged){box.innerHTML='<div class="row"><span class=muted-t>Точность разбора</span>'+
    '<span class=muted-t>нет разобранных инцидентов</span></div>';return;}
  const MIN_JUDGED=10;
  const prec=judged?Math.round(tp/judged*100):0;
@@ -945,17 +1088,24 @@ function drawPulse(al){
  const pts=al.map(function(a){
    return {t:Date.parse(String(a.ts_sim||'').replace(' ','T')),s:sevOf(a.risk)};})
   .filter(p=>!isNaN(p.t)).sort((a,b)=>a.t-b.t);
- if(!pts.length){clear('Детектов пока нет.');return;}
+ if(!pts.length){clear('Алертов пока нет.');return;}
  if(pts.length===1){
-  clear('Один детект · '+fmtDT(pts[0].t)+' — для динамики нужно хотя бы два.');return;}
+  clear('Один алерт · '+fmtDT(pts[0].t)+' — для динамики нужно хотя бы два.');return;}
  const t0=pts[0].t, t1=pts[pts.length-1].t, span=Math.max(1,t1-t0);
  // Шаг: самый мелкий из лестницы, при котором корзин не больше тридцати двух.
  let step=PULSE_STEPS.find(s=>span/s<=32)||PULSE_STEPS[PULSE_STEPS.length-1];
  // Выравнивание по местному времени: floor по UTC поставил бы границу
  // суточной корзины на полночь по Гринвичу, а не на полночь на часах.
  const tzo=new Date().getTimezoneOffset()*60000;
- const start=Math.floor((t0-tzo)/step)*step+tzo;
- const N=Math.min(64,Math.max(1,Math.ceil((t1-start+1)/step)));
+ let start=Math.floor((t0-tzo)/step)*step+tzo;
+ let N=Math.min(64,Math.max(1,Math.ceil((t1-start+1)/step)));
+ /* МИНИМАЛЬНАЯ ШИРИНА ОКНА. При четырёх алертах за две минуты корзин
+    получалось две, и каждая занимала половину панели: два огромных блока
+    вместо графика. Дотягиваем окно НАЗАД, а не вперёд, — тогда на оси нет
+    времён из будущего, а всплеск виден у правого края, как и положено
+    свежей активности. */
+ const MIN_BUCKETS=12;
+ if(N<MIN_BUCKETS){start-=(MIN_BUCKETS-N)*step;N=MIN_BUCKETS;}
  const buck=[];for(let i=0;i<N;i++)buck.push({critical:0,high:0,medium:0,low:0,n:0});
  const totals={critical:0,high:0,medium:0,low:0};
  pts.forEach(function(p){
@@ -1049,7 +1199,7 @@ function riskParts(i){
  const parts=keys.sort(function(a,b){return by[b]-by[a];})
    .map(function(L){return esc(NAME[L]||L)+' '+(Math.round(by[L]*100)/100);});
  return ' <span class=ds-inc-parts title="риск инцидента — слияние максимумов по слоям, ' +
-        'поэтому он бывает выше любого отдельного детекта">← '+parts.join(' · ')+'</span>';}
+        'поэтому он бывает выше любого отдельного алерта">'+parts.join(' · ')+'</span>';}
 
 /* ЧЕЛОВЕЧЕСКОЕ ИМЯ ДЕЙСТВИЯ.
 
@@ -1106,6 +1256,15 @@ function layerName(tech){
  if(tech==='ML')return 'модель';
  return 'правило';}
 
+/* НАСТОЯЩАЯ ЛИ ЭТО ТЕХНИКА ATT&CK.
+   Поведенческий слой и модель кладут в поле technique служебные значения
+   UEBA и ML: у них нет техники по определению. В колонке «Техника» такое
+   значение печаталось как идентификатор — сначала отсеивался только UEBA,
+   а ML просачивался и выглядел как будто в матрице ATT&CK есть техника «ML».
+   Один предикат на весь интерфейс, как и одно имя слоя выше. */
+const LAYER_SENTINELS=['UEBA','ML'];
+function attackTech(tech){return !!tech&&LAYER_SENTINELS.indexOf(tech)<0;}
+
 /* Дата-время и длительность в подписях графиков — коротко и одинаково. */
 function fmtDT(ms){const d=new Date(ms);
  const p=n=>String(n).padStart(2,'0');
@@ -1114,7 +1273,7 @@ function fmtDur(ms){const m=Math.round(ms/60000);
  if(m<60)return m+' мин';
  const h=Math.round(m/60); if(h<48)return h+' ч';
  return Math.round(h/24)+' сут';}
-/* Распределение детектов по уровню риска. Раньше жило внутри той же
+/* Распределение алертов по уровню риска. Раньше жило внутри той же
    функции, что и спарклайн: две независимые панели в одном теле. */
 function drawRiskHist(al){
  const b=[['Критический ≥0.85',0,'critical'],['Высокий 0.7–0.85',0,'high'],['Средний 0.5–0.7',0,'medium'],['Низкий <0.5',0,'low']];
@@ -1122,7 +1281,7 @@ function drawRiskHist(al){
  al.forEach(a=>{b[IX[sevOf(a.risk)]][1]++;});
  const mx2=Math.max(...b.map(x=>x[1]),1),tot=al.length||1;
  const sub=$('riskHistSub');
- if(sub)sub.textContent=al.length?(plural(al.length,'детект','детекта','детектов')+' за период'):'';
+ if(sub)sub.textContent=al.length?(plural(al.length,'алерт','алерта','алертов')+' за период'):'';
  $('riskHist').innerHTML=al.length?b.map(x=>'<div class=brow><span class=blab>'+x[0]+'</span>'+
   '<div class="btrack rk-bar '+x[2]+'"><i style="width:'+(x[1]/mx2*100)+'%"></i></div><b>'+x[1]+'</b>'+
   '<span class=bpct>'+Math.round(x[1]/tot*100)+'%</span></div>').join(''):'<div class="help empty">Алертов пока нет.</div>';}
@@ -1159,7 +1318,7 @@ function renderAlerts(){
  const total=rows.length,pages=Math.max(1,Math.ceil(total/_AL_PER));
  if(_alPage>=pages)_alPage=pages-1;
  const page=rows.slice(_alPage*_AL_PER,(_alPage+1)*_AL_PER);
- $('alCount').textContent=(_alF||_alQ)?('показано '+total+' из '+all.length):plural(all.length,'детект','детекта','детектов');
+ $('alCount').textContent=(_alF||_alQ)?('показано '+total+' из '+all.length):plural(all.length,'алерт','алерта','алертов');
 
  document.querySelectorAll('#alTable thead th').forEach(th=>{
   const k=th.getAttribute('data-k');
@@ -1175,10 +1334,10 @@ function renderAlerts(){
    '<td class=muted-t>'+esc(layerName(a.technique))+'</td>'+
    '<td class=mono><b>@'+esc(a.actor||'—')+'</b></td>'+
    '<td class=mono>'+esc(a.project||'—')+'</td>'+
-   '<td class=mono>'+(a.technique&&a.technique!=='UEBA'?esc(a.technique):'<span class=muted-t>—</span>')+'</td>'+
+   '<td class=mono>'+(attackTech(a.technique)?esc(a.technique):'<span class=muted-t>—</span>')+'</td>'+
    '<td>'+esc(a.reason||'')+'</td>'+
-   '<td class=right><span class="rk '+rkcls(a.risk)+'">'+a.risk+'</span></td></tr>';}).join('')
-  ||'<tr><td colspan=8><div class="ds-empty">'+(all.length?'под фильтр ничего не попало':'детектов пока нет — запустите сценарий в разделе «Запуск сценариев»')+'</div></td></tr>';
+   '<td class=right><span class="rk '+rkcls(a.risk)+'">'+fmtRisk(a.risk)+'</span></td></tr>';}).join('')
+  ||'<tr><td colspan=8><div class="ds-empty">'+(all.length?'под фильтр ничего не попало':'алертов пока нет — запустите сценарий в разделе «Запуск сценариев»')+'</div></td></tr>';
 
  $('alPager').innerHTML=total>_AL_PER?
   ('<button class="btn ghost" onclick="alPage(-1)"'+(_alPage<=0?' disabled':'')+'><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m15 18-6-6 6-6"/></svg> Назад</button>'+
@@ -1193,8 +1352,8 @@ function openAlert(i){
  dsDrawer('Детект · @'+esc(a.actor||'?'),
   '<div class=ds-kv>'+
    kvRow('Severity',alSevBadge(a.risk||0))+
-   kvRow('Риск','<b class="rk '+rkcls(a.risk)+'">'+a.risk+'</b>')+
-   kvRow('Слой',a.technique==='UEBA'?'поведенческий (UEBA)':'сигнатурное правило')+
+   kvRow('Риск','<b class="rk '+rkcls(a.risk)+'">'+fmtRisk(a.risk)+'</b>')+
+   kvRow('Слой',layerName(a.technique))+
    kvRow('Время',esc((a.ts_sim||'').replace('T',' ')))+
    kvRow('Разработчик','@'+esc(a.actor||'—'))+
    kvRow('Репозиторий',esc(a.project||'—'))+
@@ -1208,8 +1367,8 @@ function openAlert(i){
   '<div class=ds-drawer-sec><div class=t-label>Быстрые действия</div>'+
    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+
    (a.incident?'<button class=btn onclick="dsDrawerClose();goView(\'incidents\');setTimeout(function(){openInc('+a.incident+');},150)">Открыть инцидент</button>':'')+
-   '<button class="btn ghost" onclick="alFilterActor(\''+escJs(a.actor||'')+'\')">Все детекты @'+esc(a.actor||'')+'</button>'+
-   '<button class="btn ghost" onclick="alFilterRepo(\''+escJs(a.project||'')+'\')">Все детекты в '+esc(a.project||'')+'</button>'+
+   '<button class="btn ghost" onclick="alFilterActor(\''+escJs(a.actor||'')+'\')">Все алерты @'+esc(a.actor||'')+'</button>'+
+   '<button class="btn ghost" onclick="alFilterRepo(\''+escJs(a.project||'')+'\')">Все алерты в '+esc(a.project||'')+'</button>'+
    '</div></div>');}
 async function saveNote(id){
  const el=$('incNote');if(!el)return;
@@ -1227,21 +1386,35 @@ function alFilterRepo(r){dsDrawerClose();$('alSearch').value=r;alSearchGo();}
 async function pollAlerts(){
  if(!_alLoaded&&$('alBody')&&!$('alBody').innerHTML)$('alBody').innerHTML=skeletonRows(8,6);
  const d=await jget('/api/alerts');_alRows=d.alerts||[];_alLoaded=true;renderAlerts();}
+/* СПИСОК НЕ ПЕРЕСТРАИВАЕТСЯ, ПОКА ОТКРЫТ ИНЦИДЕНТ.
+   Лента опрашивается раз в 2.5 с и пересортировывается по риску. Пока
+   аналитик читает карточку, порядок под курсором меняется: строка, на
+   которую он смотрел, уезжает, и следующий клик открывает ДРУГОЕ дело.
+   Поймано при разборе — две подряд открытые «разные» строки дали один и тот
+   же инцидент. Пока аналитик работает, список замораживаем;
+   счётчики и содержимое самой карточки обновляться продолжают. */
 async function pollIncidents(){const d=await jget('/api/incidents');
+ if(Date.now()<_incFreezeUntil&&$('incList').children.length){
+   markIncSel(); return d;}
  $('incList').innerHTML=(d.incidents||[]).map(function(i){
    const sel=String(i.id)===String(_incSel)?' sel':'';
    return '<div class="inc'+sel+'" data-inc="'+i.id+'" tabindex=0 role=button'+
    ' aria-current="'+(sel?'true':'false')+'"'+
    ' onclick="openInc('+i.id+')"'+
    ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openInc('+i.id+')}">'+
+   /* РОВНО ШЕСТЬ ЯЧЕЕК, ВСЕГДА. Раньше «кампания», вердикт и статус
+      добавлялись условно, поэтому число детей строки менялось от 5 до 8 и
+      колонки в списке не выстраивались. */
    sevBadge(i.severity)+
-   '<span class=a>@'+esc(i.actor)+'</span>'+
+   '<span class=a title="@'+esc(i.actor)+'">@'+esc(i.actor)+'</span>'+
    '<span class=sub>'+nAlerts(i.alerts)+' · '+nTac((i.tactics||[]).length)+'</span>'+
-   '<span class=sub>'+esc((i.repos||[]).slice(0,2).join(', '))+'</span>'+
-   (i.is_campaign?'<span class=sub>кампания</span>':'')+
-   (i.verdict?'<span class="vpill '+esc(i.verdict)+'">'+(i.verdict==='tp'?'TP':'FP')+'</span>':'')+
-   (i.status&&i.status!=='new'?'<span class="stpill '+esc(i.status)+'">'+esc(i.status)+'</span>':'')+
-   '<span class=grow></span><span class="rk '+rkcls(i.max_risk)+'">'+i.max_risk+'</span></div>';}).join('')
+   '<span class="sub inc-repos" title="'+esc((i.repos||[]).join(', '))+'">'+esc((i.repos||[]).join(', '))+'</span>'+
+   '<span class=inc-badges>'+
+     (i.is_campaign?'<span class=inc-camp title="многошаговая кампания: два и более этапа ATT&CK">кампания</span>':'')+
+     (i.verdict?'<span class="vpill '+esc(i.verdict)+'">'+(i.verdict==='tp'?'TP':'FP')+'</span>':'')+
+     (i.status&&i.status!=='new'?'<span class="stpill '+esc(i.status)+'">'+esc(WF_NAME[i.status]||i.status)+'</span>':'')+
+   '</span>'+
+   '<span class="rk '+rkcls(i.max_risk)+'">'+fmtRisk(i.max_risk)+'</span></div>';}).join('')
    ||'<div class="help empty">Инцидентов пока нет. Запустите сценарий атаки.</div>';
  markIncSel();}
 let _incTab='timeline', _incData=null;
@@ -1264,23 +1437,43 @@ function incTimeline(i){
   const cls=a.risk>=0.85?'critical':(a.risk>=0.6?'high':'info');
   return '<div class="ds-tl-item '+cls+'">'+
    '<div class=ds-tl-time>'+esc((a.ts_sim||'').replace('T',' '))+'</div>'+
-   '<div class=ds-tl-title>'+esc(a.action||'')+
+   '<div class=ds-tl-title>'+esc(actName(a.action))+
     (a.technique?' <span class=tech>'+esc(a.technique)+'</span>':'')+
-    ' <span class="rk '+rkcls(a.risk)+'">'+a.risk+'</span></div>'+
+    ' <span class="rk '+rkcls(a.risk)+'">'+fmtRisk(a.risk)+'</span></div>'+
+   /* ССЫЛКА — ИКОНКА, А НЕ ПОВТОРЯЮЩАЯСЯ ФРАЗА.
+      Текст «открыть в GitLab» стоял в КАЖДОЙ строке таймлайна: на карточке из
+      двадцати сработок одна и та же фраза печаталась двадцать раз и забивала
+      собой описание, ради которого строку и читают. */
    '<div class=ds-tl-desc>'+esc(a.reason||'')+
     (a.path?' · <code>'+esc(a.path)+'</code>':'')+
-    (a.url?' · <a href="'+esc(a.url)+'" target=_blank>открыть в GitLab&nbsp;<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></a>':'')+'</div></div>';}).join('')+'</div>';}
+    (a.url?' <a class=tl-open href="'+esc(a.url)+'" target=_blank rel=noopener title="Открыть в GitLab" aria-label="Открыть в GitLab"><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></a>':'')+'</div></div>';}).join('')+'</div>';}
 
 function incEvidence(i){
  const files={},repos=(i.repos||[]);
  (i.alerts||[]).forEach(function(a){if(a.path)files[a.path]=(files[a.path]||0)+1;});
  const fk=Object.keys(files);
- return '<div class=ds-ev-grid>'+
+ // Вкладка называлась «Доказательства» и открывалась сразу списком без
+ // единого слова о том, что это. Пишем назначение: аналитик, который видит
+ // экран впервые, не обязан выводить его из содержимого.
+ return '<div class="sub mb-2">Наблюдаемые факты этого инцидента: во что вносились '+
+  'изменения и какие значения можно искать в других системах (индикаторы '+
+  'компрометации). Это не выводы, а исходные данные, на которых сработал детектор.</div>'+
+  '<div class=ds-ev-grid>'+
   '<div><div class=t-label>Затронутые репозитории</div><div class=ds-ev-list>'+
    (repos.length?repos.map(function(r){return '<div class=ds-ev-item><code>'+esc(r)+'</code></div>';}).join(''):'<div class=sub>—</div>')+'</div></div>'+
   '<div><div class=t-label>Затронутые файлы</div><div class=ds-ev-list>'+
-   (fk.length?fk.map(function(f){return '<div class=ds-ev-item><code>'+esc(f)+'</code><span class=sub>'+files[f]+'×</span></div>';}).join(''):'<div class=sub>—</div>')+'</div></div>'+
+   (fk.length?fk.map(function(f){
+     // Ссылку берём у той сработки, где этот файл и встретился: URL считает
+     // сервер, потому что только он знает адрес GitLab и правила сборки ссылки.
+     var src=(i.alerts||[]).filter(function(a){return a.path===f&&a.url;})[0];
+     return '<div class=ds-ev-item><code>'+esc(f)+'</code><span class=sub>'+files[f]+'×</span>'+
+      (src?' <a href="'+esc(src.url)+'" target=_blank rel=noopener class=sub>открыть в GitLab</a>':'')+
+      '</div>';}).join(''):'<div class=sub>—</div>')+'</div></div>'+
   '</div>'+
+  (function(){var br={};(i.alerts||[]).forEach(function(a){if(a.branch&&a.branch!=='none')br[a.branch]=1;});
+   var bk=Object.keys(br);
+   return bk.length?('<div class=ds-drawer-sec><div class=t-label>Затронутые ветки</div><div class=ds-ev-list>'+
+    bk.map(function(b){return '<div class=ds-ev-item><code>'+esc(b)+'</code></div>';}).join('')+'</div></div>'):'';})()+
   '<div class=ds-drawer-sec><div class=t-label>Индикаторы компрометации ('+((i.ioc||[]).length)+')</div>'+
    '<div class="iocg mt-2">'+(i.ioc||[]).map(function(x){
      return '<div class=ioci><span class=ioct>'+esc(x.label)+'</span><span class=iocv>'+esc(x.value)+'</span></div>';}).join('')+'</div></div>';}
@@ -1293,7 +1486,7 @@ function incMitre(i){
   ch.map(function(c,n){return '<tr><td class=num>'+(n+1)+'</td>'+
    '<td><span class=chip><span class=t>'+esc(c.tactic||'?')+'</span></span></td>'+
    '<td class=num>'+esc(c.technique||'—')+'</td>'+
-   '<td class=sub>'+esc(c.action||'')+'</td></tr>';}).join('')+'</tbody></table>';}
+   '<td class=sub>'+esc(actName(c.action))+'</td></tr>';}).join('')+'</tbody></table>';}
 
 function incActions(i){
  return '<div class=ds-act-grid>'+
@@ -1327,10 +1520,10 @@ function renderIncBody(){
  const i=_incData;if(!i)return;const box=$('incBody');if(!box)return;
  if(_incTab==='timeline')box.innerHTML=incTimeline(i);
  else if(_incTab==='killchain')box.innerHTML=
-  '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'+
+  (((i.chain||[]).length>1)?('<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'+
    '<button class="btn ghost" id=playBtn onclick="playInc('+((i.chain||[]).length)+')"><svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Реплей атаки</button>'+
    '<input type=range class=rng id=rng min=0 max="'+(Math.max(0,(i.chain||[]).length-1))+
-    '" value="'+(Math.max(0,(i.chain||[]).length-1))+'" oninput="scrub(+this.value)"></div>'+
+    '" value="'+(Math.max(0,(i.chain||[]).length-1))+'" oninput="scrub(+this.value)"></div>'):'')+
    killchain(i.chain,i.alerts);
  else if(_incTab==='evidence')box.innerHTML=incEvidence(i);
  else if(_incTab==='mitre')box.innerHTML=incMitre(i);
@@ -1340,6 +1533,9 @@ function renderIncBody(){
 /* id открытого инцидента — чтобы подсветка переживала автообновление списка
    (список перерисовывается каждые 2.5 с) */
 var _incSel=null;
+(function(){var l=document.getElementById('incList');
+ if(l){l.addEventListener('mouseenter',function(){incFreeze(20000);});
+       l.addEventListener('mousemove',function(){incFreeze(20000);});}})();
 function markIncSel(){
   document.querySelectorAll('.inc[data-inc],.ds-q-item[data-inc]').forEach(function(el){
     var on = String(el.getAttribute('data-inc'))===String(_incSel);
@@ -1347,14 +1543,22 @@ function markIncSel(){
     el.setAttribute('aria-current', on ? 'true' : 'false');
   });
 }
-async function openInc(id){_incSel=id;markIncSel();
+/* Окно, в течение которого лента не перестраивается: аналитик читает
+   карточку или ведёт мышь по списку. Продлевается каждым действием. */
+let _incFreezeUntil=0;
+function incFreeze(ms){_incFreezeUntil=Math.max(_incFreezeUntil,Date.now()+(ms||20000));}
+async function openInc(id){incFreeze(25000);_incSel=id;markIncSel();
  const i=await jget('/api/incident/'+id);if(i.error)return;
  _incData=i;_openId=i.id;
  $('incTtl').textContent='Инцидент #'+i.id+' · @'+i.actor;
  $('incDetail').innerHTML=
   '<div class=ds-inc-head>'+sevBadge(i.severity)+
-   (i.is_campaign?' <span class="badge b-camp">многошаговая</span>':'')+
+   (i.is_campaign?' <span class="badge b-camp" title="многошаговая кампания: два и более этапа ATT&amp;CK">кампания</span>':'')+
    ' <span class=ds-inc-risk>риск '+Math.round(i.max_risk*100)/100+'</span>'+
+   // Уровень бывает ниже, чем следует из риска: слияние насыщается, поэтому
+   // критический требует ещё и ширины свидетельства. Причина — рядом, иначе
+   // две карточки с риском 0.99 и разными уровнями выглядят противоречиво.
+   (i.severity_note?' <span class=sub title="'+esc(i.severity_note)+'">'+esc(i.severity_note)+'</span>':'')+
    riskParts(i)+
    ' <span class=sub>'+nAlerts((i.alerts||[]).length)+' · '+nRepo((i.repos||[]).length)+'</span></div>'+
   '<div class=wfstatus id=wfStatus></div>'+
@@ -1364,7 +1568,7 @@ async function openInc(id){_incSel=id;markIncSel();
  renderWfStatus(i.id,i.workflow);}
 let _openId=null;
 function renderWfStatus(id,wf){const box=$('wfStatus');if(!box)return;wf=wf||{status:'new'};
- const CN={new:'новый',investigating:'в работе',contained:'локализовано',closed:'закрыто'};
+ const CN=WF_NAME;
  const steps=['new','investigating','contained','closed'];
  // Дорожка статусов: пройденное помечено, текущее залито, будущее —
  // обычная кнопка. Раньше все четыре выглядели одинаково, и понять,
@@ -1376,29 +1580,56 @@ function renderWfStatus(id,wf){const box=$('wfStatus');if(!box)return;wf=wf||{st
     return '<button class="wfstep'+cls+'" onclick="setStatus('+id+',\''+s+'\')">'+CN[s]+'</button>';
    }).join('')+'</div>'+
   '<span class=grow></span>'+
+  /* ВЕРДИКТ НЕ ПЕРЕТИРАЕТ СТАТУС.
+     Кнопки TP/FP жёстко слали status='closed', поэтому отметка «настоящая
+     атака» СБРАСЫВАЛА выбранный аналитиком этап работы. Поймано при разборе:
+     из пяти инцидентов, переведённых в «локализовано», после простановки TP
+     не осталось ни одного — очередь показала 0 локализованных и 19 закрытых.
+     Вердикт («это правда?») и статус («где мы в работе?») — независимые оси.
+     Оставляем текущий этап; из «нового» переводим в «в работе», потому что
+     выставленный вердикт означает, что инцидентом уже занимались. */
   '<div class=wfvgroup><span class=wfvlab>Вердикт</span>'+
-   '<button class="wfv tp'+(wf.verdict==='tp'?' on':'')+'" title="подтверждённая атака" onclick="setStatus('+id+',\'closed\',\'tp\')">TP</button>'+
-   '<button class="wfv fp'+(wf.verdict==='fp'?' on':'')+'" title="ложное срабатывание" onclick="setStatus('+id+',\'closed\',\'fp\')">FP</button></div></div>'+
+   '<button class="wfv tp'+(wf.verdict==='tp'?' on':'')+'" title="подтверждённая атака" onclick="setVerdict('+id+',\'tp\')">TP</button>'+
+   '<button class="wfv fp'+(wf.verdict==='fp'?' on':'')+'" title="ложное срабатывание" onclick="setVerdict('+id+',\'fp\')">FP</button></div></div>'+
   (wf.verdict
     ? '<div class="vbanner '+wf.verdict+'">'+
       '<span class=vt>'+(wf.verdict==='tp'?'Подтверждённая атака':'Ложное срабатывание')+'</span>'+
-      '<span>'+(wf.verdict==='fp'
-        ?'Правилам инцидента засчитан FP. Правило перестанет поднимать инциденты, '+
-         'если ложных отметок наберётся три И их окажется больше, чем подтверждённых атак.'
-        :'Инцидент закрыт как настоящая атака.')+'</span>'+
+      /* Вторая строка сообщала «Инцидент закрыт как настоящая атака» независимо
+         от фактического статуса: у локализованного инцидента это была прямая
+         неправда, а у закрытого — пересказ заголовка слева. Для TP она не
+         нужна; для FP несёт настоящее следствие — приглушение правила. */
+      (wf.verdict==='fp'
+        ?'<span>Правилам инцидента засчитан FP. Правило перестанет поднимать инциденты, '+
+         'если ложных отметок наберётся три И их окажется больше, чем подтверждённых атак.</span>'
+        :'')+
       (wf.updated?'<span class=vtime>'+wf.updated.replace('T',' ')+'</span>':'')+'</div>'
     : '');}
+function setVerdict(id,verdict){
+ const wf=(_incData&&_incData.workflow)||{};
+ const cur=wf.status||'new';
+ return setStatus(id, cur==='new'?'investigating':cur, verdict);
+}
 async function setStatus(id,status,verdict){await jpost('/api/incident/'+id+'/status',{status:status,verdict:verdict||null});
- if(window.toast){const CN={new:'новый',investigating:'в работе',contained:'локализовано',closed:'закрыто'};
-  toast(verdict?('Инцидент #'+id+' закрыт как '+verdict.toUpperCase()):('Статус инцидента #'+id+': '+(CN[status]||status)),
+ if(window.toast){const CN=WF_NAME;
+  /* Тост писал «закрыт как TP» даже когда инцидент оставался в работе:
+     сообщение противоречило тому, что видно в списке через секунду. */
+  toast(verdict?('Инцидент #'+id+': '+(verdict==='tp'?'подтверждённая атака':'ложное срабатывание')+
+                 ' \u00b7 '+(CN[status]||status))
+              :('Статус инцидента #'+id+': '+(CN[status]||status)),
         verdict==='tp'?'error':(verdict==='fp'?'warning':'success'));}
  const i=await jget('/api/incident/'+id);renderWfStatus(id,i.workflow);
  try{await pollIncidents();}catch(e){uiErr('setStatus',e)}
  try{if(typeof pollWorkflow==='function')await pollWorkflow();}catch(e){uiErr('setStatus',e)}}
 async function llmPanel(id){const box=$('llmBox');
+ if(!box){if(window.toast)toast('Панель недоступна на этой вкладке','error');return;}
  if(box.dataset.open==='1'){box.dataset.open='';box.innerHTML='';return;}
  box.dataset.open='1';box.innerHTML='<div class="sub mt-3">загружаю контекст…</div>';
- let d;try{d=await jget('/api/incident/'+id+'/llm');}catch(e){box.innerHTML='<div class=sub>ошибка</div>';return;}
+ // Панель — последний блок длинной вкладки: без прокрутки к ней клик по
+ // кнопке выглядел так, будто ничего не произошло.
+ if(box.scrollIntoView)box.scrollIntoView({behavior:'smooth',block:'nearest'});
+ let d;
+ try{d=await jget('/api/incident/'+id+'/llm');}
+ catch(e){box.innerHTML='<div class="sub mt-3">Не удалось загрузить контекст: '+esc(e.message||e)+'</div>';return;}
  box.innerHTML='<div class=card style="margin-top:10px;background:var(--panel2);border-color:var(--line2)">'+
   '<div style=display:flex;align-items:center;gap:8px><b>Вход модели</b>'+
    '<span class="badge '+(d.ollama_available?'b-med':'b-low')+'">'+(d.ollama_available?'Ollama: '+esc(d.model||'on'):'Ollama не запущена')+'</span>'+
@@ -1412,24 +1643,75 @@ async function incAsk(id){const q=$('incAskIn').value.trim();if(!q)return;$('inc
  const r=await jpost('/api/incident/'+id+'/ask',{q:q});$('incAskAns').innerHTML='<b>'+esc(r.answer||'')+'</b> <span class=sub>('+esc(r.source||'')+')</span>';}
 
 function showTriage(t){const box=$('triageBox');if(!box)return;
- if(!t){box.innerHTML='<div class="sub mt-3">\u0410\u0432\u0442\u043e-\u0440\u0430\u0437\u0431\u043e\u0440 LLM \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0432 \u0444\u043e\u043d\u0435\u2026</div>';return;}
- box.innerHTML='<div class=card style="margin-top:10px;background:var(--panel2)"><div class=sub>LLM-\u0440\u0430\u0437\u0431\u043e\u0440 \u00b7 \u0438\u0441\u0442\u043e\u0447\u043d\u0438\u043a: '+esc(t._source||'?')+'</div>'+
-  '<div class=mt-2>'+sevBadge(t.severity||'low')+' <b>'+esc(t.title||'')+'</b> <span class=sub>TP: '+(t.is_true_positive?'\u0434\u0430':'\u043d\u0435\u0442')+' \u00b7 conf '+(t.confidence||'')+'</span></div>'+
+ if(!t){
+  /* Авто-разбор запускается только выше порога риска, поэтому у слабых
+     инцидентов вкладка оставалась ПУСТОЙ — без единого слова о том, почему.
+     Пустой экран читается как поломка, а не как «здесь нечего показывать». */
+  var r=(_incData&&_incData.max_risk!=null)?_incData.max_risk:null;
+  box.innerHTML='<div class="ds-empty">Автоматический разбор для этого инцидента не запускался'+
+   (r!=null?(': риск '+fmtRisk(r)+' ниже порога авто-триажа'):'')+
+   '.<br>Запустить вручную — кнопка <b>«Запустить LLM-разбор»</b> на вкладке «Действия».</div>';
+  return;}
+ /* Заголовок утверждал «LLM-разбор» независимо от того, кто разбирал.
+    При недоступной модели вкладка писала «LLM-разбор · источник:
+    fallback»: сначала обещание модели, потом английский ключ, по
+    которому аналитик не может понять, чему доверять. Название и
+    источник теперь берутся из того, что реально отработало. */
+ const src=String(t._source||'');
+ const llm=src.indexOf('llm:')===0;
+ const srcName=llm?('модель '+src.slice(4))
+   :(src.indexOf('fallback')===0?'правила консоли — модель была недоступна'
+   :(src==='error'?'разбор завершился ошибкой':(src||'источник неизвестен')));
+ box.innerHTML='<div class=card style="margin-top:10px;background:var(--surface-3)"><div class=sub>'+
+  (llm?'Разбор моделью':'Автоматический разбор')+' \u00b7 '+esc(srcName)+'</div>'+
+  '<div class=mt-2>'+sevBadge(t.severity||'low')+' <b>'+esc(t.title||'')+'</b> <span class=sub>TP: '+(t.is_true_positive?'\u0434\u0430':'\u043d\u0435\u0442')+' \u00b7 \u0443\u0432\u0435\u0440\u0435\u043d\u043d\u043e\u0441\u0442\u044c '+fmtRisk(t.confidence)+'</span></div>'+
   '<div class=mt-2>'+esc(t.narrative||'')+'</div>'+
   ((t.recommended_actions||[]).length?'<div class=mt-2><b>\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f:</b><ul>'+(t.recommended_actions||[]).map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul></div>':'')+
   (t.benign_explanation?'<div class="sub mt-2">benign: '+esc(t.benign_explanation)+'</div>':'')+'</div>';}
-async function triage(id){showTriage(null);const r=await jpost('/api/incident/'+id+'/triage',{});showTriage(r.triage||{});}
+/* Кнопка живёт во вкладке «Действия», а вывод разбора — во вкладке
+   «AI-разбор» (#triageBox). Раньше showTriage() не находил свой контейнер и
+   молча выходил: разбор ВЫПОЛНЯЛСЯ, но на экране не менялось ничего, и
+   кнопка выглядела неисправной. Переключаем на вкладку, где результат видно. */
+async function triage(id){
+ if(_incTab!=='ai'){incGo('ai');}
+ showTriage(null);
+ let r;
+ try{r=await jpost('/api/incident/'+id+'/triage',{});}
+ catch(e){const b=$('triageBox');
+  if(b)b.innerHTML='<div class="sub mt-3">Разбор не выполнен: '+esc(e.message||e)+'</div>';
+  return;}
+ showTriage(r.triage||{});}
 async function refreshOpenTriage(){if(_openId==null)return;try{const i=await jget('/api/incident/'+_openId);if(i&&i.triage)showTriage(i.triage);}catch(e){uiErr('refreshOpenTriage',e)}}
 setInterval(refreshOpenTriage,3000);
-async function respond(id){const t0=$('incToast');if(t0)t0.textContent='IR заводится в GitLab…';
- if(window.toast)toast('Завожу IR-issue в GitLab…','info');
- await jpost('/api/incident/'+id+'/respond',{});
- let n=0;const t=setInterval(async()=>{n++;let i;try{i=await jget('/api/incident/'+id);}catch(e){return;}
-  if(i.responded||i.resp_error||n>12){clearInterval(t);if(_openId==id)openInc(id);
-   const tt=$('incToast');
-   if(tt)tt.textContent=i.responded?'IR-issue заведён':(i.resp_error?('не удалось: '+i.resp_error):'');
-   if(window.toast){if(i.responded)toast('IR-issue заведён в GitLab','success');
-    else if(i.resp_error)toast('Не удалось завести IR: '+i.resp_error,'error',5000);}}},1800);}
+/* IR-issue заводит НЕ КОНСОЛЬ. Она кладёт команду в очередь, а выполняет её
+   процесс мира на следующей итерации планировщика — в нерабочие часы шаг
+   доходит до OFF_HOURS_POLL_SECONDS (300 с), а при остановленном мире команду
+   не заберёт никто. Раньше интерфейс опрашивал 12 раз по 1.8 с (22 секунды) и
+   потом молча замолкал: «жду две минуты — не завелось» без единого слова о
+   том, чего ждём и от кого. Теперь ждём до трёх минут и на каждом шаге
+   говорим состояние команды. */
+async function respond(id){const t0=$('incToast');
+ const say=function(msg){const tt=$('incToast');if(tt)tt.textContent=msg;};
+ say('ставлю задачу в очередь…');
+ if(window.toast)toast('Ставлю задачу «завести IR-issue» в очередь мира…','info');
+ try{await jpost('/api/incident/'+id+'/respond',{});}
+ catch(e){say('не удалось поставить задачу: '+(e.message||e));
+          if(window.toast)toast('Не удалось поставить задачу: '+(e.message||e),'error',6000);return;}
+ const LIMIT=100;                    // 100 × 1.8 с = 3 минуты
+ let n=0;const t=setInterval(async()=>{n++;let i;
+  try{i=await jget('/api/incident/'+id);}catch(e){return;}
+  if(!i.world_alive&&!i.responded){
+   say('мир не запущен — очередь команд не разбирается. Запустите симуляцию на :8787.');
+  }else if(i.resp_state==='running'){say('мир выполняет задачу…');
+  }else if(i.resp_state==='pending'){say('в очереди — ждём следующую итерацию мира ('+n*2+' с)');}
+  if(i.responded||i.resp_error||n>=LIMIT){clearInterval(t);if(_openId==id)openInc(id);
+   if(i.responded){say('IR-issue заведён');
+    if(window.toast)toast('IR-issue заведён в GitLab','success');}
+   else if(i.resp_error){say('не удалось: '+i.resp_error);
+    if(window.toast)toast('Не удалось завести IR: '+i.resp_error,'error',6000);}
+   else{const why=i.world_alive?'мир пока не дошёл до задачи':'мир не запущен';
+    say('задача всё ещё в очереди ('+why+'). Она не потеряна — выполнится, когда мир её заберёт.');
+    if(window.toast)toast('IR ещё в очереди: '+why,'error',8000);}}},1800);}
 let _cov={};
 function covSummary(grid){
  /* Считаем по УНИКАЛЬНЫМ техникам: одна и та же техника у MITRE может
@@ -1561,7 +1843,7 @@ function renderRules(){
    '<td><b>'+esc(r.title)+'</b></td>'+
    '<td>'+esc(r.tactic||'')+'</td>'+
    '<td>'+sevBadge(r.severity)+'</td>'+
-   '<td class="right num">'+r.risk+'</td>'+
+   '<td class="right num">'+fmtRisk(r.risk)+'</td>'+
    '<td class="right num">'+(r.fired?r.fired:'<span class=muted-t>0</span>')+'</td></tr>';}).join('')
   ||'<tr><td colspan=7><div class="help empty">Под фильтр ничего не попало.</div></td></tr>';}
 function openRule(i){
@@ -1570,18 +1852,18 @@ function openRule(i){
   '<div class=ds-kv>'+
    kvRow('Идентификатор','<code>'+esc(r.id)+'</code>')+
    kvRow('Severity',sevBadge(r.severity))+
-   kvRow('Базовый риск','<b class=num>'+r.risk+'</b>')+
+   kvRow('Базовый риск','<b class=num>'+fmtRisk(r.risk)+'</b>')+
    kvRow('MITRE',r.technique?('<span class=tech>'+esc(r.technique)+'</span>'+(r.tactic?' · '+esc(r.tactic):'')):'—')+
    kvRow('Сработок',r.fired?('<b class=num>'+r.fired+'</b>'):'<span class=sub>ни разу</span>')+
   '</div>'+
   '<div class=ds-drawer-sec><div class=t-label>Что это значит</div>'+
    '<div class=ds-answer style="margin-top:8px">'+
-   (r.fired?('Правило сработало '+r.fired+' раз(а). Проверьте связанные детекты — если это шум, отметьте инциденты как FP: после трёх подтверждений правило перестанет поднимать инциденты.')
+   (r.fired?('Правило сработало '+r.fired+' раз(а). Проверьте связанные алерты — если это шум, отметьте инциденты как FP: после трёх подтверждений правило перестанет поднимать инциденты.')
           :'Правило активно, но пока ни разу не срабатывало. Это нормально для редких техник: проверить можно в разделе «Запуск сценариев».')+
    '</div></div>'+
   '<div class=ds-drawer-sec><div class=t-label>Действия</div>'+
    '<div class="ds-act-grid mt-2">'+
-   '<button class=btn onclick="dsDrawerClose();goView(\'alerts\');setTimeout(function(){$(\'alSearch\').value='+JSON.stringify(r.technique||r.title)+';alSearchGo();},200)">Показать детекты правила</button>'+
+   '<button class=btn onclick="dsDrawerClose();goView(\'alerts\');setTimeout(function(){$(\'alSearch\').value='+JSON.stringify(r.technique||r.title)+';alSearchGo();},200)">Показать алерты правила</button>'+
    '<button class="btn ghost" onclick="dsDrawerClose();goView(\'attack\')">Открыть матрицу ATT&CK</button>'+
    '</div></div>');}
 
@@ -1594,22 +1876,37 @@ const ASK_PROMPTS=['что делала maria ночью','покажи секр
 function renderPrompts(){const b=$('askPrompts');if(!b||b.dataset.done)return;b.dataset.done='1';
  b.innerHTML=ASK_PROMPTS.map(function(p){return '<button class="chip ds-prompt" onclick="askPreset(this)">'+esc(p)+'</button>';}).join('');}
 function askPreset(el){$('askIn').value=el.textContent;askQuery();}
-async function askQuery(){const q=$('askIn').value.trim();if(!q)return;$('askAns').textContent='ищу…';const r=await jpost('/api/ask',{q:q});
- $('askAns').innerHTML='<b>'+esc(r.answer||'')+'</b>';
+async function askQuery(){const q=$('askIn').value.trim();if(!q)return;$('askAns').textContent='ищу…';
+ // Отказ запроса раньше приводил к пустой жирной строке и подписи «ничего не
+ // найдено» — то есть отказ был неотличим от честного нуля совпадений.
+ let r;
+ try{r=await jpost('/api/ask',{q:q});}
+ catch(e){$('askAns').innerHTML='<b>Запрос не выполнен.</b> <span class=sub>'+esc(e.message||e)+'</span>';
+          $('askEv').innerHTML='';return;}
+ // Помечаем, ЧЕЙ это ответ. Раньше выключенная Ollama выглядела как «копайлот
+ // стал отвечать суше», а не как «копайлота нет», и разобраться было нельзя.
+ var _src='';
+ if(r.understood!==false){
+  _src=r.llm?'<span class=sub style="margin-left:8px">резюме LLM</span>'
+            :('<span class=sub style="margin-left:8px">подсчёт по журналу · LLM недоступна'
+              +(r.llm_reason?(': '+esc(r.llm_reason)):'')+'</span>');
+ }
+ $('askAns').innerHTML='<b>'+esc(r.answer||'')+'</b>'+_src;
  $('askEv').innerHTML=(r.events||[]).map(e=>'<div class="al lo"><span class=ts>'+esc((e.ts_sim||'').replace('T',' ').slice(5,16))+'</span><span class=who>@'+esc(e.actor)+'</span><span>'+esc(e.action)+'→'+esc(e.project)+'</span>'+(e.path?'<span class=sub>'+esc(e.path)+'</span>':'')+(e.is_night?'<span class=tech title="событие вне рабочих часов команды">вне работы</span>':'')+'</div>').join('')||'<div class=sub>ничего не найдено</div>';}
-let _wfSel=0,_wfIds=[];
+let _wfSel=0,_wfIds=[],_wfItems=[];
 async function pollWorkflow(){let d;try{d=await jget('/api/workflow');}catch(e){return;}
- const CN={new:'новый',investigating:'в работе',contained:'локализован',closed:'закрыт'};
+ const CN=WF_NAME;
  const wc=d.counts||{}, wi=d.items||[];
  $('wfCounts').innerHTML=['new','investigating','contained','closed'].map(k=>
   '<div class=wfcount><div class=n>'+(wc[k]||0)+'</div><div class=l>'+CN[k]+'</div></div>').join('')+
   '<div class=wfcount><div class=n>'+wi.length+'</div><div class=l>всего</div></div>';
- _wfIds=(d.items||[]).map(x=>x.id);if(_wfSel>=_wfIds.length)_wfSel=Math.max(0,_wfIds.length-1);
- const fmtAgeM=s=>s<3600?Math.floor(s/60)+'м':Math.floor(s/3600)+'ч';
+ _wfItems=(d.items||[]);
+ _wfIds=_wfItems.map(x=>x.id);if(_wfSel>=_wfIds.length)_wfSel=Math.max(0,_wfIds.length-1);
+ const fmtAgeM=s=>s<3600?Math.floor(s/60)+tUnit('m'):Math.floor(s/3600)+tUnit('h');
  $('wfQueue').innerHTML=d.items.map((x,idx)=>{
   return '<div class="wfi'+(idx===_wfSel?' sel':'')+'" data-id='+x.id+' onclick="wfPick('+idx+')" ondblclick="openInc('+x.id+');goView(\'incidents\')">'+
-   sevBadge(x.severity)+'<div><div class=who>@'+esc(x.actor)+(x.is_campaign?' <span class="badge b-camp">campaign</span>':'')+'</div>'+
-   '<div class=meta>риск '+x.max_risk+' · '+plural(x.alerts,'детект','детекта','детектов')+' · '+plural((x.tactics||[]).length,'тактика','тактики','тактик')+(x.owner?' · <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx=12 cy=7 r=4 /></svg>'+esc(x.owner):'')+'</div></div>'+
+   sevBadge(x.severity)+'<div><div class=who>@'+esc(x.actor)+(x.is_campaign?' <span class="badge b-camp" title="многошаговая кампания: два и более этапа ATT&amp;CK">кампания</span>':'')+'</div>'+
+   '<div class=meta>риск '+fmtRisk(x.max_risk)+' · '+plural(x.alerts,'алерт','алерта','алертов')+' · '+plural((x.tactics||[]).length,'тактика','тактики','тактик')+(x.owner?' · <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx=12 cy=7 r=4 /></svg>'+esc(x.owner):'')+'</div></div>'+
    '<span class=grow></span>'+
    (x.verdict?'<span class="vpill '+x.verdict+'">'+x.verdict.toUpperCase()+'</span>':'')+
    '<span class="stpill '+x.status+'">'+esc(CN[x.status]||x.status)+'</span>'+
@@ -1623,15 +1920,59 @@ async function pollWorkflow(){let d;try{d=await jget('/api/workflow');}catch(e){
 function wfPick(idx){_wfSel=idx;document.querySelectorAll('.wfi').forEach((e,i)=>e.classList.toggle('sel',i===idx));}
 async function wfSet(status,verdict){const id=_wfIds[_wfSel];if(id==null)return;
  await jpost('/api/incident/'+id+'/status',{status:status,verdict:verdict});pollWorkflow();}
+/* Тот же вердикт, что и кнопками в карточке инцидента.
+   Горячая клавиша T слала status='closed' жёстко — ровно та ошибка,
+   которую в карточке уже исправили, но во втором пути оставили.
+   Подтверждённая атака закрытием не заканчивается: её надо вести.
+   Ложное срабатывание — наоборот, работы больше не требует. */
+function wfVerdict(verdict){
+ const it=_wfItems[_wfSel]; if(!it)return;
+ const cur=it.status||'new';
+ const next=(verdict==='fp')?'closed':(cur==='new'?'investigating':cur);
+ wfSet(next,verdict);}
 document.addEventListener('keydown',e=>{if(view!=='workflow')return;if(/input|textarea/i.test((e.target.tagName||'')))return;
  const k=e.key.toLowerCase();
  if(k==='j'){_wfSel=Math.min(_wfIds.length-1,_wfSel+1);wfPick(_wfSel);}
  else if(k==='k'){_wfSel=Math.max(0,_wfSel-1);wfPick(_wfSel);}
- else if(k==='t'){wfSet('closed','tp');}
- else if(k==='f'){wfSet('closed','fp');}
+ else if(k==='t'){wfVerdict('tp');}
+ else if(k==='f'){wfVerdict('fp');}
  else if(k==='e'){wfSet('investigating',null);}
  else if(e.key==='Enter'){const id=_wfIds[_wfSel];if(id!=null){openInc(id);goView('incidents');}}});
-async function snapNow(){$('trendNote').textContent='считаю снапшот…';await jpost('/api/metrics/snapshot',{});setTimeout(()=>{ _trDone=false;pollTrends();},1500);}
+/* ТЕЛЕГРАМ: состояние и ручные действия.
+   Токен сюда не приходит вообще — сервер отдаёт только признак и подсказку
+   вида "8717…46", чтобы можно было убедиться, что подставлен нужный. */
+async function tgRefresh(){
+ const box=$('tgState'); if(!box)return;
+ let d; try{d=await jget('/api/telegram');}catch(e){uiErr('tgRefresh',e);
+  box.className='help empty'; box.textContent='состояние недоступно: '+e.message; return;}
+ if(!d.enabled){
+  box.className='help empty';
+  box.textContent='выключен — '+(d.reason||d.disabled_reason||
+    'нет токена или chat_id (.telegram_token / .telegram_chat)');
+  return;}
+ box.className='';
+ const parts=['<span class="badge b-low">включён</span>',
+  'отправлено <b>'+(d.sent||0)+'</b>',
+  'ошибок <b>'+(d.failed||0)+'</b>',
+  'повторов '+(d.retries||0),
+  'подавлено '+((d.suppressed_flood||0)+(d.suppressed_dup||0)),
+  'токен '+esc(d.token_hint||'—')];
+ if(d.last_error)parts.push('<span class="badge b-crit">последняя ошибка</span> '+esc(d.last_error).slice(0,180));
+ box.innerHTML=parts.join(' · ');}
+async function tgTest(){
+ try{const r=await jpost('/api/telegram/test',{});
+  if(window.toast)toast(r.sent?('Отправлено · бот '+(r.bot||'')) :
+    ('Не отправлено'+(r.ping?'':' — нет связи с Bot API')), r.sent?'ok':'error',6000);
+ }catch(e){uiErr('tgTest',e); if(window.toast)toast('Ошибка: '+e.message,'error',6000);}
+ tgRefresh();}
+async function tgReport(){
+ try{const r=await jpost('/api/telegram/report',{});
+  if(window.toast)toast(r.sent?'Сводка отправлена':'Сводку отправить не удалось',
+                        r.sent?'ok':'error',5000);
+ }catch(e){uiErr('tgReport',e); if(window.toast)toast('Ошибка: '+e.message,'error',6000);}
+ tgRefresh();}
+
+async function snapNow(){$('trendNote').textContent='снимок метрик считается…';await jpost('/api/metrics/snapshot',{});setTimeout(()=>{ _trDone=false;pollTrends();},1500);}
 let _trDone=false;
 /* ============================================================
    ГРАФИК ВРЕМЕННОГО РЯДА.
@@ -1722,7 +2063,7 @@ const TREND_DEFS=[
  {k:'fp_rate',t:'Доля ложных инцидентов',u:'% инцидентов',pct:1,cls:'c-critical',
   lowerBetter:1,foot:'Инциденты, помеченные аналитиком как FP — чем ниже, тем лучше'},
  {k:'mttd',t:'Время до обнаружения',u:'минут',pct:0,cls:'c-medium',
-  lowerBetter:1,foot:'От первого шага атаки до первого детекта, медиана'}];
+  lowerBetter:1,foot:'От первого шага атаки до первого алерта, среднее (MTTD)'}];
 
 async function pollTrends(){let d;try{d=await jget('/api/trends');}catch(e){uiErr('pollTrends',e);return;}
  const H=d.history||[];
@@ -1915,8 +2256,8 @@ async function pollWorkload(){
     '<div class="wl-y wl-r">'+yr+'</div>'+
    '</div>'+
    '<div class=wl-x>'+xs+'</div>'+
-   '<div class=wl-axname><span>← очередь, инцидентов в день</span>'+
-     '<span>порог действия</span><span>полнота обнаружения →</span></div>'+
+   '<div class=wl-axname><span>слева: очередь, инцидентов в день</span>'+
+     '<span>порог действия</span><span>справа: полнота обнаружения</span></div>'+
    '<div class=wl-leg><span><i class=lg-bar></i>очередь: как считает продукт</span>'+
      (alt?'<span><i class=lg-alt></i>очередь: только по риску, без обхода</span>':'')+
      (cap?'<span><i class=lg-cap></i>ёмкость смены: '+wlFmt(cap,0)+' инц./день</span>':'')+
@@ -1949,11 +2290,26 @@ function hoursHist(hh){if(!hh||!hh.length)return '';
 async function pollEntities(){const d=await jget('/api/entities');
  // «1 алертов» — числительное не согласовано. Функция plural() в файле
  // уже была, здесь её просто не позвали.
- $('entList').innerHTML=(d.entities||[]).map(e=>'<div class=inc onclick="openEnt(\''+escJs(e.actor)+'\')"><div class=h>'+
+ $('entList').innerHTML=(d.entities||[]).map(e=>'<div class=inc data-ent="'+esc(e.actor)+'" tabindex=0 role=button onclick="openEnt(\''+escJs(e.actor)+'\')"><div class=h>'+
    '<span class=a>@'+esc(e.actor)+'</span><span class=grow></span><span class=sub>'+
-   plural(e.alerts,'детект','детекта','детектов')+' · '+fmtNum(e.events_seen)+' соб.</span></div></div>').join('')
-   ||'<div class="help empty">Акторов пока нет.</div>';}
-async function openEnt(a){const e=await jget('/api/entity/'+encodeURIComponent(a));const b=e.baseline;
+   plural(e.alerts,'алерт','алерта','алертов')+' · '+fmtNum(e.events_seen)+' соб.</span></div></div>').join('')
+   ||'<div class="help empty">Акторов пока нет.</div>';
+ /* Открываем первого актора сразу. Экран встречал пустой правой панелью с
+    надписью «Выберите актора», хотя выбирать было из пяти строк — лишний
+    клик на пути к единственному содержимому страницы. */
+ if(!_entOpen&&(d.entities||[]).length){_entOpen=d.entities[0].actor;openEnt(_entOpen);}
+ markEntSel();}
+let _entOpen=null;
+/* Справа открыт актор, а в списке слева ни одна строка не отмечена: связь
+   между колонками держалась только в голове аналитика. Плюс список
+   перестраивается опросом каждые несколько секунд, поэтому отметку надо
+   ставить не по клику, а после каждой перерисовки. */
+function markEntSel(){
+ document.querySelectorAll('#entList .inc[data-ent]').forEach(function(el){
+  var on=el.getAttribute('data-ent')===_entOpen;
+  el.classList.toggle('sel',on);
+  el.setAttribute('aria-current',on?'true':'false');});}
+async function openEnt(a){_entOpen=a;markEntSel();const e=await jget('/api/entity/'+encodeURIComponent(a));const b=e.baseline;
  $('entTtl').textContent='@'+a;
  const hits=Object.keys(e.tactics_hit||{});
  const alerts=e.recent_alerts||[];
@@ -1965,18 +2321,18 @@ async function openEnt(a){const e=await jget('/api/entity/'+encodeURIComponent(a
     '<div class="chain mt-2">'+hits.map(t=>'<span class=chip>'+esc(t)+' ×'+e.tactics_hit[t]+'</span>').join(' ')+'</div></div>'
   : '';
  const recent=alerts.length
-  ? '<div class=mt-4><div class=t-label>Недавние детекты</div>'+
+  ? '<div class=mt-4><div class=t-label>Недавние алерты</div>'+
     '<div class="feed scrollbox h-md mt-2">'+alerts.map(x=>'<div class="al '+rkcls(x.risk)+'">'+
       '<span class=ts>'+esc((x.ts_sim||'').replace('T',' ').slice(5,16))+'</span>'+
       '<span>'+esc(actName(x.action))+' → '+esc(x.project)+'</span>'+
       (x.technique?'<span class=tech>'+esc(x.technique)+'</span>':'')+
-      '<span class="rk '+rkcls(x.risk)+'">'+x.risk+'</span></div>').join('')+'</div></div>'
+      '<span class="rk '+rkcls(x.risk)+'">'+fmtRisk(x.risk)+'</span></div>').join('')+'</div></div>'
   : '';
  const quiet=(!hits.length&&!alerts.length)
-  ? '<div class="help empty mt-4">Ни одного детекта по этому актору — поведение в пределах базовой линии.</div>'
+  ? '<div class="help empty mt-4">Ни одного алерта по этому актору — поведение в пределах базовой линии.</div>'
   : '';
  $('entDetail').innerHTML='<div>'+sevBadge(e.risk_label)+
-   ' <span class=sub>пиковый риск '+e.max_risk+' · '+plural(e.alerts_total,'детект','детекта','детектов')+'</span></div>'+
+   ' <span class=sub>пиковый риск '+fmtRisk(e.max_risk)+' · '+plural(e.alerts_total,'алерт','алерта','алертов')+'</span></div>'+
   (b?('<div class=mt-4><div class=t-label>Базовая линия поведения</div>'+
    '<div class="sub mt-1">накоплено '+fmtNum(b.events_seen)+' событий</div>'+
    hoursHist(b.hours_hist)+
@@ -1988,9 +2344,13 @@ async function openEnt(a){const e=await jget('/api/entity/'+encodeURIComponent(a
    :'<div class="help empty mt-4">Базовая линия ещё не накоплена.</div>')+
   why+recent+quiet;}
 async function pollRed(){const d=await jget('/api/red');
- $('camps').innerHTML=(d.campaigns||[]).map(c=>'<div class=inc><div class=h><span class=a>'+esc(c.title)+'</span>'+
-   '<span class=grow></span><button class=btn onclick="launch(\''+c.key+'\')"><svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Запустить</button></div>'+
-   '<div class="chain mt-2">'+c.steps.map((s,n)=>'<span class=chip><b>'+(n+1)+'.</b> <span class=t>'+esc(s.tactic)+'</span> '+esc(s.technique)+'</span>').join(' → ')+'</div></div>').join('');
+ /* Три КОЛОНКИ фиксированной ширины, а не flex-строка. Раньше название,
+    кнопка и цепочка лежали в одном flex-контейнере, ширина названия у
+    каждого сценария своя — и кнопка «Запустить» вставала у каждой строки на
+    своём месте. Список из пятнадцати сценариев выглядел рассыпанным. */
+ $('camps').innerHTML=(d.campaigns||[]).map(c=>'<div class=scen><span class=scen-n>'+esc(c.title)+'</span>'+
+   '<button class="btn scen-go" onclick="launch(\''+c.key+'\')"><svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Запустить</button>'+
+   '<div class=chain>'+c.steps.map((s,n)=>'<span class=chip><b>'+(n+1)+'.</b> <span class=t>'+esc(s.tactic)+'</span> '+esc(s.technique)+'</span>').join(' → ')+'</div></div>').join('');
  /* Очередь читается человеком: служебные слова переводим, снейк-кейс
     сценария разворачиваем в название, «3/4 steps» — в «шаг 3 из 4». */
  const CMD_T={campaign:'кампания',response:'реагирование',reset:'сброс'};
@@ -2004,6 +2364,10 @@ async function pollRed(){const d=await jget('/api/red');
  const human=r=>{
    if(!r)return '';
    if(/^https?:\/\//.test(r))return '<a href="'+esc(r)+'" target=_blank>открыть issue&nbsp;<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></a>';
+   /* В старых записях очереди result начинался с префикса статуса
+      («failed: …»), и строка печаталась как «ошибка · failed: …».
+      Источник исправлен, а уже лежащие в базе записи чистим здесь. */
+   r=String(r).replace(/^(failed|error|done|ok)\s*:\s*/i,'');
    let m=r.match(/^([a-z_]+):\s*(\d+)\/(\d+)\s*steps?$/i);
    if(m)return esc(SCEN[m[1]]||m[1].replace(/_/g,' '))+' · шаг '+m[2]+' из '+m[3];
    m=r.match(/^([a-z_]+)$/i);
@@ -2018,10 +2382,15 @@ async function pollRed(){const d=await jget('/api/red');
      (tail?(' · '+tail):'')+'</b></div>';}).join('')||'<div class="help empty">команд нет</div>';}
 let _redPoll=null;
 const _TEMPO_RU={fast:'быстро',realistic:'реалистично',slow:'медленно'};
+/* Профиль скрытности выводился ключом конфигурации: в панели результата
+   стояло «Профиль noisy» — при том, что в самом селекторе над кнопкой
+   этот же профиль называется по-русски. */
+const _EVASION_RU={noisy:'не маскируется',moderate:'умеренно',stealthy:'медленно и незаметно'};
 const _CMDST_RU={done:'выполнено',queued:'в очереди',running:'выполняется',pending:'ожидает',failed:'ошибка',error:'ошибка'};
 function _hhmm(sec){return sec?new Date(sec*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';}
 function gotoInc(id){goView('incidents');setTimeout(()=>{if(window.openInc)openInc(id);},260);}
 function renderRedResult(title,ev,tp,nsteps,d){
+ const _rr=$('redResult'); if(_rr)_rr.hidden=false;
  const incs=d.incidents||[], dets=d.detections||0;
  const st=_CMDST_RU[d.cmd_status]||(d.cmd_status||'в очереди');
  const first=incs.length?_hhmm(Math.min.apply(null,incs.map(i=>i.seen_real||1e18))):'';
@@ -2031,9 +2400,9 @@ function renderRedResult(title,ev,tp,nsteps,d){
    '<div class=metrics>'+
     '<div><span class=mk>Статус</span><span class=mv>'+esc(st)+'</span></div>'+
     '<div><span class=mk>Шагов</span><span class=mv>'+nsteps+'</span></div>'+
-    '<div><span class=mk>Детектов</span><span class="mv'+(dets?' bad':'')+'">'+dets+'</span></div>'+
+    '<div><span class=mk>Алертов</span><span class="mv'+(dets?' bad':'')+'">'+dets+'</span></div>'+
     '<div><span class=mk>Инцидентов</span><span class="mv'+(incs.length?' bad':'')+'">'+incs.length+'</span></div>'+
-    '<div><span class=mk>Профиль</span><span class=mv>'+esc(ev)+'</span></div>'+
+    '<div><span class=mk>Профиль</span><span class=mv>'+esc(_EVASION_RU[ev]||ev)+'</span></div>'+
     '<div><span class=mk>Темп</span><span class=mv>'+esc(_TEMPO_RU[tp]||tp)+'</span></div>'+
    '</div>';
  if(!incs.length){
@@ -2044,25 +2413,25 @@ function renderRedResult(title,ev,tp,nsteps,d){
   // показывал ноль, а через минуту поднимал инцидент с риском 0.83.
   const медленно = (ev==='stealthy' || tp==='slow');
   h+= (готово && !медленно)
-   ? '<div class="vbanner fp mt-3"><span class=vt>Детектов пока нет</span>'+
+   ? '<div class="vbanner fp mt-3"><span class=vt>Алертов пока нет</span>'+
      '<span>Сценарий отработал, но ни одно правило и ни один поведенческий слой не сработали. '+
      'Если через несколько минут пусто — это слепая зона и кандидат на новое правило.</span></div>'
    : '<div class="help empty mt-3">'+(готово
-       ? 'Сценарий поставлен целиком. Профиль растянут во времени — детекты приходят с задержкой.'
-       : 'Атака разворачивается, ждём детекты…')+'</div>';}
+       ? 'Сценарий поставлен целиком. Профиль растянут во времени — алерты приходят с задержкой.'
+       : 'Атака разворачивается, ждём алерты…')+'</div>';}
  else{h+='<div class=mt-3>'+incs.map(i=>{
    const tm=_hhmm(i.seen_real), tech=(i.techniques||[]).slice(0,5).join(', ');
    return '<div class=row>'+
      '<span class=mono>#'+i.id+'</span> <span>@'+esc(i.actor||'')+'</span>'+
      sevBadge(i.severity||'low')+
      '<span class="rk '+rkcls(i.risk)+'">'+i.risk+'</span>'+
-     (i.is_campaign?'<span class="badge b-camp">многошаговая</span>':'')+
+     (i.is_campaign?'<span class="badge b-camp" title="многошаговая кампания: два и более этапа ATT&amp;CK">кампания</span>':'')+
      // Инцидент мог быть заведён этим запуском, а мог существовать раньше:
      // детекты подклеиваются к тому же актору в окне корреляции.
      (i.is_new?'<span class="stpill new">новый</span>'
               :'<span class="stpill investigating">пополнен</span>')+
      '<span class=grow></span>'+
-     '<span class=sub>'+esc(tech)+' · '+plural(i.n_alerts,'новый детект','новых детекта','новых детектов')+
+     '<span class=sub>'+esc(tech)+' · '+plural(i.n_alerts,'новый алерт','новых алерта','новых алертов')+
        (i.n_alerts_total&&i.n_alerts_total!==i.n_alerts?(' из '+i.n_alerts_total):'')+
        (tm?(' · '+tm):'')+'</span> '+
      '<a onclick="gotoInc('+i.id+')" class=clickable>Открыть</a></div>';}).join('')+'</div>';}
@@ -2075,7 +2444,12 @@ async function launch(key){
  const r=await jpost('/api/red/launch',{key:key,evasion:ev,tempo:tp});
  $('redToast').textContent=r.msg||'';
  if(!r.ok){if(window.toast)toast('Не удалось запустить: '+(r.msg||'ошибка'),'error');return;}
- if(window.toast)toast('Кампания запущена — результат ниже','success',4000);
+ // Кампанию выполняет процесс мира, разбирая очередь по одной за итерацию.
+ // Раньше тост говорил «Кампания запущена», даже когда она стояла двадцатой
+ // в очереди, и человек ждал у пустого результата, не зная почему.
+ if(window.toast)toast(r.queue_ahead
+   ? ('В очереди: перед этой кампанией ещё '+r.queue_ahead)
+   : 'Кампания запущена — результат ниже','success',4000);
  const started=r.launched_at||(Date.now()/1000), cid=r.cmd, title=r.title||key, nsteps=r.steps||0;
  if(_redPoll){clearInterval(_redPoll);_redPoll=null;}
  const t0=Date.now();
@@ -2094,6 +2468,8 @@ async function launch(key){
    рядом с рабочими показателями — это шум: аналитику не нужно знать про
    конкретный сервис, ему нужен поток событий и детекты. Инфраструктура
    переехала сюда, в диагностику, где ей и место. */
+const GL_STATE={ok:['ok','на связи'], error:['bad','нет связи'],
+                offline:['warn','офлайн'], unknown:['','не проверяется тут']};
 async function pollInfra(){
  const box=$('diagInfra');if(!box)return;
  let h={},s={};
@@ -2101,15 +2477,40 @@ async function pollInfra(){
  try{s=await jget('/api/stats');}catch(e){uiErr('pollInfra',e)}
  const ev=h.events||{};
  const rows=[
-  ['GitLab',        h.gitlab!==false?'ok':'bad', h.gitlab!==false?'на связи':'нет связи'],
+  // Три состояния, а не булево. Условие `h.gitlab!==false` было истинным
+  // и тогда, когда поля gitlab в ответе НЕ БЫЛО вовсе (undefined!==false),
+  // поэтому плитка всегда горела зелёным «на связи» — включая offline-режим,
+  // где к GitLab не обращаются. Консоль защиты к GitLab не ходит по
+  // устройству, и «не знаю» здесь — честный ответ.
+  ['GitLab',        GL_STATE[(h.gitlab||{}).state||'unknown'][0],
+                    GL_STATE[(h.gitlab||{}).state||'unknown'][1],
+                    (h.gitlab||{}).detail||''],
   ['Симуляция',     h.world_alive?'ok':(ev.total>0?'warn':'bad'), h.world_alive?'пишет':'нет данных'],
   ['Хранилище событий', ev.total>0?'ok':'bad', fmtNum(ev.total||0)+' соб.'],
   ['Детектор',      (s.rules||0)>0?'ok':'warn', nRule(s.rules||0)],
   ['Приём событий', (s.processed||0)>0?'ok':'warn', fmtNum(s.processed||0)+' обраб.'],
   ['Техники ATT&CK', (s.techniques_fired||0)>0?'ok':'warn', nTech(s.techniques_fired||0)+' сработало'],
-  ['LLM (Ollama)',  h.ollama?'ok':'warn', h.ollama?'готова':'недоступна'],
+  ['LLM (Ollama)',  h.ollama?'ok':'warn', h.ollama?'готова':'недоступна', h.ollama_reason||''],
+  ['Telegram', (h.telegram&&h.telegram.enabled)?((h.telegram.failed>0&&!h.telegram.sent)?'warn':'ok'):'',
+   (h.telegram&&h.telegram.enabled)?('отправлено '+(h.telegram.sent||0)+', ошибок '+(h.telegram.failed||0)):'выключен',
+   (h.telegram&&(h.telegram.last_error||h.telegram.reason))||''],
   ['Авто-триаж',    h.auto_triage?'ok':'', h.auto_triage?'включён':'выключен']];
- box.innerHTML=rows.map(r=>healthTile(r[0],r[1],r[2],'')).join('');}
+ box.innerHTML=rows.map(r=>healthTile(r[0],r[1],r[2],r[3]||'')).join('');}
+
+async function renderClientErrors(){
+ const host=$('uiErrList'); if(!host)return;
+ let d=null;
+ try{d=await jget('/api/diag/bundle');}catch(e){uiErr('renderClientErrors',e);return;}
+ const rows=(d&&d.client_errors)||[];
+ const cnt=$('uiErrCount'); if(cnt)cnt.textContent=rows.length?nErr(rows.length):'';
+ if(!rows.length){host.innerHTML='<div class="help empty">Сбоев интерфейса не зафиксировано.</div>';return;}
+ host.innerHTML=rows.slice(-40).reverse().map(function(r){
+  return '<div class=ds-feed-row><span class=mono>'+esc(r.ts)+'</span>'+
+   '<span class=ds-feed-txt><b>'+esc(r.where)+'</b> — '+esc(r.message)+'</span></div>'+
+   (r.stack?'<details class=explain><summary>трейсбек</summary><pre class="llmctx scrollbox h-sm">'+esc(r.stack)+'</pre></details>':'');
+ }).join('');}
+
+function nErr(n){return plural(n,'сбой','сбоя','сбоев');}
 
 async function pollDiag(){let d;try{d=await jget('/api/diag');}catch(e){return;}
  const c=d.counts||{};
@@ -2156,10 +2557,53 @@ const CASE_ST={open:'в работе',hold:'ожидает',contained:'лока�
 const CASE_PR={low:'низкий',medium:'средний',high:'высокий',critical:'критический'};
 let _cases=null,_caseSel=null,_caseInc=[],_caseF='';
 
-function caseLoad(){if(_cases)return _cases;
- try{_cases=JSON.parse(localStorage.getItem(CASE_KEY)||'[]');}catch(e){_cases=[];}
- if(!Array.isArray(_cases))_cases=[];return _cases;}
-function caseFlush(){try{localStorage.setItem(CASE_KEY,JSON.stringify(_cases||[]));}catch(e){uiErr('caseFlush',e)}}
+/* ДЕЛА ХРАНЯТСЯ НА СЕРВЕРЕ.
+
+   Раньше здесь был localStorage, и собранное аналитиком расследование —
+   ответственный, статус, история действий, заметки — существовало ровно в
+   одном браузере. Вердикты TP/FP при этом уходили в SQLite и переживали
+   перезапуск: половина работы аналитика сохранялась, половина нет, и узнать
+   об этом можно было только потеряв её.
+
+   caseLoad() синхронный, потому что его зовут из отрисовки; данные тянет
+   caseSync() при входе в раздел, а запись уходит на сервер немедленно. */
+function caseLoad(){return _cases||(_cases=[]);}
+
+async function caseSync(){
+ try{
+  const d=await jget('/api/cases');
+  _cases=Array.isArray(d.cases)?d.cases:[];
+  await caseMigrate();
+ }catch(e){uiErr('caseSync',e);}
+ return _cases;}
+
+/* Разовый перенос дел, заведённых до появления серверного хранилища.
+   Без него они просто пропали бы при первом же обновлении консоли. */
+async function caseMigrate(){
+ let local=[];
+ try{local=JSON.parse(localStorage.getItem(CASE_KEY)||'[]');}catch(x){}
+ if(!Array.isArray(local)||!local.length)return;
+ try{
+  const r=await jpost('/api/cases/import',{cases:local});
+  try{localStorage.removeItem(CASE_KEY);}catch(x){}
+  if(r&&r.imported){
+   if(window.toast)toast('Перенесено дел из браузера: '+r.imported,'ok',5000);
+   const d=await jget('/api/cases'); _cases=Array.isArray(d.cases)?d.cases:_cases;
+  }
+ }catch(e){uiErr('caseMigrate',e);}}
+
+/* Запись: сохраняем КАЖДОЕ изменённое дело отдельно, а не список целиком —
+   так две вкладки не затирают работу друг друга. */
+function caseFlush(id){
+ const list=(id!=null)?(_cases||[]).filter(c=>c.id===id):(_cases||[]);
+ list.forEach(function(c){
+  jpost('/api/cases',c).catch(function(e){
+   // Молчаливый uiErr означал «правки дела не сохранились, но никто не узнал»:
+   // потеря обнаруживалась только после перезапуска консоли.
+   uiErr('caseFlush',e);
+   if(window.toast)toast('Изменения дела '+c.id+' НЕ сохранены: '+(e.message||e),'error',8000);
+  });
+ });}
 function caseNow(){const d=new Date(),p=n=>String(n).padStart(2,'0');
  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}
 function caseById(id){return caseLoad().filter(c=>c.id===id)[0]||null;}
@@ -2168,19 +2612,38 @@ function casePrCls(p){return p==='critical'?'b-crit':(p==='high'?'b-high':(p==='
 function caseFilter(f){_caseF=f;
  document.querySelectorAll('#v-cases .cf').forEach(b=>b.classList.toggle('on',b.dataset.f===f));caseRender();}
 
-function caseNew(){
+/* Дело подтверждает СЕРВЕР. Раньше caseNew() добавлял дело в массив
+   страницы, отправлял POST «вслепую» (fire-and-forget) и СРАЗУ показывал
+   «Заведено дело CASE-1001». Если сервер запрос отклонял — а он его
+   отклонял, пока обе консоли делили одно имя CSRF-cookie (FIX-068), — дело
+   существовало только на экране и исчезало при первом же перезапуске.
+   Успех теперь объявляется после ответа сервера, отказ — виден. */
+async function caseNew(){
  const l=caseLoad();let n=1001;
  l.forEach(c=>{const v=parseInt(String(c.id).replace(/\D/g,''),10);if(v>=n)n=v+1;});
  const c={id:'CASE-'+n,title:'Новое дело',owner:'',status:'open',prio:'medium',
           created:caseNow(),incidents:[],log:[]};
  caseNote(c,'дело заведено');
- l.unshift(c);caseFlush();_caseSel=c.id;caseRender();caseOpen(c.id);
- if(window.toast)toast('Заведено дело '+c.id,'success');
+ l.unshift(c);_caseSel=c.id;caseRender();caseOpen(c.id);
+ try{
+  await jpost('/api/cases',c);
+  if(window.toast)toast('Заведено дело '+c.id,'success');
+ }catch(e){
+  _cases=caseLoad().filter(x=>x.id!==c.id);   // не оставляем призрак на экране
+  _caseSel=null;caseRender();
+  if(window.toast)toast('Дело НЕ сохранено: '+(e.message||e),'error',8000);
+  uiErr('caseNew',e);
+  return null;
+ }
  return c;}
 
 function caseDel(id){
  if(!confirm('Удалить дело '+id+'? История действий пропадёт.'))return;
- _cases=caseLoad().filter(c=>c.id!==id);caseFlush();
+ _cases=caseLoad().filter(c=>c.id!==id);
+ // Удаляем НА СЕРВЕРЕ: caseFlush() только сохраняет, поэтому без этого вызова
+ // дело вернулось бы при следующей синхронизации.
+ fetch('/api/cases/'+encodeURIComponent(id),{method:'DELETE',headers:csrfHeaders()})
+   .catch(function(e){uiErr('caseDel',e);});
  if(_caseSel===id){_caseSel=null;
   const b=$('caseDetail');if(b){b.className='sub';b.innerHTML='выберите дело слева или создайте новое';}
   const t=$('caseTtl');if(t)t.textContent='Карточка дела';}
@@ -2245,9 +2708,9 @@ function caseOpen(id){
    '<span class=grow></span>'+
    '<button class="btn ghost danger" onclick="caseDel(\''+c.id+'\')">Удалить</button></div>'+
   '<div class=ds-drawer-sec><div class=t-label>Сводка</div><div class=ds-kv>'+
-   kvRow('Инцидентов в деле',(c.incidents||[]).length+(a.known<a.total?(' (в текущем окне видно '+a.known+')'):''))+
-   kvRow('Детектов суммарно',a.alerts)+
-   kvRow('Пиковый риск',a.risk?a.risk.toFixed(2):'—')+
+   kvRow('Инцидентов в деле',(c.incidents||[]).length+(a.known<a.total?(' ('+tWord('в текущем окне видно','visible in current window')+' '+a.known+')'):''))+
+   kvRow('Алертов суммарно',a.alerts)+
+   kvRow('Пиковый риск',fmtRisk(a.risk))+
    kvRow('Критичных инцидентов',a.crit)+
    kvRow('Фигуранты',a.actors.length?esc(a.actors.join(', ')):'—')+
    kvRow('Репозитории',a.repos.length?esc(a.repos.join(', ')):'—')+
@@ -2267,8 +2730,8 @@ function caseIncList(c,m){
   return '<div class="help empty">инцидентов нет — приобщите их кнопкой ниже или из карточки инцидента</div>';
  return '<div class=ds-ev-list>'+(c.incidents||[]).map(id=>{const i=m[id];
   return '<div class=case-inc><span class=case-inc-id>#'+esc(id)+'</span>'+
-   (i?(sevBadge(i.severity)+'<span class=sub>@'+esc(i.actor||'')+' · '+plural(i.alerts||0,'детект','детекта','детектов')+' · риск '+
-       (i.max_risk||0).toFixed(2)+'</span>')
+   (i?(sevBadge(i.severity)+'<span class=sub>@'+esc(i.actor||'')+' · '+plural(i.alerts||0,'алерт','алерта','алертов')+' · риск '+
+       fmtRisk(i.max_risk)+'</span>')
      :'<span class=sub>вне текущего окна выдачи</span>')+
    '<span class=grow></span>'+
    (i?'<button class="btn ghost xs" onclick="caseGoInc('+id+')">Открыть</button>':'')+
@@ -2310,8 +2773,8 @@ function caseAddOpen(cid){
  const free=(_caseInc||[]).filter(i=>!have[i.id]);
  const body=free.length
   ?('<div class=ds-ev-list>'+free.map(i=>'<div class=case-inc><span class=case-inc-id>#'+i.id+'</span>'+
-     sevBadge(i.severity)+'<span class=sub>@'+esc(i.actor||'')+' · '+plural(i.alerts||0,'детект','детекта','детектов')+' · риск '+
-     (i.max_risk||0).toFixed(2)+((i.repos||[]).length?(' · '+esc(i.repos.join(', '))):'')+'</span>'+
+     sevBadge(i.severity)+'<span class=sub>@'+esc(i.actor||'')+' · '+plural(i.alerts||0,'алерт','алерта','алертов')+' · риск '+
+     fmtRisk(i.max_risk)+((i.repos||[]).length?(' · '+esc(i.repos.join(', '))):'')+'</span>'+
      '<span class=grow></span><button class="btn xs" onclick="caseLink(\''+cid+'\','+i.id+')">Приобщить</button></div>').join('')+'</div>')
   :'<div class="help empty">все инциденты из текущей выдачи уже в деле</div>';
  dsDrawer('Приобщить инцидент к '+esc(cid),body);}
@@ -2347,8 +2810,8 @@ function caseReport(cid){
  const a=caseAgg(c),m=caseIncMap();
  const E=x=>String(x==null?'':x).replace(/[&<>]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
  const rows=(c.incidents||[]).map(id=>{const i=m[id];
-  return '<tr><th scope=row>#'+E(id)+'</th><td>'+(i?(E(i.severity)+' · @'+E(i.actor)+' · риск '+i.max_risk+
-   ' · '+plural(i.alerts||0,'детект','детекта','детектов')+' · '+E((i.tactics||[]).join(' → '))):'вне текущего окна выдачи')+'</td></tr>';}).join('')
+  return '<tr><th scope=row>#'+E(id)+'</th><td>'+(i?(E(i.severity)+' · @'+E(i.actor)+' · риск '+fmtRisk(i.max_risk)+
+   ' · '+plural(i.alerts||0,'алерт','алерта','алертов')+' · '+E((i.tactics||[]).join(' → '))):'вне текущего окна выдачи')+'</td></tr>';}).join('')
   ||'<tr><th scope=row>—</th><td>инцидентов в деле нет</td></tr>';
  const log=(c.log||[]).map(e=>'<tr><th scope=row>'+E(e.ts)+'</th><td>'+E(e.t)+'</td></tr>').join('')
   ||'<tr><th scope=row>—</th><td>записей нет</td></tr>';
@@ -2359,8 +2822,8 @@ function caseReport(cid){
   '<div class=meta>'+E(c.id)+' · заведено '+E(c.created||'')+' · сформировано '+E(caseNow())+'</div>'+
   '<div class=kpis>'+
    '<div class=k><b>'+(c.incidents||[]).length+'</b><span>инцидентов</span></div>'+
-   '<div class=k><b>'+a.alerts+'</b><span>детектов</span></div>'+
-   '<div class=k><b>'+(a.risk?a.risk.toFixed(2):'—')+'</b><span>пиковый риск</span></div>'+
+   '<div class=k><b>'+a.alerts+'</b><span>алертов</span></div>'+
+   '<div class=k><b>'+fmtRisk(a.risk)+'</b><span>пиковый риск</span></div>'+
    '<div class=k><b>'+a.crit+'</b><span>критичных</span></div></div>'+
   '<h2>Карточка дела</h2><table>'+
    '<tr><th scope=row>Статус</th><td>'+E(CASE_ST[c.status]||c.status||'')+'</td></tr>'+
@@ -2436,9 +2899,11 @@ function rpBuild(){
  const ev=_rpRaw.ev.filter(e=>e.t>=from);
  const ic=_rpRaw.inc.filter(i=>(i.b||i.a)>=from);
  const cnt=$('rpCount');
- if(cnt)cnt.textContent=plural(ev.length,'детект','детекта','детектов')+' · '+plural(ic.length,'инцидент','инцидента','инцидентов')+
-   (ev.length<_rpRaw.ev.length?(' (всего в журнале '+_rpRaw.ev.length+')'):'');
- if(!ev.length&&!ic.length)return empty('в этом окне детектов нет — возьмите период шире');
+ if(cnt)cnt.textContent=plural(ev.length,'алерт','алерта','алертов')+' · '+plural(ic.length,'инцидент','инцидента','инцидентов')+
+   (ev.length<_rpRaw.ev.length?(' ('+tWord('всего в журнале','total in log')+' '+_rpRaw.ev.length+')'):'');
+ if(!ev.length&&!ic.length)return empty(tWord(
+   'в этом окне алертов нет — возьмите период шире',
+   'no detections in this window — widen the period'));
 
  const all=[].concat(ev.map(e=>e.t),ic.map(i=>i.a),ic.map(i=>i.b||i.a)).filter(Boolean);
  let t0=Math.min.apply(null,all),t1=Math.max.apply(null,all);
@@ -2471,7 +2936,7 @@ function rpDraw(){
    if(k<0)k=rowEnd.indexOf(Math.min.apply(null,rowEnd));
    rowEnd[k]=l+wd;
    return '<span class="rp-bar '+esc(i.sev)+'" style="left:'+l+'%;width:'+wd+'%;top:'+(3+k*12)+
-    'px" title="#'+i.id+' · @'+esc(i.actor)+' · '+plural(i.n,'детект','детекта','детектов')+'" onclick="caseGoInc('+i.id+')">'+
+    'px" title="#'+i.id+' · @'+esc(i.actor)+' · '+plural(i.n,'алерт','алерта','алертов')+'" onclick="caseGoInc('+i.id+')">'+
     (wd>=4?('#'+i.id):'')+'</span>';}).join('');
  w.innerHTML=
   '<div class=rp-lane><span class=rp-lane-n>Детекты</span><div class=rp-track>'+dots+'<b class=rp-head></b></div></div>'+
@@ -2487,7 +2952,7 @@ function rpSeek(v){
  const w=$('rpWrap');if(!w)return;
  w.querySelectorAll('.rp-head').forEach(e=>e.style.left=(_rpPos/10)+'%');
  const c=$('rpClock');
- if(c)c.textContent=rpFmt(cur)+' · '+rpDur(Math.max(0,cur-_rp.first))+' от первого детекта';
+ if(c)c.textContent=rpFmt(cur)+' · '+rpDur(Math.max(0,cur-_rp.first))+' от первого алерта';
  const dots=w.querySelectorAll('.rp-dot');
  for(let i=0;i<dots.length&&i<_rp.ev.length;i++)dots[i].classList.toggle('past',_rp.ev[i].t<=cur);
  const tel=w.querySelectorAll('.rp-tac');
@@ -2508,7 +2973,7 @@ function rpSide(cur){
      '<div class=ds-tl-title>@'+esc(e.actor)+(e.act?(' · '+esc(e.act)):'')+'</div>'+
      '<div class=ds-tl-desc>'+esc(e.reason||'')+(e.tech?(' · '+esc(e.tech)):'')+
      (e.repo?(' · '+esc(e.repo)):'')+'</div></div>').join('')+'</div>')
-  :'<div class="help empty">на этот момент детектов ещё не было — двигайте курсор вправо</div>';
+  :'<div class="help empty">на этот момент алертов ещё не было — двигайте курсор вправо</div>';
  /* «ведущий» считаем по числу детектов, а ничью разводим пиковым
     риском: две тактики по два срабатывания — не одно и то же */
  const acts={},tacs={},repos={};
@@ -2519,17 +2984,17 @@ function rpSide(cur){
  const crit=opened.filter(i=>i.sev==='critical').length;
  const st=$('rpState');
  if(st)st.innerHTML='<div class=rp-tiles>'+
-   rpTile('детектов',seen.length)+rpTile('инцидентов',opened.length)+
+   rpTile('алертов',seen.length)+rpTile('инцидентов',opened.length)+
    rpTile('критичных',crit)+rpTile('прошло',rpDur(Math.max(0,cur-_rp.first)))+'</div>'+
   '<div class="ds-kv mt-4">'+
    kvRow('Самый активный',esc(top(acts)))+
    kvRow('Ведущая тактика',esc(top(tacs)))+
    kvRow('Горячий репозиторий',esc(top(repos)))+
-   kvRow('Первый детект',seen.length?rpFmt(seen[0].t):'—')+'</div>'+
+   kvRow('Первый алерт',seen.length?rpFmt(seen[0].t):'—')+'</div>'+
   (opened.length?('<div class=ds-drawer-sec><div class=t-label>Инциденты, открытые к этому моменту</div>'+
     '<div class=ds-ev-list>'+opened.slice(-6).reverse().map(i=>
      '<div class=case-inc><span class=case-inc-id>#'+i.id+'</span>'+sevBadge(i.sev)+
-     '<span class=sub>@'+esc(i.actor)+' · '+plural(i.n,'детект','детекта','детектов')+'</span><span class=grow></span>'+
+     '<span class=sub>@'+esc(i.actor)+' · '+plural(i.n,'алерт','алерта','алертов')+'</span><span class=grow></span>'+
      '<button class="btn ghost xs" onclick="caseGoInc('+i.id+')">Открыть</button></div>').join('')+'</div></div>'):'');}
 
 function rpToggle(){
@@ -2551,7 +3016,7 @@ function rpSpeed(){
 
 /* ============================================================
    ПРОФИЛЬ РИСКА КОМАНДЫ. Кто и какие репозитории тянут риск.
-   Считается только по наблюдаемым данным — детекты и
+   Считается только по наблюдаемым данным — алерты и
    инциденты; меток симулятора здесь нет (анти-лик).
    ============================================================ */
 let _riskDev=[],_riskRep=[],_riskAl=[];
@@ -2606,9 +3071,9 @@ async function pollRisk(){
 
 function riskTable(id,rows,c1,c2){
  const box=$(id);if(!box)return;
- if(!rows.length){box.innerHTML='<div class="help empty">данных пока нет — детекты ещё не появлялись</div>';return;}
+ if(!rows.length){box.innerHTML='<div class="help empty">данных пока нет — алерты ещё не появлялись</div>';return;}
  box.innerHTML='<div class=ds-tablewrap><table class=ds-table><thead><tr>'+
-  '<th scope=col>'+c1+'</th><th scope=col>риск</th><th scope=col class=num>детектов</th><th scope=col class=num>инц.</th>'+
+  '<th scope=col>'+c1+'</th><th scope=col>балл риска</th><th scope=col class=num>алертов</th><th scope=col class=num>инц.</th>'+
   '<th scope=col class=num>техник</th><th scope=col class=num>'+c2+'</th></tr></thead><tbody>'+
   rows.slice(0,12).map(d=>'<tr onclick="riskDrill(\''+encodeURIComponent(d.key)+'\')">'+
    '<td><b>'+esc(d.key)+'</b></td>'+
@@ -2616,7 +3081,7 @@ function riskTable(id,rows,c1,c2){
     '<b class="rk-n '+riskCls(d.score)+'">'+d.score+'</b></div></td>'+
    '<td class=num>'+d.n+'</td><td class=num>'+d.inc+'</td>'+
    '<td class=num>'+d.tech+'</td><td class=num>'+d.peers+'</td></tr>').join('')+
-  '</tbody></table></div><div class="sub mt-2">Клик по строке — детали и последние детекты.</div>';}
+  '</tbody></table></div><div class="sub mt-2">Клик по строке — детали и последние алерты.</div>';}
 
 function riskStrip(inc){
  const box=$('riskStrip');if(!box)return;
@@ -2627,32 +3092,37 @@ function riskStrip(inc){
   '<div class=ds-covcard><div class="ds-covcard-n '+(hi?'crit':'ok')+'">'+hi+
    (_riskDev.length?('<span style="font-size:15px;color:var(--text-3)"> из '+_riskDev.length+'</span>'):'')+
    '</div><div class=ds-covcard-l>в критической зоне</div></div>'+
-  '<div class=ds-covcard><div class=ds-covcard-n>'+avg+'</div><div class=ds-covcard-l>средний риск команды</div></div>'+
+  '<div class=ds-covcard><div class=ds-covcard-n>'+avg+'</div><div class=ds-covcard-l>средний балл команды</div></div>'+
   '<div class=ds-covcard><div class="ds-covcard-n ds-covcard-n-sm">'+esc(worstD?worstD.key:'—')+
    '</div><div class=ds-covcard-l>наибольший риск</div></div>'+
   '<div class=ds-covcard><div class="ds-covcard-n ds-covcard-n-sm">'+esc(worstR?worstR.key:'—')+
    '</div><div class=ds-covcard-l>самый затронутый репозиторий</div></div>'+
-  '<div class=ds-covcard><div class="ds-covcard-n '+((inc||[]).length?'warn':'ok')+'">'+(inc||[]).length+
-   '</div><div class=ds-covcard-l>инцидентов в работе</div></div>';}
+  // «В РАБОТЕ» — это НЕЗАКРЫТЫЕ инциденты, а не все подряд. Карточка брала
+  // длину всего списка: после разбора смены экран показывал «56 инцидентов в
+  // работе», когда в работе не было ни одного — все 56 закрыты. Статус приходит
+  // в том же ответе /api/incidents, считать его ничего не стоит.
+  (function(){const open=(inc||[]).filter(function(i){return i.status&&i.status!=='closed';}).length;
+   return '<div class=ds-covcard><div class="ds-covcard-n '+(open?'warn':'ok')+'">'+open+
+    '</div><div class=ds-covcard-l>инцидентов в работе</div></div>';})();}
 
 function riskDrill(k){
  k=decodeURIComponent(k);
  const d=_riskDev.filter(x=>x.key===k)[0]||_riskRep.filter(x=>x.key===k)[0];
  if(!d)return;
  const mine=_riskAl.filter(a=>a.actor===k||a.project===k).slice(0,18);
- dsDrawer(esc(k)+' <span class="badge '+riskBadgeCls(d.score)+'">риск '+d.score+'</span>',
+ dsDrawer(esc(k)+' <span class="badge '+riskBadgeCls(d.score)+'">балл риска '+d.score+' из 100</span>',
   '<div class=ds-kv>'+
-   kvRow('Детектов',d.n)+kvRow('Средний риск',d.avg.toFixed(2))+
+   kvRow('Алертов',d.n)+kvRow('Средний риск',d.avg.toFixed(2))+
    kvRow('Пиковый риск',d.max.toFixed(2))+kvRow('Инцидентов',d.inc)+
    kvRow('Уникальных техник',d.tech)+kvRow('Тактик',d.tac)+
    kvRow('Последняя активность',esc(d.last||'—'))+'</div>'+
   '<div class=ds-drawer-sec><div class=t-label>Как считается</div>'+
    '<div class=sub>Оценка 0–100 складывается из пикового риска (40), среднего риска (20), '+
-   'объёма детектов (15), разнообразия техник (10), числа инцидентов (10) и признака критичности (5). '+
+   'объёма алертов (15), разнообразия техник (10), числа инцидентов (10) и признака критичности (5). '+
    'Первые два слагаемых умножаются на уверенность — здесь '+Math.round(riskConf(d.n)*100)+'% '+
-   '(она достигает 100% от четырёх детектов), поэтому одно случайное срабатывание не поднимает человека наверх. '+
+   '(она достигает 100% от четырёх алертов), поэтому одно случайное срабатывание не поднимает человека наверх. '+
    'Все слагаемые берутся из наблюдаемых данных, разметка симулятора не используется.</div></div>'+
-  '<div class=ds-drawer-sec><div class=t-label>Последние детекты</div>'+
+  '<div class=ds-drawer-sec><div class=t-label>Последние алерты</div>'+
    (mine.length?('<div class=ds-timeline>'+mine.map(a=>
      '<div class="ds-tl-item '+alSevOf(a.risk||0)+'"><div class=ds-tl-time>'+esc(a.ts_sim||'')+'</div>'+
      '<div class=ds-tl-title>@'+esc(a.actor||'')+(a.action?(' · '+esc(a.action)):'')+'</div>'+
@@ -2669,7 +3139,7 @@ function riskDyn(al){
  const top=_riskDev.slice(0,5);
  const ts=al.map(a=>rpTs(a.ts_sim)).filter(x=>x>0);
  if(!top.length||!ts.length){
-  box.innerHTML='<div class="help empty">Динамика появится, когда наберётся история детектов.</div>';return;}
+  box.innerHTML='<div class="help empty">Динамика появится, когда наберётся история алертов.</div>';return;}
  const t0=Math.min.apply(null,ts),t1=Math.max.apply(null,ts);
  const N=24,span=Math.max(1,t1-t0),w=100/N,step=span/N;
  rkDynHoverInit();
@@ -2709,7 +3179,7 @@ function rkDynHoverInit(){
   const tip=plot.querySelector('.chart-tip'); if(!tip)return;
   const px=((i+0.5)/n)*r.width;
   tip.style.display='block';
-  tip.innerHTML='<b class=tv>'+(v?('риск '+(Math.round(v*100)/100)):'без детектов')+'</b>'+
+  tip.innerHTML='<b class=tv>'+(v?('риск '+fmtRisk(v)):'без алертов')+'</b>'+
    '<span class=tt>'+esc(rpFmt(m.t0+i*m.step))+' — '+esc(rpFmt(m.t0+(i+1)*m.step))+'</span>';
   const tw=tip.offsetWidth||120;
   tip.style.left=Math.min(r.width-tw/2-2,Math.max(tw/2+2,px))+'px';
@@ -2734,7 +3204,8 @@ async function refresh(){try{
  else if(view==='red')await pollRed();
  else if(view==='workflow')await pollWorkflow();
  else if(view==='trends'){await pollTrends();await pollWorkload();}
- else if(view==='diag')await pollDiag();
+ else if(view==='diag'){await pollDiag();await renderClientErrors();await tgRefresh();}
+ else if(view==='cases'){await caseSync();caseRender();}
  await pollOverview();
 }catch(e){uiErr('refresh',e)}}
 refresh();setInterval(refresh,2500);
@@ -2747,6 +3218,9 @@ async function pollHealth(){let h;try{h=await jget('/api/health');}catch(e){retu
  setHp('hWorld',h.world_alive?'ok':(ev.total>0?'warn':'bad'),h.world_alive?'идёт':'нет данных');
  setHp('hEvents',ev.total>0?'ok':'bad',fmtNum(ev.total||0)+(ev.last_age_s!=null?(' · '+fmtAge(ev.last_age_s)):''));
  setHp('hOllama',h.ollama?'ok':'warn',h.ollama?'готова':'нет');
+ // Причина — в подсказке плитки: «нет» не отличает «сервис не запущен»
+ // от «модель не скачана», а лечится это по-разному.
+ {const _op=$('hOllama');if(_op)_op.title=h.ollama_reason||'';}
  setHp('hTriage',h.auto_triage?(h.ollama?'ok':'warn'):'',h.auto_triage?'вкл':'выкл');
  // Отказ хранилища и «данных ещё нет» внешне неотличимы: и там и там нули.
  // Показываем причину отдельно, иначе поиск проблемы начинается с догадок.

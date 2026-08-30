@@ -94,16 +94,16 @@
   }
   function initTheme() {
     var saved = null;
-    try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+    try { saved = localStorage.getItem(THEME_KEY); } catch (x) {}
     applyTheme(saved || 'dark');
   }
   function toggleTheme() {
     var next = THEMES[(THEMES.indexOf(currentTheme()) + 1) % THEMES.length];
-    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    try { localStorage.setItem(THEME_KEY, next); } catch (x) {}
     applyTheme(next);
   }
   function setTheme(t) {
-    try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+    try { localStorage.setItem(THEME_KEY, t); } catch (x) {}
     applyTheme(t);
   }
 
@@ -218,7 +218,7 @@
     var app = document.querySelector('.app');
     if (!app) return;
     var collapsed = false;
-    try { collapsed = localStorage.getItem(SIDE_KEY) === '1'; } catch (e) {}
+    try { collapsed = localStorage.getItem(SIDE_KEY) === '1'; } catch (x) {}
     app.classList.toggle('side-collapsed', collapsed);
     app.classList.toggle('side-expanded', !collapsed);
     var b = document.getElementById('dsCollapse');
@@ -239,7 +239,7 @@
     b.onclick = function () {
       var app = document.querySelector('.app');
       var now = app && app.classList.contains('side-collapsed');
-      try { localStorage.setItem(SIDE_KEY, now ? '0' : '1'); } catch (e) {}
+      try { localStorage.setItem(SIDE_KEY, now ? '0' : '1'); } catch (x) {}
       applySide();
     };
     side.appendChild(b);
@@ -286,8 +286,8 @@
       sb.className = 'ds-topsearch';
       sb.innerHTML = svg(I.search) +
         '<input id="dsSearch" type="search" autocomplete="off" ' +
-        'aria-label="Поиск по инцидентам, сущностям и правилам" ' +
-        'placeholder="Поиск инцидентов, сущностей, правил или команда…">';
+        'aria-label="Поиск по разделам и командам" ' +
+        'placeholder="Разделы и команды">';
       var h1 = host.querySelector('h1');
       if (h1 && h1.nextSibling) host.insertBefore(sb, h1.nextSibling);
       else host.appendChild(sb);
@@ -478,7 +478,51 @@
     if (e.key === '/') { e.preventDefault(); openCmdk(); }
   });
 
-  /* ---------- 7. СТАРТ + переживание перерисовок ---------- */
+  /* ---------- 7. КЛИКАБЕЛЬНЫЕ СТРОКИ С КЛАВИАТУРЫ ----------
+
+     Списки инцидентов, алертов, правил, очереди триажа и ячейки матрицы
+     ATT&CK открываются кликом по <div>/<tr> с onclick. Табом до них дойти
+     было нельзя: у неродных элементов нет своей фокусируемости. Аналитик,
+     который ведёт разбор с клавиатуры (J/K на очереди триажа для этого и
+     сделаны), упирался в мышь на каждом переходе к карточке.
+
+     Разметку правили точечно: строка списка инцидентов уже несла
+     tabindex/role/onkeydown, а остальные семь мест — нет. Раз обработчик
+     ставится из JS при каждой перерисовке, то и фокусируемость должна
+     ставиться там же, одним правилом на всё приложение.
+
+     Вложенные onclick пропускаем: если строка кликабельна целиком, её
+     ячейки не должны становиться отдельными остановками таба. */
+  var NATIVE = { A: 1, BUTTON: 1, INPUT: 1, SELECT: 1, TEXTAREA: 1, SUMMARY: 1, LABEL: 1 };
+  function stampFocusable(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('[onclick]').forEach(function (el) {
+      if (NATIVE[el.tagName]) return;
+      if (el.hasAttribute('tabindex')) return;
+      if (el.closest('thead')) return;
+      var p = el.parentElement && el.parentElement.closest('[onclick]');
+      if (p) return;
+      el.setAttribute('tabindex', '0');
+      /* role=button на <tr> стирает роль строки таблицы: диктор перестаёт
+         называть колонку и позицию строки, а таблица для него распадается
+         на набор кнопок. Строке хватает фокусируемости. */
+      if (el.tagName === 'TR' || el.tagName === 'TD' || el.tagName === 'TH') return;
+      if (!el.getAttribute('role')) el.setAttribute('role', 'button');
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    var el = e.target;
+    if (!el || !el.getAttribute) return;
+    if (NATIVE[el.tagName]) return;
+    if (!el.hasAttribute('onclick')) return;
+    // Пробел на элементе со своей прокруткой оставляем прокрутке.
+    if (e.key !== 'Enter' && el.scrollHeight > el.clientHeight + 2) return;
+    e.preventDefault();
+    el.click();
+  });
+
+  /* ---------- 8. СТАРТ + переживание перерисовок ---------- */
   function boot() {
     initTheme();
     mountSkipLink();
@@ -488,6 +532,17 @@
     enhanceNav();
     mountCollapse();
     watchScroll();
+    stampFocusable(document);
+    if (window.MutationObserver) {
+      new MutationObserver(function (recs) {
+        for (var i = 0; i < recs.length; i++) {
+          var added = recs[i].addedNodes;
+          for (var j = 0; j < added.length; j++) {
+            if (added[j].nodeType === 1) stampFocusable(added[j].parentNode || document);
+          }
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

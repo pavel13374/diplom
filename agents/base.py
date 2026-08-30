@@ -7,7 +7,6 @@
 наблюдаемый флаг gitlab_ok и, при сбое, причина (gitlab_error). Так лента мира не
 пустует, а ошибки GitLab видны. Счётчик ошибок — в GITLAB_STATUS (для UI).
 """
-import time
 import random
 import logging
 import itertools
@@ -89,6 +88,14 @@ class BaseAgent:
     def _emit(self, action, gitlab_ok=True, gitlab_error=None, extra=None, **kw):
         e = dict(extra or {})
         e["gitlab_ok"] = bool(gitlab_ok)
+        # ЧЕСТНАЯ ПОМЕТКА OFFLINE. В offline _call возвращает «успех», ничего не
+        # сделав, поэтому события шли с gitlab_ok=True и статус-бар показывал
+        # безупречный процент успеха в режиме, где НИ ОДНОЙ операции не
+        # выполнялось. Симуляция здесь намеренная, а вот выдавать её за
+        # состояние связи — нет. Поле служебное (в LEAK-списке анти-лика оно
+        # рядом с gitlab_ok), детектор его не видит.
+        if _offline():
+            e["simulated"] = True
         if gitlab_error:
             e["gitlab_error"] = str(gitlab_error)[:200]
         try:
@@ -99,7 +106,13 @@ class BaseAgent:
 
     def _call(self, fn_name, *args):
         """Вызов GitLab с учётом offline и перехватом ошибок.
-        Возвращает (result, ok, error_str)."""
+        Возвращает (result, ok, error_str).
+
+        В offline вызова не происходит вовсе, поэтому счётчики GITLAB_STATUS
+        НЕ трогаются: иначе режим «GitLab не вызывается» выглядел бы как
+        «GitLab отвечает безупречно», и по строке состояния их было не
+        различить.
+        """
         if _offline():
             return None, True, None
         try:
@@ -230,9 +243,25 @@ class BaseAgent:
             _author = ((_mr.get("author") or {}).get("username")) or None
             _meta["mr_author"] = _author
             _meta["self_merged"] = bool(_author and _author == self.username)
+            # Апрувы берём ИЗ ОТДЕЛЬНОЙ РУЧКИ /approvals, а не из объекта MR.
+            # Объект merge request в GitLab API не содержит ни
+            # approvals_count, ни approved_by — прежний код читал их отсюда и
+            # всегда получал None. Следствие, найденное проверкой журнала: за
+            # всю историю (78 682 события) поле approvals_count не попало НИ В
+            # ОДНО событие mr_merge, поэтому правила merge-without-approval и
+            # self-merged-mr — единственные, что закрывают T1562 Impair
+            # Evasion/Defenses, — не срабатывали никогда, а экран покрытия
+            # считал технику закрытой.
             _ac = _mr.get("approvals_count")
+            if _ac is None and _mr.get("approved_by") is not None:
+                _ac = len(_mr.get("approved_by") or [])
             if _ac is None:
-                _ac = len(_mr.get("approved_by") or []) if _mr.get("approved_by") is not None else None
+                try:
+                    _ac = self.gl.get_mr_approvals(project_id, mr_iid)
+                except Exception:
+                    logger.warning("не удалось получить апрувы MR !%s в проекте %s",
+                                   mr_iid, project_id, exc_info=True)
+                    _ac = None
             if _ac is not None:
                 _meta["approvals_count"] = int(_ac)
             # Целевая ветка защищена? Правила self-merged-mr и

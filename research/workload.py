@@ -188,12 +188,54 @@ def benign_push_features(rnd):
     # выгрузка на внешний хост в обычном CI-скрипте (публичные зеркала, CDN)
     net_sink = rnd.random() < 0.004
 
+    # НОВЫЕ ПРИЗНАКИ СОДЕРЖИМОГО ОБЯЗАНЫ ВСТРЕЧАТЬСЯ И У НОРМЫ.
+    #
+    # Иначе повторяется ровно тот дефект, ради которого написан
+    # tests/test_leakage.py: у атаки поле есть, у нормы его нет вовсе, и
+    # «поле присутствует» безошибочно указывает на атаку. Так и вышло при
+    # добавлении evasion_signal/real_hits/truncated/ci_debug_signal — тест их
+    # немедленно назвал метками-двойниками.
+    #
+    # Значения не выдуманы под тест, а отражают то, что бывает на самом деле:
+    #   • bundle/минификация склеивают строковые литералы и содержат base64 —
+    #     нормализация там честно что-то меняет;
+    #   • lock-файлы и собранные бандлы бывают больше лимита анализа;
+    #   • обычный CI изредка печатает переменную с секретом по недосмотру —
+    #     это и есть тот класс ошибок, который правило должно ловить, и
+    #     появляться он обязан НЕ только у атакующего.
+    template_path = path.endswith((".example", ".sample", ".dist", ".template"))
+    if template_path:
+        placeholder = True
+    generated_like = generated or "min.js" in path or "lock" in path
+    evasion_kinds = []
+    if generated_like and rnd.random() < 0.06:
+        evasion_kinds = [rnd.choice(["string_concat", "base64", "homoglyphs"])]
+    elif rnd.random() < 0.004:
+        evasion_kinds = ["string_concat"]
+    # evasion_signal требует, чтобы нормализация ОТКРЫЛА новую улику; у нормы
+    # это редкость, но не невозможность (base64-блоб внутри бандла).
+    evasion = bool(evasion_kinds) and rnd.random() < 0.25
+    truncated = bool(generated_like and size > 1024 * 1024)
+    ci_like = path.endswith((".gitlab-ci.yml", ".sh")) or path.startswith("ci/")
+    ci_debug = bool(ci_like and rnd.random() < 0.02)
+    # НЕ-заглушечные совпадения: часть срабатываний regex у нормы приходится
+    # на настоящие значения (отозванные ключи в changelog, тестовые стенды).
+    real_hits = [] if (not regex_hits or placeholder) else list(regex_hits)
+
     return {
         "path": path,
         "extra": {
             "shannon_entropy": round(ent, 3),
             "regex_hits": regex_hits,
             "n_regex_hits": len(regex_hits),
+            "real_hits": real_hits,
+            "n_real_hits": len(real_hits),
+            "evasion_signal": evasion,
+            "evasion_kinds": evasion_kinds,
+            "hidden_hits": [],
+            "truncated": truncated,
+            "ci_debug_signal": ci_debug,
+            "template_path": template_path,
             "filename_signal": filename_sig,
             "placeholder_signal": placeholder,
             "has_high_entropy_token": high_tok,

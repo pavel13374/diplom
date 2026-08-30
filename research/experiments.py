@@ -58,7 +58,7 @@ except Exception:
 import detector
 import run_defense
 import stats
-from workload import build_workload, FakeGL   # noqa: F401  (общий генератор)
+from workload import build_workload   # noqa: F401  (общий генератор)
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

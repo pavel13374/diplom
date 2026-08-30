@@ -34,8 +34,27 @@ def build_report(scheduler=None, title="Отчёт SOC-симулятора", up
     L.append(f"Действий: <b>{st.get('total_runs', 0)}</b> · "
              f"ок {st.get('total_ok', 0)} · ошибок {st.get('total_fail', 0)} · "
              f"ночью пропущено {st.get('skipped_offhours', 0)}")
-    L.append(f"Событий в журнале: <b>{ev.get('total', 0)}</b> · "
+    # ДВЕ РАЗНЫЕ ВЕЛИЧИНЫ ПОД ОДНОЙ ПОДПИСЬЮ.
+    #
+    # events.stats()["total"] — счётчик ЭТОГО ПРОГОНА в памяти процесса мира,
+    # а консоль защиты в своей сводке показывает ВСЁ хранилище. В одном чате
+    # это выглядело как противоречие: «событий 7903» от мира и «событий 79611»
+    # от защиты. Обе цифры верные, но подпись была одна и та же. Теперь каждая
+    # названа своим именем, а общее число берётся ИЗ ТОГО ЖЕ ИСТОЧНИКА, что и
+    # у консоли, — из event-store.
+    L.append(f"Событий записано за прогон: <b>{ev.get('total', 0)}</b> · "
              f"аномалий <b>{ev.get('anomalies', 0)}</b>")
+    try:
+        import eventstore as _es
+        _tot = (_es.stats() or {}).get("events")
+        if _tot is not None:
+            L.append(f"Всего в хранилище: <b>{_tot}</b> "
+                     f"<i>(тот же счётчик, что в сводке защиты)</i>")
+    except Exception:
+        import logging as _lg
+        _lg.getLogger("report").warning(
+            "не удалось прочитать общий счётчик событий из event-store — "
+            "в отчёте не будет строки «Всего в хранилище»", exc_info=True)
     if scheduler and getattr(scheduler, "state", None):
         try:
             L.append(f"Спринт #{scheduler.state.data['sprint_number']} · "

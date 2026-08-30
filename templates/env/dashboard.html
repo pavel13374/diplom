@@ -1,6 +1,6 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1"><title>Sentinel Env — Team &amp; GitLab</title>
-<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
+<meta name=viewport content="width=device-width,initial-scale=1"><meta name=csrf-cookie content="{{ CSRF_COOKIE }}"><title>Sentinel Env — Team &amp; GitLab</title>
+<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
@@ -45,6 +45,15 @@
 
     <div class=content>
 
+      <!-- ОТКАЗ СВЯЗИ С GITLAB — на первом экране, а не только пилюлей.
+           Мир без GitLab не запускается (заглушек больше нет), поэтому
+           причина должна быть видна сразу и целиком. -->
+      <div class=worldWarn id=glWarn hidden style="background:var(--critical-bg)">
+        <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=12 cy=12 r=9 /><path d="m5.6 5.6 12.8 12.8"/></svg>
+        <b>GitLab недоступен</b> — <code id=glWarnMsg></code>
+        <button class="btn sm" onclick="checkGitlab()">Проверить связь</button>
+      </div>
+
       <!-- ОБЗОР -->
       <section class="view active" id=v-overview>
         <!-- Строка часов и строка показателей — общий контекст прогона. -->
@@ -58,12 +67,12 @@
         </div>
 
         <div class=kpis>
-          <div class=kpi><div class=l>Спринт</div><div class="n is-empty" id=sSprint>—</div></div>
-          <div class=kpi><div class=l>Активных правил</div><div class="n is-empty" id=sRules>—</div></div>
-          <div class=kpi><div class=l>Действий</div><div class="n is-empty" id=sRuns>—</div></div>
-          <div class=kpi><div class=l>Успешно</div><div class="n is-empty" id=sOk>—</div></div>
-          <div class=kpi><div class=l>С ошибкой</div><div class="n is-empty" id=sFail>—</div></div>
-          <div class=kpi><div class=l>Пропущено</div><div class="n is-empty" id=sSkip>—</div></div>
+          <div class=kpi><div class=l>Спринт</div><div class="n is-empty" id=sSprint>0</div></div>
+          <div class=kpi title="Правила в репозитории детекций, которые ведёт смоделированная команда. Это НЕ правила детектора консоли защиты — те показаны в её каталоге."><div class=l>Активных правил</div><div class="n is-empty" id=sRules>—</div></div>
+          <div class=kpi title="Действий планировщика, доведённых до конца: «Успешно» + «С ошибкой». Одно действие порождает несколько событий GitLab, поэтому в потоке событий число будет больше."><div class=l>Действий</div><div class="n is-empty" id=sRuns>—</div></div>
+          <div class=kpi title="Действие выполнено без отказа GitLab."><div class=l>Успешно</div><div class="n is-empty" id=sOk>—</div></div>
+          <div class=kpi title="Действие завершилось отказом (нет прав, конфликт, недоступен GitLab)."><div class=l>С ошибкой</div><div class="n is-empty" id=sFail>—</div></div>
+          <div class=kpi title="Сколько раз планировщик просыпался вне рабочих часов и никакой работы не было. Это НЕ пропущенные действия и не отказы: ночью команда спит, а опрос идёт раз в OFF_HOURS_POLL_SECONDS, поэтому за одну ночь число набегает большое."><div class=l>Пауз вне работы</div><div class="n is-empty" id=sSkip>—</div></div>
         </div>
 
         <!-- Две колонки со СТОПКАМИ панелей, а не сетка из ячеек: короткая
@@ -86,12 +95,11 @@
             <div class="card mt-3"><h2>Запись в GitLab<span class=grow></span>
               <span class=sub id=dPctSub></span></h2>
               <div class=kv>
-                <b>Успешных вызовов</b><span id=dPct>—</span>
+                <b>Доля успешных</b><span id=dPct>—</span>
                 <b>Успешно</b><span id=dOk>—</span>
                 <b>С ошибкой</b><span id=dFail>—</span>
                 <b>Событий в журнале</b><span id=dTot>—</span>
               </div>
-              <div class=btrack><i id=dBar></i></div>
             </div>
           </div>
 
@@ -116,7 +124,6 @@
 
       <!-- КОНФИГУРАЦИЯ -->
       <section class=view id=v-config>
-        <p class=page-sub>Параметры симуляции. Применяются сразу, перезапуск не нужен.</p>
         <div id=cfg></div>
         <div class=savebar>
           <button class=btn id=btnSave>Сохранить</button>
@@ -124,7 +131,10 @@
           <span class=toast id=saveToast></span>
         </div>
 
-        <div class=panel style="margin-top:18px;border:1px solid var(--critical-border);background:var(--critical-bg)">
+        <!-- Опасное действие обозначено КНОПКОЙ, а не заливкой во всю ширину:
+             красная плашка на полтора экрана перетягивает внимание с рабочей
+             части страницы и делается фоном, а не предупреждением. -->
+        <div class="card danger-card mt-4">
           <h2>Сброс состояния репозиториев</h2>
           <div class=sub>Откат к чистому проекту: закрываются все открытые MR, удаляются все
             ветки кроме <code>main</code>, контент репозиториев очищается до <code>README</code>.
@@ -203,7 +213,6 @@
 
       <!-- РЕПОЗИТОРИИ (живая визуализация) -->
       <section class=view id=v-repos>
-        <p class=page-sub>Файлы, merge request'ы и события по репозиториям. Аномалии отмечены красным.</p>
         <div class=card>
           <h2>Репозитории<span class=grow></span><span class=sub id=repoCount></span></h2>
           <div class=ds-tablewrap>
@@ -227,7 +236,6 @@
 
       <!-- АНАЛИТИКА -->
       <section class=view id=v-insights>
-        <p class=page-sub>Когда команда работает: активность по часам и дням недели.</p>
         <div class=card>
           <h2>Ритм активности<span class=grow></span>
             <span class=ds-legend>
@@ -264,11 +272,76 @@ function uiErr(where,e){
  if(_uiErrSeen[key])return; _uiErrSeen[key]=1;
  try{console.error('[ui] '+where+': '+msg,e);}catch(x){}
  try{if(window.toast)window.toast('Сбой в интерфейсе: '+where,'error',6000);}catch(x){}
+ /* ОТПРАВКА НА СЕРВЕР.
+    Раньше ошибка жила только в консоли разработчика: на экране был тост
+    «Сбой в интерфейсе», и передать по нему было нечего, кроме скриншота.
+    Теперь она ложится рядом с серверными и уходит в общую выгрузку
+    /api/diag/bundle.json — одним файлом на разбор.
+    Отправка сама обёрнута в catch(x): если недоступен и он, повторно
+    сообщать уже некуда, и падать в репортёре ошибок нельзя. */
+ try{
+  fetch('/api/client-error',{method:'POST',headers:csrfHeaders({'Content-Type':'application/json'}),
+   body:JSON.stringify({where:where,message:msg,
+    stack:(e&&e.stack)?String(e.stack).slice(0,4000):'',
+    url:location.pathname+location.hash})}).catch(function(){});
+ }catch(x){}
 }
 
+/* Ошибки, до которых uiErr не дотягивается: синтаксические, из обработчиков
+   событий и из промисов без catch. Без этих двух подписок они не попадали
+   никуда вообще. */
+window.addEventListener('error',function(ev){
+ try{uiErr('window.onerror',ev.error||ev.message);}catch(x){}
+});
+window.addEventListener('unhandledrejection',function(ev){
+ try{uiErr('promise',ev.reason);}catch(x){}
+});
+
 const $=id=>document.getElementById(id);
-async function jget(u){const r=await fetch(u);return r.json();}
-async function jpost(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):null});return r.json();}
+/* ЕДИНАЯ ТОЧКА СЕТЕВОГО ВЫЗОВА.
+   Раньше здесь стояло `return r.json()` без единой проверки. Любой ответ,
+   который не является JSON — 500 с пустым телом, редирект на /login после
+   истечения сессии, отдача HTML вместо данных — приводил к необработанному
+   SyntaxError «Unexpected end of input». В журнал ошибок интерфейса попадала
+   ровно эта фраза: без URL, без кода ответа, без ссылки на инцидент, которую
+   сервер уже вернул в теле. Найти по такому сообщению нечего.
+   Теперь отказ называет запрос, код и ref, а вызывающая сторона может его
+   показать пользователю. */
+async function jfetch(u,opt){
+ const r=await fetch(u,opt||{});
+ const txt=await r.text();
+ let data=null,perr=null;
+ if(txt){try{data=JSON.parse(txt);}catch(e){perr=e;}}
+ if(!r.ok){
+  const ref=(data&&(data.ref||data.error))||'';
+  const err=new Error('HTTP '+r.status+' · '+u+(ref?(' · '+ref):''));
+  err.status=r.status;err.url=u;err.payload=data;throw err;
+ }
+ if(data===null){
+  const err=new Error(perr?('ответ не JSON · '+u+' · '+perr.message)
+                          :('пустой ответ · '+u));
+  err.status=r.status;err.url=u;throw err;
+ }
+ return data;
+}
+async function jget(u){return jfetch(u);}
+// Имя cookie приходит С СЕРВЕРА: у консолей оно РАЗНОЕ, потому что cookie
+// не различаются по порту и общий `sentinel_csrf` две консоли на одном
+// localhost перезаписывали друг у друга — вторая получала 403 на каждый POST.
+const CSRF_COOKIE=(document.querySelector('meta[name=csrf-cookie]')||{}).content||'sentinel_csrf';
+// CSRF: токен выдаётся сервером в этом cookie и обязан приходить
+// обратно заголовком X-CSRF-Token на каждом изменяющем запросе. До этого у
+// консолей не было никакой защиты от межсайтовых запросов, а именно через них
+// запускаются атакующие кампании, заводятся issue в GitLab и выставляются
+// вердикты, три из которых приглушают правило детектирования.
+function csrfToken(){
+  const m = document.cookie.match(new RegExp('(?:^|;\\s*)'+CSRF_COOKIE+'=([^;]+)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+function csrfHeaders(extra){
+  return Object.assign({'X-CSRF-Token': csrfToken()}, extra || {});
+}
+async function jpost(u,b){return jfetch(u,{method:'POST',headers:csrfHeaders({'Content-Type':'application/json'}),body:b?JSON.stringify(b):null});}
 function rid(k){return 'f_'+k.replace(/[^a-zA-Z0-9]/g,'_');}
 function fmtUptime(s){if(!s)return '—';const h=(s/3600|0),m=(s%3600/60|0),x=s%60;return h+'ч '+m+'м '+x+'с';}
 // Цвет в системе означает уровень серьёзности, поэтому у аватарок его нет:
@@ -322,7 +395,7 @@ const ACT_HELP={
  new_detection_rule:"Новое правило детектирования",fix_existing_rule:"Исправление правила",
  tune_threshold:"Донастройка порогов",refactor_rule:"Рефакторинг правила",
  update_parser:"Обновление парсера",update_playbook:"Обновление плейбука",
- add_test_sample:"Тестовый образец",threat_intel_update:"Обновление threat intelligence",
+ add_test_sample:"Тест-пример для правила",threat_intel_update:"Обновление threat intelligence",
  update_dashboard:"Обновление дашборда",triage_false_positive:"Разбор ложного срабатывания",
  revert_bad_rule:"Откат правила",deprecate_rule:"Вывод правила из эксплуатации",
  recreate_fixed_rule:"Пересоздание правила",handle_incident:"Реагирование на инцидент",
@@ -351,8 +424,18 @@ const ACT_HELP={
 // Незнакомый ключ не показываем сырым: превращаем snake_case в фразу.
 // Раньше на экране висели automation_script и membership_change.
 function actName(k){
- if(ACT_HELP[k])return ACT_HELP[k];
- const t=String(k||'').replace(/_/g,' ').trim();
+ const s=String(k||'');
+ if(ACT_HELP[s])return ACT_HELP[s];
+ /* Составные значения статуса приходят из планировщика как служебные
+    идентификаторы: «red_campaign(cmd)», «anomaly:careless_dev». Прежний
+    фолбэк просто убирал подчёркивания, и в поле «Текущее действие» у
+    пользователя оказывалась строка «Red campaign(cmd)» — внутреннее имя,
+    выведенное в интерфейс как есть. */
+ if(s.indexOf('red_campaign')===0)
+   return 'Атакующая кампания'+(s.indexOf('(cmd)')>0?' (по команде)':'');
+ if(s.indexOf('anomaly:')===0){const k2=s.slice(8);
+   return 'Аномалия: '+(ACT_HELP[k2]||k2.replace(/_/g,' '));}
+ const t=s.replace(/_/g,' ').trim();
  return t?t.charAt(0).toUpperCase()+t.slice(1):'—';
 }
 
@@ -386,9 +469,17 @@ function sel(k,label,help,opts,val){
 function txt(k,label,help,val){
  return '<div class=field><label>'+label+'</label><input class=tin data-k="'+k+'" data-t=str value="'+(val==null?'':val)+'"><div class=help>'+help+'</div></div>';
 }
+/* Заголовок секции — ОДНА строка, как заголовок карточки в консоли защиты.
+   Было: иконка + название + пояснение второй строкой, высота 60px. Страница
+   настроек из-за этого выглядела сделанной в другом продукте: в консоли
+   защиты заголовок панели — 32px, без иконки, а пояснение идёт приглушённым
+   текстом в той же строке. Иконка ничего не различала (девять серых глифов
+   подряд), а пояснение под каждым заголовком — ровно тот приём, из-за
+   которого интерфейс читается как сгенерированный. */
 function group(ic,title,subtitle,inner,open){
- return '<details class=group '+(open?'open':'')+'><summary><span class=g-ic>'+ic+'</span>'+
-  '<span><div class=g-tt>'+title+'</div><div class=g-sub>'+subtitle+'</div></span>'+
+ return '<details class=group '+(open?'open':'')+'><summary>'+
+  '<span class=g-tt>'+title+'</span>'+
+  (subtitle?'<span class=g-sub>'+subtitle+'</span>':'')+
   '<span class=g-chev><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m6 9 6 6 6-6"/></svg></span></summary><div class=body>'+inner+'</div></details>';
 }
 
@@ -528,7 +619,7 @@ async function tick(){
  $('lastAct').textContent=s.last_activity?(actName(s.last_activity)+' · '+(s.last_actor||'')):'—';
  $('uptime').textContent=fmtUptime(s.uptime);
  setNum('sSprint',s.sprint);setNum('sRules',s.rules);
- setNum('sRuns',s.total_runs);setNum('sOk',s.total_ok);
+ setNum('sRuns',s.total_actions!=null?s.total_actions:s.total_runs);setNum('sOk',s.total_ok);
  setNum('sFail',s.total_fail);setNum('sSkip',s.offhours_skipped);
  if(s.runlog){const rl=s.runlog;const lc=$('logCounts');if(lc)lc.textContent='Предупреждений '+(rl.warnings||0)+' · ошибок '+(rl.errors||0)+' · Telegram '+(s.telegram?'вкл':'выкл');}
  const tm=$('teamMeta');
@@ -567,7 +658,6 @@ async function tick(){
   if(tot&&pctOk>=90)pb.classList.add('lvl-ok');
   else if(tot&&pctOk<60)pb.classList.add('lvl-bad');}
  const ps=$('dPctSub');if(ps)ps.textContent=tot?(fmtNum(tot)+' вызовов'):'';
- const bb=$('dBar');if(bb)bb.style.width=(tot?pctOk:0)+'%';
  setNum('dOk',ok);setNum('dFail',fail);
 
  setNum('dTot',(s.events&&s.events.total));
@@ -584,19 +674,41 @@ function setNum(id,v){const e=document.getElementById(id);if(!e)return;
 
 function fmtAge(s){if(s==null)return'';if(s<60)return s+' с';if(s<3600)return Math.floor(s/60)+' мин';return Math.floor(s/3600)+' ч';}
 function setPill(id,cls,txt){const p=$(id);if(!p)return;p.className='pill '+cls;$(id+'T').textContent=txt;}
+/* Проверка связи ПО КНОПКЕ: после «поднял ВМ» результат виден сразу,
+   без перезапуска процесса. Ответ — конкретная причина, а не «offline». */
+async function checkGitlab(){
+ try{
+  const d=await jget('/api/gitlab/check');
+  if(window.toast)toast(d.ok?('GitLab на связи: '+d.reason):('GitLab: '+d.reason+(d.detail?(' — '+d.detail):'')),
+                        d.ok?'ok':'error', d.ok?4000:12000);
+  await pollHealth();
+ }catch(e){uiErr('checkGitlab',e);}
+}
+
 async function pollHealth(){
  let h;try{h=await jget('/api/health');}catch(e){return;}
  const g=h.gitlab||{};
- if(h.offline_mode)setPill('hlGitlab','warn','offline');
- else if(g.state==='ok')setPill('hlGitlab','ok','ok');
- else if(g.state==='error')setPill('hlGitlab','bad','сбой');
- else setPill('hlGitlab','','—');
- $('hlGitlab').title='GitLab: '+(g.msg||'—')+(g.errors?(' · ошибок вызовов: '+g.errors):'');
+ /* ПРИЧИНА, А НЕ ЯРЛЫК. Раньше здесь горело просто «offline», и понять,
+    что чинить — адрес, токен, TLS или сеть, — было нельзя: наверх доходило
+    одно и то же слово при любом отказе. */
+ if(h.offline_mode)setPill('hlGitlab','warn','офлайн');
+ else if(g.state==='ok')setPill('hlGitlab','ok',g.user?('ok · @'+g.user):'ok');
+ else if(g.state==='error')setPill('hlGitlab','bad',g.msg||'нет связи');
+ else setPill('hlGitlab','','не проверялось');
+ $('hlGitlab').title='GitLab '+(g.url||'')+': '+(g.msg||'—')+
+   (g.detail?('\n'+g.detail):'')+(g.errors?('\nошибок вызовов: '+g.errors):'');
+ const gw=$('glWarn');
+ if(gw){
+  const broken=!h.offline_mode&&g.state==='error';
+  gw.hidden=!broken;
+  if(broken)$('glWarnMsg').textContent=(g.msg||'')+(g.detail?(' — '+g.detail):'');
+ }
  setPill('hlWorld',h.world.running?'ok':'',h.world.running?'идёт':'стоп');
  const ev=h.events||{};
  const fresh=ev.last_age_s!=null&&ev.last_age_s<180;
  setPill('hlEvents',ev.total>0?(fresh?'ok':''):'bad',fmtNum(ev.total||0)+(ev.last_age_s!=null?(' · '+fmtAge(ev.last_age_s)):''));
  setPill('hlOllama',h.ollama?'ok':'warn',h.ollama?'готова':'нет');
+ {const _op=$('hlOllama');if(_op)_op.title=h.ollama_reason||'';}
 }
 /* ---------- профиль разработчика: риск-профиль в боковой панели ---------- */
 async function devProfile(u){

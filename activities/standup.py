@@ -6,7 +6,7 @@
 """
 import logging
 import config
-from config import PROJECTS, FEATURES
+from config import FEATURES
 from content import comments
 import simclock
 

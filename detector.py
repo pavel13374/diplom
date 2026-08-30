@@ -24,6 +24,7 @@ Blue Detection Stack — потоковый детектор для контур
 Зависимостей нет (json/stdlib). Правила — JSON, чтобы работало без pyyaml.
 """
 import os
+import sys as _sys
 import json
 import glob
 import math
@@ -91,6 +92,60 @@ def _match_cond(value, cond):
     return value == cond
 
 
+#: Операторы, которые понимает _match_cond. Список ЯВНЫЙ, потому что по нему
+#: проверяются правила при загрузке: неизвестный оператор раньше приводил к
+#: `return False`, то есть опечатка («gte» вместо «>=») делала правило вечно
+#: молчащим — при этом оно оставалось в каталоге, считалось в покрытии ATT&CK и
+#: выглядело работающим. Ровно та «видимость покрытия», против которой написан
+#: tests/test_rule_coverage.py.
+RULE_OPS = frozenset({">=", ">", "<=", "<", "ne", "in", "nin",
+                      "contains", "contains_any", "is_null"})
+
+RULE_SEVERITIES = frozenset({"low", "medium", "high", "critical"})
+
+
+def validate_rule(rule, source=""):
+    """(ok, список проблем). Проверка ФОРМЫ правила при загрузке.
+
+    Каталог detections/ — точка расширения продукта: его правит инженер
+    детектирования и перезагружает без правки кода. Загрузчик при этом проверял
+    только наличие уникального id, а process() затем делал r["title"] без
+    защиты. Правило без title роняло KeyError НА КАЖДОМ подходящем событии;
+    цикл ингеста считал это ошибкой события и шёл дальше — то есть консоль
+    молча переставала выдавать тревоги.
+    """
+    problems = []
+    if not isinstance(rule, dict):
+        return False, ["правило не является объектом JSON"]
+    if not str(rule.get("id") or "").strip():
+        problems.append("нет поля id")
+    if not str(rule.get("title") or "").strip():
+        problems.append("нет поля title (по нему строится текст тревоги)")
+    when = rule.get("when")
+    if not isinstance(when, dict) or not when:
+        problems.append("поле when обязано быть непустым объектом")
+    else:
+        for field, cond in when.items():
+            if isinstance(cond, dict):
+                if not cond:
+                    problems.append(f"пустое условие для поля {field}")
+                for op in cond:
+                    if op not in RULE_OPS:
+                        problems.append(
+                            f"поле {field}: неизвестный оператор {op!r} "
+                            f"(допустимы: {', '.join(sorted(RULE_OPS))})")
+    sev = rule.get("severity", "medium")
+    if sev not in RULE_SEVERITIES:
+        problems.append(f"severity={sev!r} вне набора {sorted(RULE_SEVERITIES)}")
+    try:
+        risk = float(rule.get("risk", 0.5))
+        if not (0.0 <= risk <= 1.0):
+            problems.append(f"risk={risk} вне диапазона [0,1]")
+    except (TypeError, ValueError):
+        problems.append(f"risk={rule.get('risk')!r} не число")
+    return (not problems), problems
+
+
 def _match_rule(event, when):
     for field, cond in when.items():
         if not _match_cond(event.get(field), cond):
@@ -107,13 +162,78 @@ def _cfg(name, default):
         return default
 
 
-def _parse_ts(ts):
+#: Сколько нераспознанных меток времени встретилось. Отдаётся диагностикой:
+#: молчаливая деградация здесь стоит дороже всего (см. докстринг parse_ts).
+_TS_FAILURES = collections.Counter()
+
+
+def parse_ts(ts):
+    """Метка времени события -> naive datetime (или None).
+
+    ПОЧЕМУ ЭТО НЕ ОДИН strptime.
+
+    Раньше формат был ровно один — "%Y-%m-%dT%H:%M:%S" — и всё остальное молча
+    превращалось в None:
+
+        '2026-01-01T10:00:00'          -> datetime
+        '2026-01-01T10:00:00.123456'   -> None
+        '2026-01-01T10:00:00Z'         -> None      <- форма RFC 3339, её отдаёт GitLab
+        '2026-01-01 10:00:00'          -> None
+        '2026-01-01T10:00:00+03:00'    -> None
+
+    Enricher.enrich при None выходит РАНЬШЕ вычисления агрегатов, поэтому
+    burst_file_delete_10m, burst_api_read_15m и distinct_projects_1h
+    обнуляются — то есть выключается ровно тот слой, ради которого словарь
+    действий нормализовали: «массовость» и «разведка» вычисляются, а не читаются
+    из имени действия. Четыре признака модели читают те же поля. Ни
+    предупреждения, ни счётчика при этом не было: включение микросекунд где-то
+    выше по потоку или переход на настоящий аудит-лог GitLab выключали слой
+    целиком и незаметно.
+
+    Часовой пояс приводится к наивному локальному времени: остальная система
+    оперирует наивными метками, и смешивать их нельзя (вычитание упало бы).
+    """
     if isinstance(ts, datetime):
-        return ts
-    try:
-        return datetime.strptime(ts or "", "%Y-%m-%dT%H:%M:%S")
-    except Exception:
+        return ts.replace(tzinfo=None) if ts.tzinfo else ts
+    if isinstance(ts, (int, float)) and not isinstance(ts, bool):
+        try:
+            return datetime.fromtimestamp(float(ts))
+        except (OverflowError, OSError, ValueError):
+            _TS_FAILURES[type(ts).__name__] += 1
+            return None
+    if not isinstance(ts, str) or not ts.strip():
+        if ts is not None:
+            _TS_FAILURES[type(ts).__name__] += 1
         return None
+    s = ts.strip()
+    try:
+        # fromisoformat в 3.11 понимает 'Z', смещение, пробел-разделитель и
+        # дробные секунды — то есть все встреченные формы, кроме легаси-варианта.
+        d = datetime.fromisoformat(s.replace("Z", "+00:00") if s.endswith("Z") else s)
+        return d.replace(tzinfo=None) if d.tzinfo else d
+    except ValueError:
+        pass
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    _TS_FAILURES[s[:24]] += 1
+    if sum(_TS_FAILURES.values()) in (1, 10, 100, 1000):
+        log.warning("метка времени не разобрана — оконные агрегаты для этого "
+                    "события не считаются",
+                    extra={"ctx": {"ts": s[:64],
+                                   "всего_отказов": sum(_TS_FAILURES.values())}})
+    return None
+
+
+def ts_failures():
+    """Счётчик нераспознанных меток времени (для /api/diag)."""
+    return dict(_TS_FAILURES)
+
+
+#: Прежнее имя. Оставлено: на него ссылаются tests/ и research/.
+_parse_ts = parse_ts
 
 
 # ======================================================================
@@ -180,7 +300,12 @@ class Enricher:
             return ev
         try:
             import content_features as cf
-        except Exception:
+        except ImportError:
+            # Модуль признаков не импортировался — путевые признаки не будут
+            # посчитаны, и правила с условиями по ним замолчат на всём потоке.
+            # Молча это делать нельзя.
+            log.error("content_features не импортируется — признаки по пути "
+                      "не считаются, часть правил замолчит", exc_info=True)
             return ev
         for key, rx in (("security_content", cf._SECURITY_CONTENT_RE),
                         ("generated_signal", cf._GENERATED_RE),
@@ -259,8 +384,19 @@ class Enricher:
 #  L1 — ВЕРОЯТНОСТНЫЙ UEBA
 # ======================================================================
 def _surprisal(p):
-    """-log2(p) с защитой от нуля. Единица измерения — биты информации."""
-    return -math.log2(max(p, 1e-12))
+    """-log2(p) с защитой от нуля. Единица измерения — биты информации.
+
+    Пол вероятности — наименьшее нормальное double, а не «круглое» 1e-12.
+    Разница принципиальная: 1e-12 — это потолок в 39.9 бит, ДОСТИЖИМЫЙ в
+    обычной работе. Пуассоновский хвост для всплеска 30 событий при личной
+    интенсивности 1 равен 1.4e-33 (109 бит); со старым полом он и всплеск в 20
+    событий (62 бита) возвращали одно и то же число, то есть шкала переставала
+    различать то, ради чего заведена.
+
+    Защита нужна только от РОВНО нуля (log2(0) = −inf); всё, что представимо в
+    double, возвращается как есть.
+    """
+    return -math.log2(max(p, _sys.float_info.min))
 
 
 class _VonMisesHours:
@@ -276,19 +412,31 @@ class _VonMisesHours:
     κ задаёт ширину ядра: больше κ — уже ядро (κ = 4 ≈ σ порядка 1.5–2 часов).
     """
 
-    def __init__(self, kappa=4.0):
+    def __init__(self, kappa=4.0, half_life=None):
         self.kappa = kappa
-        self.counts = [0] * 24
-        self.n = 0
+        self.counts = [0.0] * 24
+        self.n = 0.0
+        self.half_life = half_life
+        self._since_decay = 0
         w = [math.exp(kappa * math.cos(2 * math.pi * d / 24.0)) for d in range(24)]
         s = sum(w)
         self.kernel = [x / s for x in w]
 
-    def update(self, hour):
-        if hour is None:
+    def update(self, hour, weight=1.0):
+        if hour is None or weight <= 0:
             return
-        self.counts[int(hour) % 24] += 1
-        self.n += 1
+        # Старение — по той же причине, что у _Categorical: «ночью он всегда
+        # так делает» не должно становиться истиной навсегда после недели
+        # подготовленной активности.
+        if self.half_life:
+            self._since_decay += 1
+            if self._since_decay >= 64:
+                f = 0.5 ** (self._since_decay / float(self.half_life))
+                self._since_decay = 0
+                self.counts = [c * f for c in self.counts]
+                self.n *= f
+        self.counts[int(hour) % 24] += weight
+        self.n += weight
 
     def prob(self, hour, alpha=1.0):
         """Сглаженная вероятность часа: круговой KDE + равномерный приор Дирихле."""
@@ -310,18 +458,44 @@ class _Categorical:
     неожиданность, чем длиннее история актора. Это заменяет прежний бинарный
     флаг «раньше такого не было», который одинаково реагировал на новичка с 12
     событиями и на ветерана с 4000.
+
+    Счётчики СТАРЕЮТ (decay). Без старения профиль — это вся история актора без
+    срока давности, и базовую линию можно сдвинуть навсегда, накопив нужного
+    поведения (см. UEBA.update). Экспоненциальное забывание делает профиль
+    окном: сдвинуть его по-прежнему можно, но он и возвращается обратно, а
+    величина сдвига видна как baseline_drift.
     """
 
-    def __init__(self, alpha=0.7):
+    def __init__(self, alpha=0.7, half_life=None):
         self.alpha = alpha
         self.c = collections.Counter()
-        self.n = 0
+        self.n = 0.0
+        #: за сколько наблюдений вес события падает вдвое (None = не забывать)
+        self.half_life = half_life
+        self._since_decay = 0
 
-    def update(self, x):
-        if x is None:
+    def _decay(self):
+        if not self.half_life:
             return
-        self.c[x] += 1
-        self.n += 1
+        self._since_decay += 1
+        if self._since_decay < 64:          # применяем пачками: 64 умножения вместо одного на событие
+            return
+        f = 0.5 ** (self._since_decay / float(self.half_life))
+        self._since_decay = 0
+        for k in list(self.c):
+            v = self.c[k] * f
+            if v < 0.01:
+                del self.c[k]               # иначе словарь растёт неограниченно
+            else:
+                self.c[k] = v
+        self.n *= f
+
+    def update(self, x, weight=1.0):
+        if x is None or weight <= 0:
+            return
+        self._decay()
+        self.c[x] += weight
+        self.n += weight
 
     def prob(self, x, global_vocab):
         k = max(len(global_vocab), len(self.c), 2)
@@ -329,18 +503,65 @@ class _Categorical:
 
 
 def _poisson_sf(c, lam):
-    """P(X >= c) для X ~ Poisson(λ) — хвостовая вероятность всплеска."""
+    """P(X >= c) для X ~ Poisson(λ) — хвостовая вероятность всплеска.
+
+    Считается С ТОЙ СТОРОНЫ, где нет вычитания близких чисел.
+
+    Прежняя реализация всегда шла через дополнение: копила CDF = P(X ≤ c−1) и
+    возвращала 1 − CDF. Для c, заметно превышающих λ, — то есть ровно для
+    интересных всплесков — CDF отличается от единицы на величину меньше
+    машинного эпсилона, разность обнуляется, и результат упирался в пол 1e-12.
+    В битах это потолок 39.9 при истинных значениях:
+
+        λ=1,  c=20  ->  было 39.9 бит, на самом деле  62.4
+        λ=1,  c=30  ->  было 39.9 бит, на самом деле 109.1
+        λ=0.5,c=25  ->  было 39.9 бит, на самом деле 109.4
+
+    То есть всплеск в 20 событий и всплеск в 30 получали ОДИН И ТОТ ЖЕ скор, и
+    величина «неожиданность в битах» переставала быть сравнимой сама с собой.
+
+    Правильный путь зависит от того, в каком хвосте находимся:
+
+      • c > λ  — суммируем хвост НАПРЯМУЮ, начиная с k = c. Члены убывают,
+        накопление идёт от большего к меньшему, вычитания нет вообще. Первый
+        член берётся через логарифм (lgamma), иначе λ^c / c! переполняется.
+      • c ≤ λ  — результат порядка единицы, дополнение здесь численно
+        безопасно и дешевле.
+
+    Проверено против scipy.stats.poisson.sf на сетке λ ∈ {0.5,1,3,10,50},
+    c ∈ {1..60}: относительная погрешность < 1e-12 (tests/test_detector.py).
+    """
     if c <= 0:
         return 1.0
-    lam = max(lam, 1e-6)
-    term = math.exp(-lam)
+    lam = max(lam, 1e-9)
+    c = int(c)
+
+    if c <= lam:
+        # Левая часть распределения: P(X ≥ c) не мала, дополнение корректно.
+        term = math.exp(-lam)
+        acc = term
+        for k in range(1, c):
+            term *= lam / k
+            acc += term
+        return min(1.0, max(0.0, 1.0 - acc))
+
+    # Правый хвост: прямое суммирование от k = c вверх.
+    # log P(X = c) = −λ + c·ln λ − ln Γ(c+1)
+    log_term = -lam + c * math.log(lam) - math.lgamma(c + 1.0)
+    if log_term < -745.0:                     # exp() уйдёт в ноль (denormal)
+        # Даже старший член хвоста ниже разрешения float64. Возвращаем его
+        # честную оценку через логарифм, а не ноль: ноль превратился бы в
+        # бесконечную неожиданность.
+        return math.exp(max(log_term, -745.0))
+    term = math.exp(log_term)
     acc = term
-    for k in range(1, int(c)):
-        term *= lam / k
+    k = c
+    # Хвост убывает как λ/(k+1) < 1, поэтому сходимость геометрическая.
+    while term > acc * 1e-17 and k < c + 10000:
+        term *= lam / (k + 1.0)
         acc += term
-        if acc >= 1.0:
-            return 1e-12
-    return max(1e-12, 1.0 - acc)
+        k += 1
+    return min(1.0, acc)
 
 
 class UEBA:
@@ -437,12 +658,26 @@ class UEBA:
         #: докстринге класса. Проверить решение: tools/ueba_components.py
         self.COMPONENTS = tuple(_cfg("UEBA_COMPONENTS", ("repo", "hour")))
         self._disabled = False
+        #: Период полураспада счётчиков профиля, в наблюдениях этого актора.
+        #: None выключает старение (прежнее поведение).
+        self.HALF_LIFE = _cfg("UEBA_HALF_LIFE_EVENTS", 4000)
+        #: Вес наблюдения, на котором сработало правило. Ноль означает «в
+        #: базовую линию не берём» — см. update().
+        self.ALERT_WEIGHT = _cfg("UEBA_ALERT_LEARN_WEIGHT", 0.0)
+        #: Замок вокруг profile-словаря. HTTP-потоки консоли (/api/entities,
+        #: /api/entity/<a>) читают self.actor, пока поток ингеста его пополняет;
+        #: без замка это RuntimeError «dictionary changed size during iteration»
+        #: в обработчике, то есть 500 на дашборде под нагрузкой.
+        self._lock = __import__("threading").RLock()
 
+        _hl = self.HALF_LIFE
         self.actor = collections.defaultdict(lambda: {
             "n": 0,
-            "hours": _VonMisesHours(),
-            "repos": _Categorical(),
-            "actions": _Categorical(),
+            "learned": 0.0,          # сколько веса ушло в базовую линию
+            "skipped": 0,            # сколько наблюдений в неё НЕ взяли
+            "hours": _VonMisesHours(half_life=_hl),
+            "repos": _Categorical(half_life=_hl),
+            "actions": _Categorical(half_life=_hl),
             "recent": collections.deque(maxlen=256),
             "rate_ewma": None,
         })
@@ -495,7 +730,8 @@ class UEBA:
         Возвращает (dict компонент -> биты, dict компонент -> текст объяснения).
         """
         a = ev.get("actor")
-        p = self.actor[a]
+        with self._lock:
+            p = self.actor[a]
         bits, why = {}, {}
 
         proj = ev.get("project")
@@ -556,7 +792,8 @@ class UEBA:
         a = ev.get("actor")
         if not a:
             return 0.0, [], 0.0
-        p = self.actor[a]
+        with self._lock:
+            p = self.actor[a]
         if p["n"] < self.MIN_EVENTS:
             return 0.0, [], 0.0
 
@@ -588,17 +825,73 @@ class UEBA:
         risk = 1.0 - math.pow(2.0, -(bits - thr) / max(self.SCALE_BITS, 0.5))
         return min(0.97, risk), parts, bits
 
-    def update(self, ev):
+    def profiles_snapshot(self):
+        """Копия профилей для API. Читать self.actor напрямую из HTTP-потока
+        нельзя: поток ингеста пополняет словарь на каждом событии."""
+        with self._lock:
+            return {a: {"n": p["n"], "learned": round(p["learned"], 1),
+                        "skipped": p["skipped"],
+                        "rate_ewma": p["rate_ewma"],
+                        "hours": list(p["hours"].counts),
+                        "top_repos": [r for r, _ in p["repos"].c.most_common(5)],
+                        "top_actions": [x for x, _ in p["actions"].c.most_common(5)]}
+                    for a, p in self.actor.items()}
+
+    def update(self, ev, trust=True):
+        """Пополнить базовую линию актора этим наблюдением.
+
+        trust=False — наблюдение в базовую линию НЕ идёт.
+
+        ── Почему это понадобилось ─────────────────────────────────────────
+        Профиль обновлялся КАЖДЫМ событием, безусловно, сразу после скоринга —
+        включая события, на которых только что сработало правило, и включая все
+        шаги кампании. Счётчики были без забывания. То есть базовая линия
+        сходится к тому, что актор делает чаще всего, а «чаще всего» выбирает
+        сам актор.
+
+        Отсюда самая дешёвая атака на поведенческий слой, и она не
+        гипотетическая — устройство слоя лежит в этом же репозитории: сделать
+        две сотни безобидных api_read в 03:00 по целевому репозиторию в течение
+        недели. Обе компоненты, входящие в сумму (UEBA_COMPONENTS = repo, hour),
+        сходятся к нулю бит, и к моменту настоящей операции слой слеп. Ничто в
+        системе при этом не замечало, что базовая линия сдвинулась.
+
+        Три меры вместе:
+          • наблюдение, породившее сработку ПРАВИЛА, в базовую линию не берётся
+            (вес ALERT_WEIGHT, по умолчанию 0);
+          • наблюдение сильно выше порога берётся с уменьшенным весом —
+            высокоудивительный поток не может быстро «объяснить сам себя»;
+          • счётчики стареют (half_life), так что сдвиг базовой линии не вечен.
+
+        Пропуски считаются в p["skipped"] и видны на странице сущностей:
+        актор, у которого база почти не пополняется, — сам по себе сигнал.
+        """
         a = ev.get("actor")
         if not a:
             return
-        p = self.actor[a]
-        p["n"] += 1
-        p["hours"].update(ev.get("hour"))
-        if ev.get("project"):
-            p["repos"].update(ev["project"]); self.vocab_repos.add(ev["project"])
-        if ev.get("action"):
-            p["actions"].update(ev["action"]); self.vocab_actions.add(ev["action"])
+        with self._lock:
+            p = self.actor[a]
+            p["n"] += 1
+            if not trust:
+                p["skipped"] += 1
+                w = float(self.ALERT_WEIGHT)
+                if w <= 0:
+                    # Всё равно ведём поток интенсивности: c и λ должны
+                    # считаться на одном основании, иначе всплеск считался бы
+                    # относительно интенсивности, из которой выброшены события.
+                    self._update_rate(p, ev)
+                    return
+            else:
+                w = 1.0
+            p["learned"] += w
+            p["hours"].update(ev.get("hour"), w)
+            if ev.get("project"):
+                p["repos"].update(ev["project"], w); self.vocab_repos.add(ev["project"])
+            if ev.get("action"):
+                p["actions"].update(ev["action"], w); self.vocab_actions.add(ev["action"])
+            self._update_rate(p, ev)
+
+    def _update_rate(self, p, ev):
         t = _parse_ts(ev.get("ts_sim"))
         if t:
             # смена прогона: прежняя история к новому потоку не относится
@@ -874,7 +1167,26 @@ def fuse(alerts, mode=None, prior=None):
 
 class Suppressor:
     """Подавление дублей (alert fatigue): одинаковый (actor, rule_id) в пределах
-    окна считается повтором и подавляется. Состояние — в памяти процесса."""
+    окна считается повтором и подавляется. Состояние — в памяти процесса.
+
+    ОТСЧЁТ ИДЁТ ОТ ПОСЛЕДНЕГО ПРОПУЩЕННОГО АЛЕРТА, А НЕ ОТ ПОСЛЕДНЕГО СОБЫТИЯ.
+
+    Разница принципиальная, и раньше она была не в ту сторону: отметка времени
+    обновлялась при КАЖДОМ вызове, включая подавленные. Получалось скользящее
+    окно, которое не закрывается никогда, — достаточно повторять действие чуть
+    чаще, чем раз в окно, и второго алерта не будет вообще:
+
+        раз в 30 минут при окне 60:  17 событий -> 1 алерт
+        раз в 59 минут при окне 60:  24 события -> 1 алерт (сутки молчания)
+
+    Это не косметика, а дыра в обнаружении: чтобы стать невидимым для правила,
+    атакующему достаточно выдерживать паузу чуть меньше окна. Причём профили
+    уклонения stealthy и adaptive в этом стенде ровно этим и заняты — они
+    РАСТЯГИВАЮТ шаги кампании во времени.
+
+    Теперь `_last` двигается только тогда, когда алерт реально пропущен, и окно
+    честно истекает: раз в 30 минут при окне 60 даёт алерт примерно каждый час.
+    """
 
     def __init__(self, window_min=None):
         self.window = window_min if window_min is not None else _cfg("ALERT_SUPPRESS_MIN", 60)
@@ -884,10 +1196,17 @@ class Suppressor:
         t = _parse_ts(ts) if isinstance(ts, str) else ts
         key = (actor, rule_id)
         prev = self._last.get(key)
-        self._last[key] = t
         if prev is None or t is None:
+            self._last[key] = t
             return False
-        return abs((t - prev).total_seconds()) <= self.window * 60
+        # abs(): симулированное время не монотонно (перезапуск мира откатывает
+        # его назад), и без модуля откат на неделю выглядел бы как «прошло много
+        # времени» — то есть подавление снималось бы ровно там, где поток и так
+        # переигрывается заново.
+        if abs((t - prev).total_seconds()) <= self.window * 60:
+            return True                      # подавляем и НЕ двигаем отсчёт
+        self._last[key] = t
+        return False
 
 
 # ----------------------------------------------------------------------
@@ -911,27 +1230,56 @@ class DetectionEngine:
 
     def _load(self, rules_dir):
         rules, seen = [], set()
+        self.rejected = []
         dirs = [rules_dir]
         if _cfg("LOAD_PROPOSED", False):
             dirs.append(os.path.join(rules_dir, "proposed"))
         for d in dirs:
             for fp in sorted(glob.glob(os.path.join(d, "*.json"))):
+                name = os.path.basename(fp)
                 try:
-                    r = json.load(open(fp, encoding="utf-8"))
-                    if r.get("id") and r["id"] not in seen:
-                        seen.add(r["id"]); rules.append(r)
-                    elif not r.get("id"):
-                        log.warning("правило без id пропущено",
-                                    extra={"ctx": {"file": fp}})
+                    # with, а не json.load(open(...)): второе оставляет дескриптор
+                    # висеть до сборки мусора, а загрузка происходит на каждом
+                    # создании движка (тесты, research/, ablation).
+                    with open(fp, encoding="utf-8") as fh:
+                        r = json.load(fh)
                 except Exception as e:
                     log.error("правило не загрузилось: %s (%s)", fp, e,
                               extra={"ctx": {"file": fp}})
-        log.info("загружено правил: %d", len(rules),
-                 extra={"ctx": {"rules": sorted(seen)}})
+                    self.rejected.append({"file": name, "problems": [str(e)[:200]]})
+                    continue
+                ok, problems = validate_rule(r, name)
+                if not ok:
+                    # Отвергаем ЯВНО и с названием файла: молча пропустить —
+                    # значит оставить в каталоге правило, которое видно в
+                    # интерфейсе и учитывается в покрытии, но не работает.
+                    log.error("правило отвергнуто при загрузке",
+                              extra={"ctx": {"file": name, "проблемы": problems}})
+                    self.rejected.append({"file": name,
+                                          "id": r.get("id"), "problems": problems})
+                    continue
+                if r["id"] in seen:
+                    log.warning("дубликат id правила пропущен",
+                                extra={"ctx": {"file": name, "id": r["id"]}})
+                    self.rejected.append({"file": name, "id": r["id"],
+                                          "problems": ["дубликат id"]})
+                    continue
+                r["risk"] = max(0.0, min(1.0, float(r.get("risk", 0.5))))
+                seen.add(r["id"])
+                rules.append(r)
+        log.info("загружено правил: %d (отвергнуто: %d)", len(rules),
+                 len(self.rejected),
+                 extra={"ctx": {"rules": sorted(seen),
+                                "rejected": [x["file"] for x in self.rejected]}})
         return rules
 
     def rule_count(self):
         return len(self.rules)
+
+    def rejected_rules(self):
+        """Правила, не прошедшие проверку при загрузке. Отдаются в /api/detections,
+        чтобы сломанное правило было ВИДНО, а не просто отсутствовало."""
+        return list(getattr(self, "rejected", []))
 
     def techniques_covered(self):
         return sorted({r.get("technique") for r in self.rules if r.get("technique")})
@@ -952,6 +1300,12 @@ class DetectionEngine:
                     "reason": r["title"],
                 })
 
+        # Сработало ли ПРАВИЛО — решается до обновления базовой линии.
+        # Наблюдение, на котором сработало детерминированное правило, в базовую
+        # линию поведения не берётся: иначе достаточно повторять подозрительное
+        # действие, чтобы оно перестало быть подозрительным (см. UEBA.update).
+        _rule_alert = bool(alerts)
+
         # L1 — UEBA (вероятностный)
         u_risk, u_reasons, u_bits = self.ueba.score(ev)
         if u_risk > 0:
@@ -964,7 +1318,7 @@ class DetectionEngine:
                           f"отклонение от базлайна актора ({u_bits:.1f} бит)",
                 "bits": round(u_bits, 2),
             })
-        self.ueba.update(ev)
+        self.ueba.update(ev, trust=not _rule_alert)
 
         # L2 — ML
         #
@@ -997,7 +1351,7 @@ class DetectionEngine:
                         "severity": "medium" if m_p < 0.8 else "high",
                         # cap: одна лишь модель не должна давать critical сама по себе
                         "risk": round(min(self.ml_risk_cap, m_p), 3),
-                        "reason": ("модель: " + ", ".join(why)) if why else "модель: высокий скор",
+                        "reason": ("model: " + ", ".join(why)) if why else "model: high score",
                         "proba": round(m_p, 4),
                     })
                 elif alerts and m_p >= self.ml_evidence_min:

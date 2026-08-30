@@ -1,6 +1,6 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Вход</title>
-<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
+<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
@@ -14,8 +14,14 @@
  </div>
  <form class=right method=post>
    <h1>Вход в панель</h1><div class=sub>Авторизуйтесь для управления симуляцией</div>
-   <label>Логин</label><input name=username type=text autofocus autocomplete=username>
-   <label>Пароль</label><input name=password type=password>
+   <!-- label СВЯЗАН с полем через for/id. Без этого экранный диктор
+        объявляет «текстовое поле» без имени: подпись рядом он не видит.
+        На консоли защиты связь была, здесь — нет; проверка доступности
+        загружала только дашборды и до формы входа не доходила. -->
+   <label for=u>Логин</label>
+   <input id=u name=username type=text autofocus autocomplete=username>
+   <label for=p>Пароль</label>
+   <input id=p name=password type=password autocomplete=current-password>
    <button type=submit>Войти</button>
    <div class=err>{{ERROR}}</div>
    <div class=hint>Пароль печатается в консоли при старте или задаётся

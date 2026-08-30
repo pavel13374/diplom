@@ -49,7 +49,6 @@ del _os, _sys
 
 import os
 import sys
-import math
 import json
 import logging
 import argparse
@@ -67,7 +66,7 @@ import config
 import detector
 import run_defense
 from workload import build_workload
-from stats import roc_auc, pr_auc, bootstrap_ci
+from stats import roc_auc, pr_auc
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ALL_COMPONENTS = ("repo", "action", "hour", "burst")

@@ -42,13 +42,20 @@ SERVICE_ID = {"meta", "activity", "run_id", "seq", "ts_real", "labels", "session
 DROP_COLUMNS = TARGET_COLUMNS | LABEL_EXTRA | DIRECT_LEAK | ANOMALY_ONLY | SERVICE_ID
 
 CONTENT_FEATURES = {"shannon_entropy", "has_high_entropy_token", "regex_hits",
-                    "n_regex_hits", "filename_signal", "placeholder_signal"}
+                    "n_regex_hits", "filename_signal", "placeholder_signal",
+                    # Признаки, добавленные вместе с нормализацией содержимого.
+                    # Они ВЫЧИСЛИМЫ ИЗ САМОГО ФАЙЛА, значит это честные фичи, а
+                    # не разметка, и их место здесь, а не в drop-листе.
+                    "real_hits", "n_real_hits", "evasion_signal", "evasion_kinds",
+                    "hidden_hits", "truncated", "ci_debug_signal", "template_path"}
 assert not (CONTENT_FEATURES & DROP_COLUMNS), "признаки контента не должны быть в drop-листе!"
 
-SPARSE_NUMERIC = {"shannon_entropy": -1.0, "n_regex_hits": -1, "lines": -1, "bytes": -1,
-                  "mr_iid": -1}
+SPARSE_NUMERIC = {"shannon_entropy": -1.0, "n_regex_hits": -1, "n_real_hits": -1,
+                  "lines": -1, "bytes": -1, "mr_iid": -1}
 SPARSE_BOOL = {"has_high_entropy_token": False, "filename_signal": False,
-               "placeholder_signal": False}
+               "placeholder_signal": False, "evasion_signal": False,
+               "truncated": False, "ci_debug_signal": False,
+               "template_path": False}
 SPARSE_CATEG = {"ext": "none", "path": "none", "branch": "none", "target": "none"}
 
 

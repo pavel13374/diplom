@@ -32,17 +32,26 @@ import math
 
 #: Действия из нормализованного словаря (taxonomy.py), которые кодируем one-hot.
 #:
-#: Список ОБЯЗАН совпадать с taxonomy.OBSERVABLE — это проверяется ассертом
-#: ниже и тестом tests/test_detector.py. Раньше рассинхрон был: в taxonomy
-#: добавили issue_open / issue_comment / issue_close, а сюда — нет. 634 события
-#: живого журнала (2% потока) получали НУЛЕВОЙ вектор действия: для модели они
-#: были неотличимы друг от друга и от любого неизвестного действия. Молчаливый
-#: рассинхрон такого рода — самый дешёвый способ потерять сигнал.
-ACTIONS = ["push", "force_push", "file_delete", "branch_create", "branch_delete",
-           "mr_open", "mr_merge", "mr_approve", "mr_comment", "mr_close",
-           "issue_open", "issue_comment", "issue_close",
-           "api_read", "token_create", "deploy_key_add", "hook_create",
-           "schedule_create", "pipeline_run", "member_update", "release_publish"]
+#: ВЫВОДИТСЯ ИЗ taxonomy.OBSERVABLE, а не перечисляется руками.
+#:
+#: Здесь дважды был написанный вручную список, и он дважды разошёлся со
+#: словарём. Первый раз: в taxonomy добавили issue_open / issue_comment /
+#: issue_close, а сюда — нет, и 634 события живого журнала (2% потока)
+#: получали НУЛЕВОЙ вектор действия — для модели они были неотличимы друг от
+#: друга и от любого неизвестного действия. Предупреждающий комментарий об
+#: этом стоял ровно на этом месте — и не помешал случиться тому же во второй
+#: раз: коммит «добавлено 24 типа действий» расширил словарь до 45 значений,
+#: список остался на 21, и МОДЕЛЬ ПЕРЕСТАЛА РАЗЛИЧАТЬ БОЛЕЕ ПОЛОВИНЫ СЛОВАРЯ:
+#: все 24 новых действия сваливались в один признак act_unknown.
+#:
+#: Вывод: комментария недостаточно, рассинхрон должен быть НЕВОЗМОЖЕН.
+#: taxonomy.py — модуль без единого импорта (чистые данные), цикла здесь нет,
+#: поэтому список берётся из него напрямую. Порядок — sorted(), то есть
+#: детерминированный: модель хранит список признаков рядом с весами, и
+#: MLScorer._load сверяет его целиком перед тем, как включить слой.
+import taxonomy
+
+ACTIONS = sorted(taxonomy.OBSERVABLE)
 
 #: Порядок признаков зафиксирован — модель сохраняется вместе с этим списком
 #: и при загрузке сверяется (см. MLScorer._load).
@@ -75,7 +84,46 @@ FEATURES = [
 ] + ["act_" + a for a in ACTIONS]
 
 _SENSITIVE_API = ("/oauth", "/members", "/search", "/repository/archive", "/tokens")
-_SECRET_DIRS = ("vault", "backup", "export", "secret", "dump", "credential")
+
+#: Каталоги, само нахождение файла в которых — признак работы с секретами.
+_SECRET_DIRS = ("vault", "backup", "export", "secret", "secrets", "dump", "dumps",
+                "credential", "credentials")
+
+
+def _in_secret_dir(path, security_content):
+    """Лежит ли файл В КАТАЛОГЕ секретов.
+
+    Сопоставление по СЕГМЕНТАМ пути, а не подстрокой, и с вычетом рабочих
+    продуктов SOC-команды.
+
+    Почему это переписано. Признак считался как «одно из слов встречается
+    где-либо в пути», и на живом стенде это оказалось разрушительно: команда
+    целыми днями пишет правила детектирования ПРО кражу учётных данных, и
+    каждый такой коммит попадал под признак —
+
+        rules/credential_access/golden_ticket_anomalous_tgt.yml   -> secretdir=1
+        rules/defender/defender-credential-file-access.yml        -> secretdir=1
+        playbooks/ir_credential_theft.md                          -> secretdir=1
+
+    то есть ровно то же значение, что у vault/prod-secrets.yml. В прогоне на
+    настоящем GitLab из 50 алертов 46 оказались такими: очередь аналитика
+    забита нормальной работой, а доля слоёв перекошена (модель 92%, правила
+    6%) не потому, что модель хороша, а потому что она реагирует на слово
+    «credential» в имени файла.
+
+    Признак security_content уже отвечает на вопрос «это рабочий продукт
+    SOC-команды» — правило, гипотеза, плейбук, документация. Здесь он и
+    вычитается: файл в каталоге секретов остаётся уликой, файл ПРО секреты —
+    нет.
+    """
+    segs = [s for s in str(path or "").lower().replace("\\", "/").split("/") if s]
+    if not segs:
+        return 0.0
+    # последний сегмент — имя файла, его в расчёт каталога не берём
+    dirs = segs[:-1]
+    if not any(d in _SECRET_DIRS for d in dirs):
+        return 0.0
+    return 0.0 if security_content else 1.0
 
 
 def _num(r, k, d=0.0):
@@ -126,7 +174,7 @@ def featurize(r):
         byt_log / 12.0,
 
         1.0 if "env" in path else 0.0,
-        1.0 if any(k in path for k in _SECRET_DIRS) else 0.0,
+        _in_secret_dir(path, _flag(r, "security_content")),
         1.0 if ("gitlab-ci" in path or path.startswith("ci/")) else 0.0,
         1.0 if any(k in path for k in ("requirements", "package.json", "go.mod", "pom.xml")) else 0.0,
         _flag(r, "obfuscation_signal"),
@@ -177,11 +225,14 @@ assert len(featurize({})) == len(FEATURES), (
 def check_taxonomy():
     """ACTIONS должен совпадать с taxonomy.OBSERVABLE.
 
-    Отдельной функцией, а не голым импортом на уровне модуля: ml_features
-    подтягивает детектор в инференсе, и жёсткая зависимость создала бы цикл.
-    Зовётся из tests/ и tools/doctor.py.
+    Теперь ACTIONS ВЫВОДИТСЯ из словаря, поэтому расхождение невозможно по
+    построению, и функция всегда возвращает две пустые группы. Она оставлена
+    намеренно: её зовут tests/ и tools/doctor.py, и если кто-то однажды снова
+    заменит вывод на ручной список, проверка сразу станет содержательной.
     """
-    import taxonomy
     missing = sorted(taxonomy.OBSERVABLE - _ACTION_SET)
     extra = sorted(_ACTION_SET - taxonomy.OBSERVABLE)
     return missing, extra
+
+
+assert not any(check_taxonomy()), "ACTIONS разошёлся с taxonomy.OBSERVABLE"

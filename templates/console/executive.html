@@ -1,6 +1,6 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Обзор платформы · Sentinel SOC</title>
-<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(e){}</script>
+<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
@@ -37,7 +37,7 @@
   <div class="card met"><div class="n is-empty" id=mCov>—</div><div class=l>Покрытие ATT&amp;CK</div>
     <div class=s>Доля техник матрицы MITRE ATT&amp;CK, которые платформа умеет замечать.</div></div>
 </div>
-<div class=computing id=metSt>Считаю метрики по журналу событий.</div>
+<div class=computing id=metSt>Метрики считаются по журналу событий.</div>
 
 <h2 class="section-title mt-6">Почему не поиск по шаблону</h2>
 <div class="card mb-6">
@@ -91,7 +91,7 @@ async function poll(){
     ' · '+nfmt(m.anomaly_episodes)+' '+plur(m.anomaly_episodes,'атакующий эпизод','атакующих эпизода','атакующих эпизодов')+
     ' · '+nfmt(m.alerts)+' '+plur(m.alerts,'детект','детекта','детектов')+'.';
  } else {
-  $('metSt').textContent=d.computing?'Считаю метрики по журналу событий.':(d.metrics_err?('Не удалось посчитать: '+d.metrics_err):'Нет данных: запустите среду или демо.');
+  $('metSt').textContent=d.computing?'Метрики считаются по журналу событий.':(d.metrics_err?('Не удалось посчитать: '+d.metrics_err):'Нет данных: запустите среду или демо.');
  }
  const rows=d.holdout||[];
  if(rows.length){

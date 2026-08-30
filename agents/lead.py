@@ -9,7 +9,7 @@ from datetime import date
 from agents.base import BaseAgent
 from content import comments, commit_messages
 import config
-from config import PROJECTS, DELAYS
+from config import DELAYS
 from activities import flow
 
 logger = logging.getLogger(__name__)

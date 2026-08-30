@@ -12,9 +12,9 @@
       ">=": 5.0
     },
     "has_high_entropy_token": true,
-    "placeholder_signal": false,
     "generated_signal": false,
-    "n_regex_hits": 0,
-    "security_content": false
+    "security_content": false,
+    "n_real_hits": 0,
+    "placeholder_signal": false
   }
 }

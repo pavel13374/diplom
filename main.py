@@ -145,16 +145,21 @@ def _start_reporter(sched):
                     return
                 _t.sleep(1)
             try:
-                telegram.send(report.build_report(sched, title="Отчёт SOC-симулятора",
-                                                  uptime_s=int(_t.time() - start)))
+                telegram.send(report.build_report(sched, title="Отчёт мира (симуляция)",
+                                                  uptime_s=int(_t.time() - start)),
+                              kind="world_report")
             except Exception:
-                pass
+                logger.error("периодический отчёт в Telegram не отправлен",
+                             exc_info=True)
     threading.Thread(target=loop, daemon=True).start()
 
 
 # -----------------------------------------------------------------------
 def main():
-    global _scheduler, _running
+    # _running здесь только ЧИТАЕТСЯ (строка 206), присваивает его
+    # обработчик сигнала. Объявлять его global незачем, а вид
+    # «global _running» подсказывал бы, что старт сбрасывает флаг.
+    global _scheduler
 
     setup_logging()
     runlog.setup()
@@ -177,7 +182,7 @@ def main():
     logger.info(f"  Активностей:   {len(config.ACTIVITY_WEIGHTS)} типов + ритм отдела")
     logger.info("=" * 60)
 
-    gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=False)
+    gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=config.gitlab_verify())
 
     logger.info("Проверка подключения к GitLab...")
     test = gl._api("GET", "/version")
@@ -198,7 +203,8 @@ def main():
     _scheduler = Scheduler(agents, gl, state=state)
 
     if config.TELEGRAM.get("send_start_stop"):
-        telegram.send_async(f"▶️ SOC-симулятор запущен · {simclock.stamp()} · масштаб x{scale:.0f}")
+        telegram.send_async(f"▶️ SOC-симулятор запущен · {simclock.stamp()} · масштаб x{scale:.0f}",
+                            kind="lifecycle")
     _start_reporter(_scheduler)
     logger.info("Симулятор запущен. Для остановки нажми Ctrl+C")
     logger.info("-" * 60)
@@ -216,9 +222,12 @@ def main():
     logger.info("Симулятор остановлен.")
     try:
         if config.TELEGRAM.get("send_start_stop"):
-            telegram.send(report.build_report(_scheduler, title="SOC-симулятор остановлен"))
+            telegram.send(report.build_report(_scheduler,
+                                              title="Мир (симуляция) остановлен"),
+                          kind="lifecycle")
     except Exception:
-        pass
+        logger.error("уведомление об остановке в Telegram не отправлено",
+                     exc_info=True)
     try:
         state.save()
     except Exception:
@@ -227,6 +236,21 @@ def main():
         logger.error("не удалось сохранить состояние симуляции — прогресс "
                      "прогона потерян", exc_info=True,
                      extra={"ctx": {"file": config.STATE_FILE}})
+    # ЖУРНАЛ И ХРАНИЛИЩЕ ЗАКРЫВАЮТСЯ ЯВНО.
+    #
+    # events.close() не звался ни здесь, ни в веб-панели: буфер data/events.jsonl
+    # оставался незакрытым, и хвост прогона — то есть самые свежие записи —
+    # мог не дойти до диска. То же с соединением SQLite.
+    try:
+        events.close()
+    except Exception:
+        logger.error("не удалось закрыть журнал событий — хвост записей "
+                     "может быть потерян", exc_info=True)
+    try:
+        import eventstore
+        eventstore.close()
+    except Exception:
+        logger.error("не удалось закрыть event-store", exc_info=True)
     if _scheduler:
         _scheduler.print_stats()
     logger.info("=" * 60)

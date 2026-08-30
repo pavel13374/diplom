@@ -31,7 +31,7 @@ urllib3.disable_warnings()
 PURGE = "--purge" in sys.argv
 DEL_BRANCHES = "--del-branches" in sys.argv
 
-gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=False)
+gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=config.gitlab_verify())
 
 # Собираем полный список репозиториев: базовые + автодискавери namespace
 repos = dict(config.PROJECTS)

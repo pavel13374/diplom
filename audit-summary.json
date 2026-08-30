@@ -1,0 +1,385 @@
+{
+  "audit": {
+    "date": "2026-08-29",
+    "type": "acceptance",
+    "method": [
+      "white-box source review",
+      "black-box browser operation",
+      "grey-box UI/API/DB reconciliation"
+    ],
+    "verdict": "PASS_WITH_MINOR_RISKS",
+    "verdict_condition": "Two High defects (T1087, T1562) are fixed in source but require a world restart to take effect in the running stand.",
+    "phases": [
+      {
+        "phase": 1,
+        "name": "acceptance audit",
+        "date": "2026-08-29"
+      },
+      {
+        "phase": 2,
+        "name": "observability, logging, telegram",
+        "date": "2026-08-30"
+      }
+    ]
+  },
+  "measured": {
+    "note": "All values produced by execution against the running stand or by SQL over data/events.db, 2026-08-29T18:39Z.",
+    "store_events": 79340,
+    "processed_by_defense": 12924,
+    "processed_note": "console replays the last REPLAY_EVENTS=6000 on start, then follows live; not equal to store_events by design",
+    "alerts": 167,
+    "incidents": 56,
+    "campaigns_detected": 32,
+    "rules_loaded": 41,
+    "attack_techniques_in_matrix_unique": 46,
+    "attack_matrix_cells": 47,
+    "attack_covered_by_rule": 33,
+    "attack_coverage_displayed_pct": 72,
+    "attack_techniques_actually_fired": 31,
+    "attack_honest_demonstrated_pct": 67.4,
+    "attack_covered_but_never_fired": [
+      "T1087",
+      "T1562"
+    ],
+    "attack_blind_spots_no_rule": 13,
+    "detection_rate_full_journal": 0.7057,
+    "detection_rate_basis": "235 detected of 333 anomaly episodes over 62680 observable events",
+    "mttd_sim_minutes_mean": 1.518,
+    "mttd_sim_minutes_median": 1.217,
+    "fp_rate_metrics_actionable": 0.0659,
+    "precision_events": 0.8195
+  },
+  "acceptance_test": {
+    "red_campaigns_launched": 30,
+    "red_campaigns_completed": 30,
+    "red_steps_executed": 114,
+    "red_command_ids": "98-127",
+    "distinct_actors_targeted": 10,
+    "attack_techniques_executed": 30,
+    "attack_techniques_detected": 28,
+    "detection_recall": 0.933,
+    "missed_techniques": [
+      "T1087",
+      "T1562"
+    ],
+    "new_incidents_created": 23,
+    "merge_explanation": "30 campaigns landed on 10 actors; the correlator groups alerts per actor within a time window, so campaigns hitting the same actor merged into one incident.",
+    "incidents_investigated": 56,
+    "verdict_tp": 37,
+    "verdict_fp": 19,
+    "invariant_checked": "no incident lacking a rule-layer alert was marked TP (16 such incidents, all FP)",
+    "persistence_verified": true,
+    "persistence_method": "full page reload + incident_status table read (56 rows, owner=audit)"
+  },
+  "defects": {
+    "by_severity_total": {
+      "P0": 0,
+      "P1": 2,
+      "P2": 5,
+      "P3": 11,
+      "P4": 5
+    },
+    "total": 23,
+    "fixed": 6,
+    "fixed_ids": [
+      "DET-2 (P1)",
+      "DET-3 (P1)",
+      "MTTD-label (P3)",
+      "offline-test-harness (P3)",
+      "UI-4 (P3)",
+      "DB-2 (P4)"
+    ],
+    "open": 17,
+    "open_P2": [
+      "STAT-1",
+      "COR-1",
+      "COR-2",
+      "API-1",
+      "UI-1"
+    ],
+    "open_P3": [
+      "STAT-2",
+      "STAT-3",
+      "STAT-4",
+      "UI-2",
+      "UI-3",
+      "API-2",
+      "API-3",
+      "DET-1"
+    ],
+    "open_P4": [
+      "DB-1",
+      "CFG-1",
+      "TEST-1",
+      "GL-1"
+    ],
+    "accepted_by_owner": [
+      "GitLab admin PAT present in git history of web_config.json (commits db3bfff, 9b812fb, e5aa89b, all ancestors of origin/main); owner states this is a local installation and accepts the risk"
+    ]
+  },
+  "fixes": [
+    {
+      "id": "FIX-1",
+      "severity": "P1",
+      "area": "detection",
+      "technique": "T1562",
+      "files": [
+        "gitlab_client.py",
+        "agents/base.py",
+        "webapp.py"
+      ],
+      "validated": "unit",
+      "live_effect": "requires world restart"
+    },
+    {
+      "id": "FIX-2",
+      "severity": "P1",
+      "area": "simulation",
+      "technique": "T1087",
+      "files": [
+        "activities/anomaly.py"
+      ],
+      "validated": "unit",
+      "live_effect": "requires world restart"
+    },
+    {
+      "id": "FIX-3",
+      "severity": "P3",
+      "area": "statistics label",
+      "files": [
+        "templates/console/dashboard.html"
+      ],
+      "validated": "browser",
+      "live_effect": "active"
+    },
+    {
+      "id": "FIX-4",
+      "severity": "P3",
+      "area": "test harness",
+      "files": [
+        "tests/test_offline.py"
+      ],
+      "validated": "test suite",
+      "live_effect": "active"
+    },
+    {
+      "id": "FIX-5",
+      "severity": "P4",
+      "area": "metrics schema",
+      "files": [
+        "console_app/ingest.py",
+        "console_app/metrics.py"
+      ],
+      "validated": "test suite",
+      "live_effect": "requires console restart"
+    },
+    {
+      "id": "FIX-6",
+      "severity": "P3",
+      "area": "dashboard correctness",
+      "files": [
+        "templates/console/dashboard.html"
+      ],
+      "validated": "browser",
+      "live_effect": "active"
+    },
+    {
+      "id": "FIX-7",
+      "severity": "P1",
+      "area": "secrets in logs",
+      "files": [
+        "telegram.py",
+        "soclog.py"
+      ],
+      "validated": "test+run"
+    },
+    {
+      "id": "FIX-8",
+      "severity": "P2",
+      "area": "telegram reliability",
+      "files": [
+        "telegram.py"
+      ],
+      "validated": "mock Bot API, 16 checks"
+    },
+    {
+      "id": "FIX-9",
+      "severity": "P1",
+      "area": "no console output for defense",
+      "files": [
+        "soclog.py",
+        "console_app/__init__.py",
+        "webapp.py"
+      ],
+      "validated": "run"
+    },
+    {
+      "id": "FIX-10",
+      "severity": "P2",
+      "area": "operator console",
+      "files": [
+        "panel.py",
+        "START_PANEL.bat"
+      ],
+      "validated": "run"
+    },
+    {
+      "id": "FIX-11",
+      "severity": "P1",
+      "area": "single source of statistics",
+      "files": [
+        "console_app/overview.py",
+        "console_app/incidents.py",
+        "console_app/notify.py",
+        "report.py"
+      ],
+      "validated": "27 checks on real data"
+    },
+    {
+      "id": "FIX-12",
+      "severity": "P2",
+      "area": "errors reach the operator",
+      "files": [
+        "console_app/notify.py"
+      ],
+      "validated": "induced DB corruption"
+    },
+    {
+      "id": "FIX-13",
+      "severity": "P2",
+      "area": "log rotation / retention",
+      "files": [
+        "panel.py",
+        "runlog.py"
+      ],
+      "validated": "rotation observed"
+    },
+    {
+      "id": "FIX-14",
+      "severity": "P3",
+      "area": "log noise, silent excepts",
+      "files": [
+        "llm_client.py",
+        "webapp.py",
+        "main.py",
+        "activities/anomaly.py",
+        "console_app/attack.py"
+      ],
+      "validated": "test suite"
+    }
+  ],
+  "tests": {
+    "runner": "run_tests.py",
+    "total": 22,
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "new": "tests/test_telegram.py (38 проверок: канал, маскирование, совпадение чисел с API)"
+  },
+  "not_verified": [
+    "live effect of FIX-1 and FIX-2 (world restart required; the audit environment cannot start or stop Windows processes)",
+    "clean start on the owner's machine (same reason)",
+    "sustained load / multi-day behaviour",
+    "recovery from a GitLab outage mid-campaign",
+    "concurrent work by several analysts"
+  ],
+  "phase1_debt_closed": {
+    "verified_after_user_restart": true,
+    "T1562": {
+      "approvals_count_present_in_mr_merge": true,
+      "fired": 4,
+      "was": 0
+    },
+    "T1087": {
+      "fired": 3,
+      "was": 0
+    },
+    "covered_but_never_fired_now": [],
+    "attack_covered": 33,
+    "attack_fired": 33,
+    "attack_total": 46,
+    "fake_coverage_remaining": 0
+  },
+  "observability": {
+    "unified_format": "ts(ms) level service component event ctx",
+    "services_covered": [
+      "world (webapp.py)",
+      "defense (console.py)"
+    ],
+    "console_output_for_defense_before": "none",
+    "levels": [
+      "DEBUG",
+      "INFO",
+      "WARNING",
+      "ERROR",
+      "CRITICAL"
+    ],
+    "log_files": {
+      "logs/world.log": "поток мира, захваченный панелью, 10MB x5",
+      "logs/defense.log": "поток защиты, захваченный панелью, 10MB x5",
+      "logs/app-defense.log": "журнал процесса защиты, 10MB x5",
+      "simulator.log": "журнал процесса мира, 10MB x5",
+      "logs/errors-*.log": "только ERROR+ с трейсбеками, 5MB x3",
+      "logs/debug-*.jsonl": "структурные записи, 10MB x5",
+      "logs/run-*.log": "полный лог прогона, 10MB x1, хранится 5"
+    },
+    "logs_dir_upper_bound_mb": 430,
+    "secrets_masked_in": [
+      "console",
+      "app log files",
+      "debug jsonl",
+      "ring buffer (/api/diag)",
+      "errors.log tail",
+      "diagnostics bundle"
+    ],
+    "env_switches": {
+      "SOC_DEBUG": "уровень DEBUG",
+      "SOC_LOG_ACCESS": "all|errors|none — строки доступа HTTP",
+      "SOC_LOG_COLOR": "0 — без цвета",
+      "SOC_SERVICE": "переопределить имя сервиса",
+      "SOC_TELEGRAM_API_BASE": "адрес Bot API (тесты / закрытый контур)"
+    }
+  },
+  "telegram": {
+    "token_storage": ".telegram_token / .telegram_chat (gitignored) или окружение",
+    "token_in_source": false,
+    "token_in_logs": false,
+    "retries": 3,
+    "handles_429_retry_after": true,
+    "no_retry_on_4xx": true,
+    "antiflood": "по виду сообщения (kind)",
+    "dedup_window_s": 120,
+    "statistics_source": "console_app.overview.build_stats + incidents.build_workflow (те же функции, что обслуживают /api/stats и /api/workflow)",
+    "second_stats_implementation": false,
+    "notifications": [
+      "старт консоли",
+      "остановка",
+      "периодическая сводка SOC",
+      "ошибки ERROR+ с агрегацией",
+      "проверка связи по кнопке",
+      "сводка по запросу"
+    ],
+    "endpoints": [
+      "GET /api/telegram",
+      "POST /api/telegram/test",
+      "POST /api/telegram/report"
+    ],
+    "verified_end_to_end_in_sandbox": true,
+    "verified_against_real_telegram": "НЕ ПРОВЕРЕНО — оба окружения аудита блокируют api.telegram.org прокси (403); требуется прогон на машине владельца"
+  },
+  "stats_consistency_check": {
+    "checks": 27,
+    "mismatches": 0,
+    "sample": {
+      "store_events": 79611,
+      "processed": 5304,
+      "alerts": 114,
+      "incidents": 33,
+      "coverage_pct": 72,
+      "techniques_fired": 32,
+      "rules": 41,
+      "tp": 21,
+      "fp": 9
+    }
+  }
+}

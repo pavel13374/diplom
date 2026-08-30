@@ -174,7 +174,7 @@ def main():
     except Exception:
         pass
 
-    gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=False)
+    gl = GitLabClient(config.GITLAB_URL, config.ADMIN_TOKEN, ssl_verify=config.gitlab_verify())
     projects = dict(config.PROJECTS)
     try:
         projects.update(gl.discover_projects(config.PROJECT_NAMESPACE) or {})

@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """Генерация detections/_index.md — читаемого каталога правил."""
-import json, glob, os, collections
 import sys
+import json
+import glob
+import collections
+
 sys.path.insert(0, ".")
 from attack_matrix import ATTACK, all_techniques
 

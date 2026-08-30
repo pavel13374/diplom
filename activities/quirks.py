@@ -6,7 +6,7 @@
 """
 import random
 import logging
-from config import PROJECTS, USERS, DELAYS
+from config import USERS, DELAYS
 from content import secrets_bank as sb
 from activities import flow
 import events

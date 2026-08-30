@@ -20,7 +20,6 @@ import sys
 import json
 import argparse
 import collections
-from datetime import datetime
 
 import stats
 import config
@@ -29,17 +28,34 @@ import run_defense
 
 
 def _parse(ts):
-    try:
-        return datetime.strptime(ts or "", "%Y-%m-%dT%H:%M:%S")
-    except Exception:
-        return None
+    """Единый разбор метки времени — тот же, что у детектора и коррелятора.
+
+    Своя копия на одном strptime возвращала None на метках с микросекундами,
+    с суффиксом Z и со смещением часового пояса. Здесь по времени считается
+    MTTD и окна эпизодов, поэтому расхождение между разбором в метрике и
+    разбором в бою давало бы неверные, но правдоподобные числа.
+    """
+    import detector
+    return detector.parse_ts(ts)
+
+
+#: Сколько событий журнала берётся в расчёт метрик.
+#:
+#: metrics.py запускается ПОДПРОЦЕССОМ из консоли каждые пять минут и грузил
+#: журнал целиком (`limit=10_000_000`). На стенде это десятки тысяч событий и
+#: сотня мегабайт; на длинном прогоне цифра не ограничена ничем, а прогон
+#: детектора по всему журналу ещё и линеен по его длине. Ограничение с ЯВНЫМ
+#: сообщением честнее, чем незаметная деградация: в выводе видно, по скольким
+#: событиям посчитано.
+MAX_ROWS = 200_000
 
 
 def compute():
     eventstore.init()
-    rows = eventstore.read_since(0, limit=10_000_000) if eventstore.enabled() else []
+    rows = eventstore.read_since(0, limit=MAX_ROWS) if eventstore.enabled() else []
     if not rows:
         return None
+    truncated = len(rows) >= MAX_ROWS
 
     # ПРОГОН ДЕТЕКТОРА — РОВНО ОДИН РАЗ ПО ПОТОКУ.
     #
@@ -238,6 +254,9 @@ def compute():
 
     return {
         "events": len(rows), "anomaly_episodes": n_ep, "alerts": len(alerts),
+        # Признак «журнал прочитан не целиком»: без него длинный прогон
+        # давал бы метрики по хвосту и выглядел как метрики по всему.
+        "events_truncated": truncated, "events_limit": MAX_ROWS,
         "detection_rate": round(det_rate, 3), "detected_episodes": detected,
         # мягкий критерий (любой алерт актора в окне) — для сравнения, НЕ в отчёт
         "detection_rate_loose": round(detected_loose / n_ep, 3) if n_ep else 0.0,
@@ -290,9 +309,9 @@ def main():
     print("-" * 68)
     print(f"  Detection rate:          {m['detection_rate']*100:.1f}% {ci('detection_rate_ci')}  "
           f"({m['detected_episodes']}/{m['anomaly_episodes']})")
-    print(f"    строгий критерий: алерт НА СОБЫТИИ эпизода. Мягкий (любой алерт")
+    print("    строгий критерий: алерт НА СОБЫТИИ эпизода. Мягкий (любой алерт")
     print(f"    того же актора в окне) дал бы {m['detection_rate_loose']*100:.1f}% — разница и есть")
-    print(f"    величина случайных совпадений.")
+    print("    величина случайных совпадений.")
     print(f"  Precision (события):     {m['precision']*100:.1f}% {ci('precision_ci')}")
     print(f"  ATT&CK coverage:         {m['attack_coverage']*100:.1f}%  "
           f"({m['techniques_covered']}/{m['techniques_in_matrix']} техник матрицы)")
@@ -300,7 +319,7 @@ def main():
           f"[{m['mttd_ci'][0]}–{m['mttd_ci'][1]}], медиана {m['mttd_median_sim_min']}")
     print(f"    цензурировано: посчитано по {m['mttd_measured_on']} пойманным эпизодам из "
           f"{m['anomaly_episodes']}; у непойманных времени обнаружения не существует.")
-    print(f"  Доля ложных — ТРИ знаменателя (одной честной цифры не бывает):")
+    print("  Доля ложных — ТРИ знаменателя (одной честной цифры не бывает):")
     print(f"    по событиям:           {m['fp_rate_events']*100:5.1f}%  "
           f"({m['fp_alerts']}/{m['alerts']} сырых детектов на норме)")
     print(f"    по инцидентам:         {m['fp_rate_incidents']*100:5.1f}%  "
@@ -311,8 +330,8 @@ def main():
     for _t in m["fp_by_threshold"]:
         print(f"      risk >= {_t['threshold']:.1f}:  {_t['fp']:>4}/{_t['incidents']:<5} = "
               f"{_t['fp_rate']*100:5.1f}%")
-    print(f"    Цифра сильно зависит от порога, поэтому приводить одну без")
-    print(f"    остальных некорректно — это и есть выбор удобного знаменателя.")
+    print("    Цифра сильно зависит от порога, поэтому приводить одну без")
+    print("    остальных некорректно — это и есть выбор удобного знаменателя.")
     # ЧТО ЭТА ЦИФРА ЗНАЧИТ ПРИ ТАКОМ ДИСБАЛАНСЕ.
     #
     # «60% ложных» звучит провально ровно до того момента, пока не сравнить с
@@ -328,8 +347,8 @@ def main():
               f"частоте атак {_base*100:.2f}%")
         print(f"    — выигрыш над случайным в {_prec_inc/_base:.0f} раз. При "
               f"{m['alerts_per_sim_day']} алертах в сим-день это посильная нагрузка;")
-        print(f"    решает не доля, а абсолютное число тревог "
-              f"(см. research/workload_curve.py).")
+        print("    решает не доля, а абсолютное число тревог "
+              "(см. research/workload_curve.py).")
     print(f"  Alerts / sim-день:       {m['alerts_per_sim_day']}")
     print("-" * 68)
     print(f"  PR-AUC:                  {m['pr_auc']:.3f}  "

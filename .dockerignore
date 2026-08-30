@@ -1,13 +1,42 @@
-# не тащим в образ мусор и историю
+# =====================================================================
+#  ЧТО НЕ ПОПАДАЕТ В ОБРАЗ
+# =====================================================================
+# ПЕРВЫМ ДЕЛОМ — СЕКРЕТЫ. Здесь их не было, а Dockerfile делает `COPY . .`,
+# поэтому в слой образа уезжали:
+#   .gitlab_token    — админский PAT GitLab (scope api);
+#   web_config.json  — второй экземпляр того же токена;
+#   .secret_key      — ключ подписи сессий ОБЕИХ консолей.
+# Публикация или пересылка образа означала публикацию учётных данных, а
+# содержимое слоя переживает любое последующее удаление файла.
+.gitlab_token
+.telegram_token
+.telegram_chat
+.secret_key
+web_config.json
+*.pem
+*.key
+.env
+.env.*
+
+# --- состояние и данные прогона ---------------------------------------
+.sim_state.json
+.sim_state.json.bak
+data/
+results/
+reports/
+demo/out/
+models/*.tmp.json
+models/experiments/
+
+# --- мусор и история --------------------------------------------------
 .git
+.gitignore
 __pycache__
 **/__pycache__
 *.pyc
 logs/
-data/archive/
-data/*.db-shm
-data/*.db-wal
 *.log
-.sim_state.json
+node_modules/
 .fuse_hidden*
 PROMPT_FOR_CLAUDE.md
+fix.md

@@ -16,7 +16,7 @@
     },
     "has_high_entropy_token": true,
     "generated_signal": false,
-    "placeholder_signal": false,
-    "security_content": false
+    "security_content": false,
+    "placeholder_signal": false
   }
 }

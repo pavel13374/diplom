@@ -1,0 +1,141 @@
+<?xml version="1.0"?>
+<!--
+  /etc/clickhouse-server/users.d/perf.xml
+  Кластер rvsiem-ch-s1-r1 / s1-r2 / s2-r1 / s2-r2
+  2 шарда x 2 реплики, 62 GiB RAM и 24 ядра на ноду.
+  Файл идентичен на всех четырёх нодах.
+
+  Принцип: инжест защищён, поиск аналитика ограничен.
+  Если памяти не хватит — упадёт тяжёлый SELECT, а приём событий продолжится.
+  Бюджет памяти сервера задан в config.d/perf.xml
+  (max_server_memory_usage_to_ram_ratio), здесь только профили пользователей.
+
+  Арифметика потолков:
+    default (аналитики)  32 GiB на пользователя
+    writer  (коллектор)  12 GiB на пользователя
+    итого                44 GiB из ~50 GiB серверного бюджета,
+                         остаток — мёржи и служебные структуры.
+
+  ВАЖНО про слияние конфигов.
+  Этот файл не заменяет users.xml, а домешивается к нему. Настройки,
+  заданные вендором в users.xml и не упомянутые здесь, продолжают
+  действовать. На момент написания это:
+
+    allow_experimental_json_type        1
+    allow_suspicious_ttl_expressions    1
+    connect_timeout                     2
+    connect_timeout_with_failover_ms    750
+    connections_with_failover_max_tries 2
+    input_format_allow_errors_num       0
+    input_format_allow_errors_ratio     1
+    insert_distributed_sync             0
+    prefer_localhost_replica            1
+    skip_unavailable_shards             1
+
+  skip_unavailable_shards = 1 оставлен намеренно, но помни цену:
+  при недоступном шарде запрос вернёт НЕПОЛНЫЙ результат без ошибки.
+  Для дашбордов это удобно, для расследования инцидента — риск
+  сделать вывод «ничего не найдено» по половине данных.
+  Значение 0 заставит запрос падать вместо тихой потери строк.
+
+  queue_max_wait_ms вендор задаёт равным 1000, здесь переопределён на 5000.
+-->
+
+<clickhouse>
+  <profiles>
+
+    <!-- ============ default: база для всех, профиль чтения ============ -->
+    <default>
+
+      <!-- Память.
+           Наблюдаемый пик реального запроса — 3,86 GiB, здесь 4x запаса.
+           Потолок на пользователя не даёт одному аналитику
+           выесть весь сервер несколькими параллельными поисками. -->
+      <max_memory_usage>17179869184</max_memory_usage>            <!-- 16 GiB на запрос -->
+      <max_memory_usage_for_user>34359738368</max_memory_usage_for_user>  <!-- 32 GiB на пользователя -->
+
+      <!-- Сброс на диск вместо OOM. Порог — половина от max_memory_usage:
+           запрос сначала начнёт спиливать на диск и только потом упрётся в лимит. -->
+      <max_bytes_before_external_group_by>8589934592</max_bytes_before_external_group_by>  <!-- 8 GiB -->
+      <max_bytes_before_external_sort>8589934592</max_bytes_before_external_sort>          <!-- 8 GiB -->
+
+      <!-- Приоритет при нехватке памяти.
+           Малый знаменатель => высокий overcommit ratio => этот запрос
+           выбирают на убой первым. Аналитик подождёт, события — нет. -->
+      <memory_overcommit_ratio_denominator>1073741824</memory_overcommit_ratio_denominator>
+      <memory_usage_overcommit_max_wait_microseconds>5000000</memory_usage_overcommit_max_wait_microseconds>
+
+      <!-- Параллелизм. 8 потоков на запрос при 24 ядрах: один поиск
+           не занимает всю машину, остаётся место мёржам и вставкам. -->
+      <max_threads>8</max_threads>
+
+      <!-- Защита от лавины запросов: сверх лимита клиент ждёт 5 секунд
+           в очереди, а не получает ошибку сразу. -->
+      <max_concurrent_queries_for_user>50</max_concurrent_queries_for_user>
+      <queue_max_wait_ms>5000</queue_max_wait_ms>
+
+      <!-- Таймауты: зависший поиск снимается, соединение не висит вечно. -->
+      <max_execution_time>300</max_execution_time>
+      <receive_timeout>320</receive_timeout>
+      <send_timeout>320</send_timeout>
+
+      <!-- Выключен намеренно: кэш несжатых блоков помогает только
+           при массе коротких повторяющихся запросов. SIEM сканирует
+           широкие интервалы, переиспользования нет — 8 GiB впустую. -->
+      <use_uncompressed_cache>0</use_uncompressed_cache>
+
+      <!-- Чтение с удалённых ФС — без изменений -->
+      <remote_filesystem_read_method>threadpool</remote_filesystem_read_method>
+      <remote_filesystem_read_prefetch>1</remote_filesystem_read_prefetch>
+      <s3_request_timeout_ms>60000</s3_request_timeout_ms>
+      <s3_max_single_read_retries>4</s3_max_single_read_retries>
+      <s3_retry_attempts>10</s3_retry_attempts>
+    </default>
+
+    <!-- ============ writer: коллектор, приоритетный профиль ============ -->
+    <writer>
+
+      <!-- Реальная вставка расходует ~20 MiB. 6 GiB — заведомо избыточно,
+           лимит стоит только чтобы аномалия не съела сервер. -->
+      <max_memory_usage>6442450944</max_memory_usage>              <!-- 6 GiB на запрос -->
+      <max_memory_usage_for_user>12884901888</max_memory_usage_for_user>  <!-- 12 GiB на пользователя -->
+
+      <!-- Огромный знаменатель => ничтожный overcommit ratio =>
+           инжест не выбирается на убой практически никогда.
+           Это и есть страховка «приём событий не падает». -->
+      <memory_overcommit_ratio_denominator>68719476736</memory_overcommit_ratio_denominator>
+
+      <!-- Асинхронная вставка: буфер сглаживает мелкие батчи коллектора.
+           wait_for_async_insert = 1 обязателен — клиент получает ответ
+           только после реальной записи. При 0 сбой означает тихую потерю событий. -->
+      <async_insert>1</async_insert>
+      <wait_for_async_insert>1</wait_for_async_insert>
+      <async_insert_max_data_size>10485760</async_insert_max_data_size>   <!-- 10 MiB -->
+      <async_insert_busy_timeout_ms>1000</async_insert_busy_timeout_ms>   <!-- не копить дольше секунды -->
+
+      <!-- Отправка в Distributed.
+           batch — склейка мелких .bin в одну отправку, меньше партов на шарде.
+           split_batch_on_failure — при отказе батча слать по одному файлу,
+           иначе очередь встаёт намертво и ретраит одно и то же. -->
+      <distributed_background_insert_batch>1</distributed_background_insert_batch>
+      <distributed_background_insert_split_batch_on_failure>1</distributed_background_insert_split_batch_on_failure>
+
+      <!-- Битая строка не роняет весь батч -->
+      <input_format_allow_errors_num>50</input_format_allow_errors_num>
+      <input_format_allow_errors_ratio>0.01</input_format_allow_errors_ratio>
+
+      <!-- Устойчивость к морганию Keeper при вставке в реплицированные таблицы -->
+      <insert_keeper_max_retries>20</insert_keeper_max_retries>
+
+      <max_execution_time>300</max_execution_time>
+      <receive_timeout>320</receive_timeout>
+      <send_timeout>320</send_timeout>
+      <use_uncompressed_cache>0</use_uncompressed_cache>
+
+      <s3_request_timeout_ms>60000</s3_request_timeout_ms>
+      <s3_max_single_read_retries>4</s3_max_single_read_retries>
+      <s3_retry_attempts>10</s3_retry_attempts>
+    </writer>
+
+  </profiles>
+</clickhouse>

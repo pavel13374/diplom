@@ -10,7 +10,7 @@
 import random
 import logging
 import config
-from config import PROJECTS, DELAYS, FEATURES
+from config import DELAYS, FEATURES
 from content import rules as rc, comments
 import simclock
 
