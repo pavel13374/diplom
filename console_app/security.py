@@ -69,10 +69,15 @@ def login():
         if wait:
             error = f"Слишком много попыток — подождите {wait} с"
         else:
-            u_ok = hmac.compare_digest(request.form.get("username", ""),
-                                       config.WEB_ADMIN_USER)
-            p_ok = hmac.compare_digest(request.form.get("password", ""),
-                                       config.WEB_ADMIN_PASS)
+            # compare_digest на str требует ASCII: кириллица в поле
+            # роняла вход с TypeError. Сравниваем байты — постоянное
+            # время сохраняется, любой ввод допустим.
+            u_ok = hmac.compare_digest(
+                request.form.get("username", "").encode("utf-8"),
+                str(config.WEB_ADMIN_USER).encode("utf-8"))
+            p_ok = hmac.compare_digest(
+                request.form.get("password", "").encode("utf-8"),
+                str(config.WEB_ADMIN_PASS).encode("utf-8"))
             if u_ok and p_ok:
                 _GUARD.record_success()
                 session.clear()      # новый идентификатор сессии после входа

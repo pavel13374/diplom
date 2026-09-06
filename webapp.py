@@ -776,8 +776,12 @@ def login():
         if wait:
             return _tpl("login.html").replace(
                 "{{ERROR}}", f"Слишком много попыток — подождите {wait} с")
-        u_ok = hmac.compare_digest(request.form.get("username", ""), config.WEB_ADMIN_USER)
-        p_ok = hmac.compare_digest(request.form.get("password", ""), config.WEB_ADMIN_PASS)
+        # compare_digest на str требует ASCII: кириллица в поле роняла
+        # вход с TypeError. Сравниваем байты.
+        u_ok = hmac.compare_digest(request.form.get("username", "").encode("utf-8"),
+                                   str(config.WEB_ADMIN_USER).encode("utf-8"))
+        p_ok = hmac.compare_digest(request.form.get("password", "").encode("utf-8"),
+                                   str(config.WEB_ADMIN_PASS).encode("utf-8"))
         if u_ok and p_ok:
             _GUARD.record_success()
             session.clear()          # новый идентификатор сессии после входа
@@ -1241,6 +1245,11 @@ def main():
     print(f"  Логин: {config.WEB_ADMIN_USER}")
     # Пароль печатаем ТОЛЬКО когда сгенерировали сами: заданный оператором
     # уезжал в журнал контейнера и в скриншот терминала без всякой нужды.
+    if getattr(config, "WEB_PASS_IS_DEFAULT", False):
+        print("  Пароль: admin  (дефолт стенда)")
+        if config.WEB_HOST not in ("127.0.0.1", "localhost", "::1"):
+            print("  ВНИМАНИЕ: дефолтный пароль и слушаем не петлю.")
+            print("  Задайте SOC_ADMIN_PASS перед выносом наружу.")
     if getattr(config, "_WEB_PASS_GENERATED", False):
         print(f"  ПАРОЛЬ (сгенерирован): {config.WEB_ADMIN_PASS}")
         print("  (задайте свой: переменная окружения SOC_ADMIN_PASS)")

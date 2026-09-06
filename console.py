@@ -57,6 +57,11 @@ def main():
     # Пароль печатаем ТОЛЬКО когда сгенерировали сами. Раньше он выводился
     # всегда, включая заданный оператором, — и уезжал в журнал контейнера,
     # в systemd-journal и в скриншот терминала.
+    if getattr(config, "WEB_PASS_IS_DEFAULT", False):
+        print("  Пароль: admin  (дефолт стенда)")
+        if host not in ("127.0.0.1", "localhost", "::1"):
+            print("  ВНИМАНИЕ: дефолтный пароль и слушаем не петлю.")
+            print("  Задайте SOC_ADMIN_PASS перед выносом наружу.")
     if getattr(config, "_WEB_PASS_GENERATED", False):
         print(f"  ПАРОЛЬ (сгенерирован): {config.WEB_ADMIN_PASS}")
         print("  (задайте свой: переменная окружения SOC_ADMIN_PASS)")

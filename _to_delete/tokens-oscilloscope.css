@@ -1,0 +1,141 @@
+/* ============================================================
+   SENTINEL ENV — токены направления «Осциллограф»
+   Дополняет static/design-system.css. Подключать ПОСЛЕ него.
+
+   Что меняется относительно текущей системы:
+   1. Поверхности уходят холоднее и темнее (--bg #080B11 -> #070910),
+      шаг между ступенями сокращается: подъём должен ощущаться,
+      а не читаться.
+   2. Появляется --a (подсветка прибора) вместо --accent в роли
+      «здесь можно нажать». Циан не пересекается со шкалой
+      серьёзности ни в тёмной теме, ни в светлой — синий --accent
+      пересекался с --sev-low.
+   3. Шкала серьёзности НЕ трогается. Её контраст проверен
+      tests/test_contrast.py на 90 парах в двух темах; менять её
+      значит выбрасывать проверенное.
+   4. Добавляются токены состояния прогона: у «остановлен» теперь
+      свой цвет, а не пустой класс (находка B4).
+   ============================================================ */
+
+:root{
+  /* --- поверхности: один тон, меняется только светлота --- */
+  --bg:#070910;
+  --surface-1:#0C1017;
+  --surface-2:#11161F;
+  --surface-3:#171D28;
+  --surface-4:#1E2530;
+  --surface-inset:#05070C;      /* НОВОЕ: поле ввода, тело лога — вдавлено, не приподнято */
+
+  --line:rgba(255,255,255,.07);
+  --line-2:rgba(255,255,255,.13);
+  --line-3:rgba(255,255,255,.22);
+
+  --text-1:#DDE3EC;
+  --text-2:#94A0B2;
+  --text-3:#67717F;
+  --text-4:#4A525E;             /* НОВОЕ: «нет данных». Слабее text-3, отдельная ступень */
+
+  /* --- подсветка прибора --- */
+  --a:#4FB0C4;
+  --a-text:#7FCBDA;
+  --a-bg:rgba(79,176,196,.11);
+  --a-border:rgba(79,176,196,.32);
+  --a-ink:#04171C;              /* текст НА заливке --a */
+
+  /* --- состояние прогона (находка B4) --- */
+  --run-idle:#4A525E;           /* не запускался: нейтрально и слабо */
+  --run-active:#4FB0C4;         /* идёт: подсвечен */
+  --run-paused:#CBA63E;
+  --run-stopped:#8A94A4;        /* остановлен вручную: не ошибка, но и не норма */
+  --run-failed:#F26D75;
+
+  /* --- свежесть потока событий (находка B3) --- */
+  --age-fresh:#48B85C;          /* < 180 c */
+  --age-recent:#8A94A4;         /* < 1 ч */
+  --age-stale:#E0924A;          /* < 6 ч */
+  --age-dead:#F26D75;           /* > 6 ч */
+
+  /* --- форма --- */
+  --r:6px;
+  --r-ctl:4px;
+  --pad-x:12px;
+  --row-h:30px;                 /* НОВОЕ: высота строки плотного списка */
+  --row-h-2:52px;               /* двухэтажная строка */
+
+  /* --- типографика --- */
+  --font-sans:'Inter Tight',Inter,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'Cascadia Mono',Consolas,monospace;
+}
+
+[data-theme="light"]{
+  --bg:#F5F7FA;
+  --surface-1:#FFFFFF;
+  --surface-2:#FFFFFF;
+  --surface-3:#EEF1F5;
+  --surface-4:#E1E6ED;
+  --surface-inset:#F0F3F7;
+
+  --line:rgba(15,19,25,.10);
+  --line-2:rgba(15,19,25,.16);
+  --line-3:rgba(15,19,25,.26);
+
+  --text-1:#0F1319;
+  --text-2:#4A5462;
+  --text-3:#5F6875;
+  --text-4:#98A1AD;
+
+  --a:#0E7A90;                  /* тот же тон, поднят контраст под светлое полотно */
+  --a-text:#0A6376;
+  --a-bg:rgba(14,122,144,.09);
+  --a-border:rgba(14,122,144,.30);
+  --a-ink:#FFFFFF;
+
+  --run-idle:#98A1AD;
+  --run-active:#0E7A90;
+  --run-paused:#7F5E0E;
+  --run-stopped:#5F6875;
+  --run-failed:#BE2F3A;
+
+  --age-fresh:#17722F;
+  --age-recent:#5F6875;
+  --age-stale:#9E4E18;
+  --age-dead:#BE2F3A;
+}
+
+/* ============================================================
+   ПРАВИЛА, БЕЗ КОТОРЫХ ТОКЕНЫ НЕ РАБОТАЮТ
+   ============================================================ */
+
+/* Ноль — факт, но не новость (находка B2).
+   setNum() должен ставить три состояния, а не два:
+     v == null      -> .is-empty  («—», text-4)
+     v === 0        -> .is-zero   (нормальное начертание, text-3)
+     v > 0          -> без класса (semibold, text-1)                */
+.kpi .n.is-zero,.read .v.is-zero{color:var(--text-3);font-weight:400}
+.kpi .n.is-empty,.read .v.is-empty{color:var(--text-4);font-weight:400}
+
+/* Цифры в колонке выравниваются по разряду (находка M13).
+   Раньше tabular-nums стоял только на .kpi .n.                     */
+.kv>span,.kv>.v,.ds-table td,.dist .n,.read .v{font-variant-numeric:tabular-nums}
+
+/* Пары ключ-значение: связь близостью, а не лестницей линий
+   (находка M10). Третья колонка — «что это значит»: сюда уезжает
+   содержимое title= на 150-300 символов (находка M12).             */
+.kv{grid-template-columns:max-content max-content 1fr;column-gap:16px}
+.kv>b,.kv>span{border-bottom:0}
+
+/* Уровень серьёзности несёт форму, а не только цвет.
+   Полоса слева читается в оттенках серого и при дальтонизме.       */
+.sev-rail{border-left:3px solid transparent;padding-left:9px}
+.sev-rail.s-critical{border-left-color:var(--sev-critical)}
+.sev-rail.s-high{border-left-color:var(--sev-high)}
+.sev-rail.s-medium{border-left-color:var(--sev-medium)}
+.sev-rail.s-low{border-left-color:var(--sev-low)}
+.sev-rail.s-info{border-left-color:var(--line-2)}
+
+/* Движение: потолок задан DESIGN.md. Только фон, граница и цвет.   */
+.btn,.chip,nav a,.person,.tbl tbody tr{
+  transition:background-color .12s linear,border-color .12s linear,color .12s linear}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}

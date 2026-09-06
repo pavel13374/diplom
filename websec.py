@@ -142,7 +142,7 @@ def csrf_ok():
     if not got:
         # Форма входа отправляется обычным POST без JS.
         got = request.form.get("csrf_token", "")
-    return hmac.compare_digest(str(got), str(want))
+    return hmac.compare_digest(str(got).encode("utf-8"), str(want).encode("utf-8"))
 
 
 def csrf_protect(exempt_paths=()):

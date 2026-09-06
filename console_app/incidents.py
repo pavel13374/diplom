@@ -48,7 +48,11 @@ def api_incidents():
         _snap = _COR.list(60)
     for i in _snap:
         _s = _st.get(i["id"]) or {}
+        _al = i.get("alerts") or []
+        _top = max(_al, key=lambda a: a.get("risk") or 0) if _al else {}
         out.append({
+            "reason": (_top.get("reason") or "").strip(),
+            "rule_id": _top.get("rule_id") or "",
             "status": _s.get("status") or "new", "verdict": _s.get("verdict"),
             "id": i["id"], "actor": i["actor"], "severity": i["severity"],
             "max_risk": round(i.get("risk", i["max_risk"]), 2),
@@ -331,6 +335,14 @@ def build_workflow():
         seen = i.get("seen_real", now)
         age = int(now - seen)
         sev_rank = {"critical": 3, "high": 2, "medium": 1, "low": 0}.get(i["severity"], 0)
+        # ЧТО ИМЕННО РАЗБИРАЕТ АНАЛИТИК. В строке очереди стояли только имя
+        # актора и счётчики («@alex.petrov · 2 алерта · 1 тактика · 0.99»):
+        # двадцать строк подряд отличались друг от друга одним числом, и
+        # решение о приоритете принять по списку было нельзя — приходилось
+        # открывать каждую карточку. Ведущая сработка — самая рискованная
+        # в инциденте: именно она объясняет, почему инцидент здесь.
+        _al = i.get("alerts") or []
+        _top = max(_al, key=lambda a: a.get("risk") or 0) if _al else {}
         # SLA: new>15мин=warn, >60мин=breach (только для незакрытых)
         sla = "ok"
         if s["status"] in ("new", "investigating"):
@@ -344,6 +356,9 @@ def build_workflow():
             "peak_event_risk": round(i["max_risk"], 2), "alerts": len(i["alerts"]),
             "is_campaign": i.get("is_campaign", False),
             "tactics": i["tactics"], "repos": i["repos"],
+            "reason": (_top.get("reason") or "").strip(),
+            "rule_id": _top.get("rule_id") or "",
+            "technique": _top.get("technique") or "",
             "status": s["status"], "verdict": s.get("verdict"), "owner": s.get("owner"),
             "age_s": age, "sla": sla,
             "triage": (i.get("triage") or {}).get("severity"),

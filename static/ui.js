@@ -1,19 +1,10 @@
-/* ============================================================
-   SENTINEL UI — слой оболочки Enterprise Security Platform.
-   Подключается обеими консолями. Ничего не знает о бэкенде:
-   работает только с уже отрендеренной разметкой.
 
-   Даёт: переключатель темы, Command Palette (Ctrl+K), тосты,
-   иконки и секции в навигации, Drawer, счётчики-одометры.
-   ============================================================ */
+
 (function () {
   'use strict';
 
-  // Строка оболочки, задаваемая в рантайме (title/aria-label): если включён
-  // EN, переводим через словарь i18n, иначе оставляем русской.
   function L(s) { return (window.socT ? window.socT(s) : s); }
 
-  /* ---------- иконки (Lucide-стиль, отрисованы здесь) ---------- */
   var I = {
     grid:   'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
     alert:  'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
@@ -42,9 +33,8 @@
            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' + d + '"/></svg>';
   }
 
-  /* ---------- карта разделов: иконка + секция ---------- */
   var MAP = {
-    // консоль защиты (data-v)
+
     overview:  { i: I.grid,   s: 'Обзор' },
     alerts:    { i: I.alert,  s: 'SOC' },
     incidents: { i: I.shield, s: 'SOC' },
@@ -58,7 +48,7 @@
     risk:      { i: I.pulse,  s: 'Аналитика' },
     trends:    { i: I.chart,  s: 'Аналитика' },
     diag:      { i: I.stetho, s: 'Система' },
-    // консоль среды (data-view)
+
     config:    { i: I.slider, s: 'Система' },
     logs:      { i: I.term,   s: 'Среда' },
     data:      { i: I.db,     s: 'Данные' },
@@ -67,10 +57,6 @@
     people:    { i: I.users,  s: 'Среда' }
   };
 
-  /* ---------- 1. ТЕМА: тёмная ⇄ светлая ----------
-     Тем было три. «Яркая» отличалась от светлой полотном #ffffff вместо
-     #F8FAFC и чуть плотнее акцентом — на глаз неотличимо, поэтому
-     переключатель на трети нажатий выглядел сломанным. Осталось две. */
   var THEME_KEY = 'soc_theme';
   var THEMES = ['dark', 'light'];
   var THEME_META = {
@@ -107,7 +93,6 @@
     applyTheme(t);
   }
 
-  /* ---------- 2. НАВИГАЦИЯ: иконки + секции ---------- */
   var SECTION_ORDER = ['Обзор', 'SOC', 'Purple Team', 'Аналитика', 'Среда', 'Данные', 'Система'];
   function enhanceNav() {
     var nav = document.querySelector('.nav');
@@ -115,11 +100,6 @@
     var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
     if (!links.length) return;
 
-    // 1) иконка и подпись.
-    //    Подпись оборачиваем в <span class=nav-t>: голый текстовый узел
-    //    нельзя ни скрыть, ни показать всплывающей подсказкой, из-за чего
-    //    в свёрнутом сайдбаре названия разделов вылезали за 44 пикселя
-    //    и обрезались посередине слова.
     links.forEach(function (a) {
       var key = a.getAttribute('data-v') || a.getAttribute('data-view');
       var m = MAP[key];
@@ -141,9 +121,6 @@
       if (m && !a.querySelector('svg')) a.insertAdjacentHTML('afterbegin', svg(m.i));
     });
 
-    // 1b) клавиатура. Пункты меню — это <a> без href, поэтому браузер
-    //     их не фокусирует и всей навигацией нельзя пользоваться с
-    //     клавиатуры. Даём таб-стоп, роль и обработку Enter/Пробела.
     links.forEach(function (a) {
       if (!a.hasAttribute('tabindex')) a.setAttribute('tabindex', '0');
       a.setAttribute('role', 'link');
@@ -163,8 +140,6 @@
       });
     });
 
-    // 2) группировка: пункты в разметке идут вперемешку, поэтому
-    //    переставляем их по секциям — иначе заголовки дублируются
     var groups = {};
     links.forEach(function (a) {
       var key = a.getAttribute('data-v') || a.getAttribute('data-view');
@@ -189,9 +164,6 @@
     nav.dataset.dsDone = '1';
   }
 
-  /* ---------- 2b. ССЫЛКА «К СОДЕРЖИМОМУ» ----------
-     Первый таб-стоп на странице: позволяет перепрыгнуть навигацию
-     и сразу попасть в основную область. Видна только при фокусе. */
   function mountSkipLink() {
     if (document.getElementById('dsSkip')) return;
     var main = document.querySelector('main') || document.querySelector('.main');
@@ -209,10 +181,6 @@
     document.body.insertBefore(a, document.body.firstChild);
   }
 
-  /* ---------- 2c. СВОРАЧИВАНИЕ САЙДБАРА ----------
-     На ноутбуке 1366×768 меню занимает шестую часть ширины, а
-     аналитику нужна таблица. Свёрнутый сайдбар оставляет иконки,
-     подпись всплывает при наведении и при фокусе с клавиатуры. */
   var SIDE_KEY = 'soc_side';
   function applySide() {
     var app = document.querySelector('.app');
@@ -228,6 +196,40 @@
       b.setAttribute('aria-label', b.title);
     }
   }
+  function mountUserMenu() {
+    var foot = document.querySelector('.side-foot');
+    if (!foot || document.getElementById('dsUser')) return;
+    var who = foot.querySelector('.who');
+    var name = who ? (who.textContent || '').trim() : '';
+    var out = foot.querySelector('a[href="/logout"]');
+    var href = out ? out.getAttribute('href') : '/logout';
+    foot.innerHTML = '';
+    var b = el('button', 'ui-button ds-user', {
+      id: 'dsUser', type: 'button', 'aria-haspopup': 'menu',
+      'aria-expanded': 'false', 'data-variant': 'ghost'
+    });
+    b.innerHTML = icon('users') + '<span class="ds-user-name">' + esc(name) + '</span>' +
+                  icon('chevr', 'ds-user-chev');
+    b.title = name;
+    b.onclick = function () {
+      var lang = (window.socLang ? window.socLang() : 'ru');
+      dropdown(b, [
+        { label: name },
+        { separator: true },
+        { label: L(THEME_META[currentTheme()].title),
+          icon: THEME_META[currentTheme()].icon, run: toggleTheme },
+        { label: lang === 'en' ? 'Русский' : 'English', icon: 'lang',
+          run: function () {
+            if (window.socSetLang) window.socSetLang(lang === 'en' ? 'ru' : 'en');
+          } },
+        { separator: true },
+        { label: L('Выйти'), icon: 'logout', variant: 'destructive',
+          run: function () { location.href = href; } }
+      ]);
+    };
+    foot.appendChild(b);
+  }
+
   function mountCollapse() {
     var side = document.querySelector('.side');
     if (!side || document.getElementById('dsCollapse')) return;
@@ -246,11 +248,6 @@
     applySide();
   }
 
-  /* ---------- 2d. ТЕНЬ ВЕРХНЕЙ ПАНЕЛИ ПРИ ПРОКРУТКЕ ---------- */
-  /* Слушатель вешается ОДИН раз на документ и сам находит панель при
-     каждом срабатывании. Если вешать его на найденный элемент, то при
-     перерисовке страницы на window копятся слушатели, держащие ссылки
-     на уже удалённые узлы. */
   var scrollBound = false;
   function readScroll() {
     var bar = document.querySelector('.topbar') || document.querySelector('.main > .top');
@@ -262,16 +259,14 @@
   function watchScroll() {
     if (scrollBound) { readScroll(); return; }
     scrollBound = true;
-    // capture: событие прокрутки не всплывает, но в фазе перехвата видно любое
+
     document.addEventListener('scroll', readScroll, { passive: true, capture: true });
     window.addEventListener('scroll', readScroll, { passive: true });
     readScroll();
   }
 
-  /* ---------- 3. КНОПКИ ОБОЛОЧКИ в верхней панели ---------- */
   function mountTopbar() {
-    // ВАЖНО: сначала .topbar. В консоли среды класс `.top` есть ещё и у
-    // заголовков слайдеров в конфигурации — кнопки уезжали внутрь поля.
+
     var host = document.querySelector('.topbar') ||
                document.querySelector('.main > .top') ||
                document.querySelector('.content > .top') ||
@@ -280,14 +275,14 @@
     var box = document.createElement('div');
     box.className = 'ds-shell-actions';
     box.style.cssText = 'display:inline-flex;gap:6px;align-items:center;margin-left:10px;vertical-align:middle';
-    // поле поиска: по фокусу расширяется и открывает палитру команд
+
     if (!document.getElementById('dsSearch')) {
       var sb = document.createElement('div');
       sb.className = 'ds-topsearch';
       sb.innerHTML = svg(I.search) +
         '<input id="dsSearch" type="search" autocomplete="off" ' +
         'aria-label="Поиск по разделам и командам" ' +
-        'placeholder="Разделы и команды">';
+        'placeholder="Поиск"><kbd class="ds-topsearch-k">Ctrl K</kbd>';
       var h1 = host.querySelector('h1');
       if (h1 && h1.nextSibling) host.insertBefore(sb, h1.nextSibling);
       else host.appendChild(sb);
@@ -297,26 +292,13 @@
 
     var lang = (window.socLang ? window.socLang() : 'ru');
     box.innerHTML =
-      '<button class="btn ghost" id="dsCmd" aria-label="Поиск и команды" ' +
-      'title="Поиск и команды (Ctrl+K)" style="padding:6px 10px">' +
-      svg(I.search) + '<kbd>Ctrl K</kbd></button>' +
-      '<button class="btn ghost" id="dsLang" style="padding:6px 9px;font-size:11px;font-weight:600" ' +
-      'aria-label="Язык интерфейса" title="Язык интерфейса: ' +
-      (lang === 'en' ? 'English — нажмите для русского' : 'русский — switch to English') + '">' +
-      (lang === 'en' ? 'EN' : 'RU') + '</button>' +
-      '<button class="btn ghost" id="dsTheme" aria-label="Тема оформления" style="padding:6px 9px"></button>';
-    // ставим рядом со статус-пилюлями, если они есть
-    var pills = host.querySelector('.pills') || host.querySelector('.hpills');
-    (pills || host).appendChild(box);
+      '<button class="ui-button" data-variant="ghost" data-size="icon-sm" id="dsTheme" ' +
+      'type="button" aria-label="' + L('Тема оформления') + '"></button>';
+    host.appendChild(box);
     document.getElementById('dsTheme').onclick = toggleTheme;
-    document.getElementById('dsCmd').onclick = openCmdk;
-    document.getElementById('dsLang').onclick = function () {
-      if (window.socSetLang) window.socSetLang(lang === 'en' ? 'ru' : 'en');
-    };
     applyTheme(document.documentElement.getAttribute('data-theme'));
   }
 
-  /* ---------- 4. COMMAND PALETTE ---------- */
   var cmdk, cmdkInput, cmdkList, cmdItems = [], cmdSel = 0;
   function buildCommands() {
     var out = [];
@@ -403,7 +385,6 @@
     };
   }
 
-  /* ---------- 5. DRAWER (панель деталей справа) ---------- */
   var drawer;
   function mountDrawer() {
     if (document.getElementById('dsDrawer')) return;
@@ -436,21 +417,18 @@
   window.setTheme = setTheme;
   window.toggleTheme = toggleTheme;
 
-  /* ---------- 6. ТОСТЫ ---------- */
   function toast(msg, type, ms) {
     var host = document.getElementById('dsToasts');
     if (!host) {
       host = document.createElement('div');
       host.className = 'ds-toasts'; host.id = 'dsToasts';
-      // объявляем сообщения скринридеру: ошибки перебивают чтение,
-      // остальное дожидается паузы
+
       host.setAttribute('role', 'status');
       host.setAttribute('aria-live', 'polite');
       host.setAttribute('aria-atomic', 'false');
       document.body.appendChild(host);
     }
-    // Ошибку читаем немедленно, но режим возвращаем обратно: иначе после
-    // первой же ошибки скринридер начинает перебивать себя на каждом тосте.
+
     host.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
     var el = document.createElement('div');
     el.className = 'ds-toast ' + (type || 'info');
@@ -464,7 +442,385 @@
   }
   window.toast = toast;
 
-  /* ---------- 6. ГОРЯЧИЕ КЛАВИШИ ---------- */
+  var EXTRA_ICONS = {
+    check:   'M20 6 9 17l-5-5',
+    x:       'M18 6 6 18M6 6l12 12',
+    chevd:   'm6 9 6 6 6-6',
+    chevr:   'm9 18 6-6-6-6',
+    info:    'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01',
+    warn:    'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01',
+    trash:   'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6',
+    plus:    'M12 5v14M5 12h14',
+    copy:    'M9 9h10v10H9zM5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1',
+    filter:  'M3 4h18l-7 8v6l-4 2v-8z',
+    refresh: 'M3 12a9 9 0 0 1 15-6.7L21 8M21 12a9 9 0 0 1-15 6.7L3 16M21 3v5h-5M3 21v-5h5',
+    lang:    'M5 8h10M9 4v4M11 16c-2.5-1-4.5-3.5-5-8M8 16c3-1 5-4 5-8M13 21l4-9 4 9M14.7 18h4.6',
+    logout:  'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'
+  };
+  Object.keys(EXTRA_ICONS).forEach(function (k) { if (!I[k]) I[k] = EXTRA_ICONS[k]; });
+
+  function icon(name, cls) { return I[name] ? svg(I[name], cls) : ''; }
+
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function attrs(o) {
+    var out = '';
+    Object.keys(o || {}).forEach(function (k) {
+      var v = o[k];
+      if (v == null || v === false || v === '') return;
+      out += ' ' + k + (v === true ? '' : '="' + esc(v) + '"');
+    });
+    return out;
+  }
+  function el(tag, cls, opts) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    Object.keys(opts || {}).forEach(function (k) {
+      if (k === 'text') n.textContent = opts[k];
+      else if (k === 'html') n.innerHTML = opts[k];
+      else if (opts[k] != null && opts[k] !== false) n.setAttribute(k, opts[k]);
+    });
+    return n;
+  }
+
+  /* Компоненты доступны и строками: разметка списков собирается в JS. */
+  var UI = {
+    icon: icon,
+    button: function (o) {
+      o = o || {};
+      return '<button class="ui-button" type="' + (o.type || 'button') + '"' +
+        attrs({ 'data-variant': o.variant, 'data-size': o.size, id: o.id,
+                onclick: o.onclick, title: o.title, 'aria-label': o.ariaLabel,
+                disabled: o.disabled }) + '>' +
+        (o.icon ? icon(o.icon) : '') + (o.label ? esc(o.label) : '') + '</button>';
+    },
+    badge: function (text, variant, o) {
+      o = o || {};
+      return '<span class="ui-badge"' +
+        attrs({ 'data-variant': variant, 'data-underline': o.underline,
+                title: o.title }) + '>' + esc(text) + '</span>';
+    },
+    label: function (text) { return '<span class="ui-label">' + esc(text) + '</span>'; },
+    separator: function (orientation) {
+      return '<div class="ui-separator" role="separator" data-orientation="' +
+        (orientation || 'horizontal') + '"></div>';
+    },
+    skeleton: function (w, h) {
+      return '<div class="ui-skeleton" aria-hidden="true" style="width:' +
+        (w || '100%') + ';height:' + (h || '12px') + '"></div>';
+    },
+    spinner: function () { return '<span class="ui-spinner" aria-hidden="true"></span>'; },
+    empty: function (o) {
+      o = o || {};
+      return '<div class="ui-empty">' +
+        (o.icon ? '<div class="ui-empty-media">' + icon(o.icon) + '</div>' : '') +
+        (o.title ? '<div class="ui-empty-title">' + esc(o.title) + '</div>' : '') +
+        (o.description ? '<div class="ui-empty-description">' + esc(o.description) + '</div>' : '') +
+        (o.action ? '<div class="ui-empty-content">' + o.action + '</div>' : '') +
+        '</div>';
+    },
+    alert: function (o) {
+      o = o || {};
+      var ic = o.variant === 'destructive' ? 'warn'
+             : o.variant === 'warning' ? 'warn' : 'info';
+      return '<div class="ui-alert" role="' +
+        (o.variant === 'destructive' ? 'alert' : 'status') + '"' +
+        attrs({ 'data-variant': o.variant }) + '>' + icon(ic) +
+        '<div class="ui-alert-description">' +
+        (o.title ? '<span class="ui-alert-title">' + esc(o.title) + '</span> ' : '') +
+        (o.description || '') + '</div></div>';
+    },
+    card: function (o) {
+      o = o || {};
+      return '<section class="ui-card"' + attrs({ id: o.id }) + '>' +
+        (o.title ? '<header class="ui-card-header">' +
+          '<h2 class="ui-card-title">' + esc(o.title) + '</h2>' +
+          (o.description ? '<span class="ui-card-description">' + esc(o.description) + '</span>' : '') +
+          (o.action ? '<div class="ui-card-action">' + o.action + '</div>' : '') +
+        '</header>' : '') +
+        '<div class="ui-card-content"' + (o.flush ? ' data-flush' : '') + '>' +
+        (o.content || '') + '</div>' +
+        (o.footer ? '<footer class="ui-card-footer">' + o.footer + '</footer>' : '') +
+        '</section>';
+    },
+    field: function (o) {
+      o = o || {};
+      return '<div class="ui-field"' +
+        attrs({ 'data-orientation': o.orientation, 'data-invalid': o.invalid,
+                'data-disabled': o.disabled }) + '>' +
+        '<label class="ui-field-label"' + attrs({ 'for': o.id }) + '>' + esc(o.label) + '</label>' +
+        (o.control || '') +
+        (o.description ? '<span class="ui-field-description">' + esc(o.description) + '</span>' : '') +
+        (o.error ? '<span class="ui-field-error">' + esc(o.error) + '</span>' : '') +
+        '</div>';
+    },
+    input: function (o) {
+      o = o || {};
+      return '<input class="ui-input"' +
+        attrs({ id: o.id, type: o.type || 'text', value: o.value,
+                placeholder: o.placeholder, 'aria-invalid': o.invalid ? 'true' : null,
+                disabled: o.disabled, autocomplete: o.autocomplete || 'off' }) + '>';
+    },
+    checkbox: function (o) {
+      o = o || {};
+      return '<input class="ui-checkbox" type="checkbox"' +
+        attrs({ id: o.id, checked: o.checked, disabled: o.disabled }) + '>';
+    },
+    toggleGroup: function (items, active) {
+      return '<div class="ui-toggle-group" role="group">' + (items || []).map(function (it) {
+        return '<button class="ui-toggle" type="button"' +
+          attrs({ 'data-value': it.value, onclick: it.onclick,
+                  'aria-pressed': String(it.value === active) }) + '>' +
+          esc(it.label) + '</button>';
+      }).join('') + '</div>';
+    }
+  };
+
+  /* Esc закрывает, фокус возвращается на триггер, стрелки водят по пунктам. */
+  var openMenu = null, openMenuTrigger = null;
+
+  function menuClose() {
+    if (!openMenu) return;
+    openMenu.removeAttribute('data-state');
+    if (openMenuTrigger) {
+      openMenuTrigger.setAttribute('aria-expanded', 'false');
+      openMenuTrigger.focus();
+    }
+    openMenu.remove();
+    openMenu = null; openMenuTrigger = null;
+  }
+
+  function dropdown(trigger, items) {
+    if (!trigger) return;
+    menuClose();
+    var m = el('div', 'ui-menu', { role: 'menu', tabindex: '-1' });
+    m.innerHTML = (items || []).map(function (it) {
+      if (it.separator) return '<div class="ui-menu-separator" role="separator"></div>';
+      if (it.label && !it.run) return '<div class="ui-menu-label">' + esc(it.label) + '</div>';
+      return '<button class="ui-menu-item" type="button" role="menuitem"' +
+        attrs({ 'data-variant': it.variant, 'aria-disabled': it.disabled ? 'true' : null }) +
+        '>' + (it.icon ? icon(it.icon) : '') + '<span>' + esc(it.label) + '</span></button>';
+    }).join('');
+    document.body.appendChild(m);
+
+    var r = trigger.getBoundingClientRect();
+    m.setAttribute('data-state', 'open');
+    var w = m.offsetWidth, h = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+    m.style.top = (r.bottom + h + 8 > window.innerHeight ? Math.max(8, r.top - h - 4)
+                                                         : r.bottom + 4) + 'px';
+
+    var opts = Array.prototype.slice.call(m.querySelectorAll('.ui-menu-item'));
+    var runnable = (items || []).filter(function (it) { return it.run || (!it.separator && !(it.label && !it.run)); });
+    opts.forEach(function (b, i) {
+      b.onclick = function () {
+        var it = runnable[i];
+        menuClose();
+        if (it && it.run) setTimeout(it.run, 0);
+      };
+    });
+    var sel = -1;
+    function move(d) {
+      if (!opts.length) return;
+      sel = (sel + d + opts.length) % opts.length;
+      opts.forEach(function (b, i) { b.toggleAttribute('data-highlighted', i === sel); });
+      opts[sel].focus();
+    }
+    m.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+      else if (e.key === 'Escape') { e.preventDefault(); menuClose(); }
+      else if (e.key === 'Tab') menuClose();
+    });
+    trigger.setAttribute('aria-expanded', 'true');
+    trigger.setAttribute('aria-haspopup', 'menu');
+    openMenu = m; openMenuTrigger = trigger;
+    m.focus();
+  }
+  document.addEventListener('click', function (e) {
+    if (!openMenu) return;
+    if (openMenu.contains(e.target) || (openMenuTrigger && openMenuTrigger.contains(e.target))) return;
+    menuClose();
+  }, true);
+
+  var openDialog = null, dialogReturn = null;
+
+  function dialogClose() {
+    if (!openDialog) return;
+    openDialog.removeAttribute('data-state');
+    var ov = document.getElementById('dsOverlay');
+    if (ov && !(cmdk && cmdk.classList.contains('open'))) ov.classList.remove('open');
+    openDialog.remove();
+    openDialog = null;
+    if (dialogReturn && dialogReturn.focus) dialogReturn.focus();
+    dialogReturn = null;
+  }
+
+  function dialog(o) {
+    o = o || {};
+    dialogClose();
+    dialogReturn = document.activeElement;
+    var d = el('div', 'ui-dialog', {
+      role: 'dialog', 'aria-modal': 'true', tabindex: '-1',
+      'aria-labelledby': 'uiDialogTitle'
+    });
+    d.innerHTML =
+      '<header class="ui-dialog-header">' +
+        '<h2 class="ui-dialog-title" id="uiDialogTitle">' + esc(o.title || '') + '</h2>' +
+        (o.description ? '<span class="ui-dialog-description">' + esc(o.description) + '</span>' : '') +
+        '<div class="ui-dialog-close">' +
+          UI.button({ variant: 'ghost', size: 'icon-sm', icon: 'x',
+                      ariaLabel: L('Закрыть') }) +
+        '</div>' +
+      '</header>' +
+      '<div class="ui-dialog-body">' + (o.body || '') + '</div>' +
+      (o.footer ? '<footer class="ui-dialog-footer">' + o.footer + '</footer>' : '');
+    document.body.appendChild(d);
+    mountCmdk();
+    document.getElementById('dsOverlay').classList.add('open');
+    d.setAttribute('data-state', 'open');
+    d.querySelector('.ui-dialog-close .ui-button').onclick = dialogClose;
+
+    d.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); dialogClose(); return; }
+      if (e.key !== 'Tab') return;
+      var f = d.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),' +
+                                 'select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])');
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+    openDialog = d;
+    d.focus();
+    return d;
+  }
+
+  var tipEl = null, tipTimer = 0;
+  function tipHide() {
+    if (tipTimer) { clearTimeout(tipTimer); tipTimer = 0; }
+    if (tipEl) { tipEl.removeAttribute('data-state'); tipEl.remove(); tipEl = null; }
+  }
+  function tipShow(host) {
+    var text = host.getAttribute('data-tip');
+    if (!text) return;
+    tipHide();
+    tipEl = el('div', 'ui-tooltip', { role: 'tooltip', text: text });
+    document.body.appendChild(tipEl);
+    var r = host.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    tipEl.style.left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2,
+                                            window.innerWidth - w - 8)) + 'px';
+    tipEl.style.top = (r.top - h - 6 < 8 ? r.bottom + 6 : r.top - h - 6) + 'px';
+    tipEl.setAttribute('data-state', 'open');
+  }
+  function bindTooltips() {
+    document.addEventListener('mouseover', function (e) {
+      var host = e.target.closest && e.target.closest('[data-tip]');
+      if (!host) return;
+      tipTimer = setTimeout(function () { tipShow(host); }, 260);
+    });
+    document.addEventListener('mouseout', function (e) {
+      if (e.target.closest && e.target.closest('[data-tip]')) tipHide();
+    });
+    document.addEventListener('focusin', function (e) {
+      var host = e.target.closest && e.target.closest('[data-tip]');
+      if (host) tipShow(host);
+    });
+    document.addEventListener('focusout', tipHide);
+  }
+
+  /* Разметка: data-ui="tabs", триггеры data-tab, панели data-panel. */
+  function bindTabs(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('[data-ui="tabs"]').forEach(function (box) {
+      if (box.dataset.uiBound) return;
+      box.dataset.uiBound = '1';
+      var trg = Array.prototype.slice.call(box.querySelectorAll('[data-tab]'));
+      if (!trg.length) return;
+      var list = trg[0].parentElement;
+      if (list) { list.setAttribute('role', 'tablist'); }
+      function select(v) {
+        trg.forEach(function (t) {
+          var on = t.getAttribute('data-tab') === v;
+          t.setAttribute('role', 'tab');
+          t.setAttribute('aria-selected', String(on));
+          t.setAttribute('tabindex', on ? '0' : '-1');
+          t.setAttribute('data-state', on ? 'active' : 'inactive');
+        });
+        box.querySelectorAll('[data-panel]').forEach(function (p) {
+          var on = p.getAttribute('data-panel') === v;
+          p.setAttribute('role', 'tabpanel');
+          p.hidden = !on;
+        });
+      }
+      trg.forEach(function (t, i) {
+        t.addEventListener('click', function () { select(t.getAttribute('data-tab')); });
+        t.addEventListener('keydown', function (e) {
+          var d = e.key === 'ArrowRight' ? 1 : (e.key === 'ArrowLeft' ? -1 : 0);
+          if (!d) return;
+          e.preventDefault();
+          var n = trg[(i + d + trg.length) % trg.length];
+          select(n.getAttribute('data-tab'));
+          n.focus();
+        });
+      });
+      var init = box.querySelector('[data-tab][data-state="active"]') || trg[0];
+      select(init.getAttribute('data-tab'));
+    });
+  }
+
+  UI.confirm = function (o) {
+    o = o || {};
+    var okId = 'uiConfirmOk', cancelId = 'uiConfirmCancel';
+    var body = (o.description ? '<p class="ui-dialog-description">' +
+                  esc(o.description).replace(/\n/g, '<br>') + '</p>' : '') +
+               (o.requireWord
+                  ? UI.field({ id: 'uiConfirmWord', label: o.requireLabel || o.requireWord,
+                               control: UI.input({ id: 'uiConfirmWord',
+                                                   placeholder: o.requireWord }) })
+                  : '');
+    var d = dialog({
+      title: o.title || L('Подтвердите действие'),
+      body: body,
+      footer:
+        UI.button({ variant: 'ghost', label: o.cancelLabel || L('Отмена'), id: cancelId }) +
+        UI.button({ variant: o.variant || 'destructive',
+                    label: o.confirmLabel || L('Подтвердить'), id: okId })
+    });
+    var ok = document.getElementById(okId);
+    var word = document.getElementById('uiConfirmWord');
+    if (word) {
+      ok.disabled = true;
+      word.addEventListener('input', function () {
+        ok.disabled = word.value.trim() !== o.requireWord;
+      });
+      word.focus();
+    }
+    document.getElementById(cancelId).onclick = function () {
+      dialogClose();
+      if (o.onCancel) o.onCancel();
+    };
+    ok.onclick = function () {
+      var v = word ? word.value.trim() : null;
+      dialogClose();
+      if (o.onConfirm) o.onConfirm(v);
+    };
+    return d;
+  };
+  UI.dropdown = dropdown;
+  UI.menuClose = menuClose;
+  UI.dialog = dialog;
+  UI.dialogClose = dialogClose;
+  UI.tabs = bindTabs;
+  UI.el = el;
+  UI.esc = esc;
+  window.UI = UI;
+  window.dsIcon = icon;
+
+
   document.addEventListener('keydown', function (e) {
     var tag = (e.target && e.target.tagName || '').toLowerCase();
     var typing = tag === 'input' || tag === 'textarea' || tag === 'select';
@@ -473,39 +829,27 @@
       cmdk && cmdk.classList.contains('open') ? closeCmdk() : openCmdk();
       return;
     }
-    if (e.key === 'Escape') { closeCmdk(); closeDrawer(); }
+    if (e.key === 'Escape') { closeCmdk(); closeDrawer(); menuClose(); dialogClose(); }
     if (typing) return;
     if (e.key === '/') { e.preventDefault(); openCmdk(); }
   });
 
-  /* ---------- 7. КЛИКАБЕЛЬНЫЕ СТРОКИ С КЛАВИАТУРЫ ----------
-
-     Списки инцидентов, алертов, правил, очереди триажа и ячейки матрицы
-     ATT&CK открываются кликом по <div>/<tr> с onclick. Табом до них дойти
-     было нельзя: у неродных элементов нет своей фокусируемости. Аналитик,
-     который ведёт разбор с клавиатуры (J/K на очереди триажа для этого и
-     сделаны), упирался в мышь на каждом переходе к карточке.
-
-     Разметку правили точечно: строка списка инцидентов уже несла
-     tabindex/role/onkeydown, а остальные семь мест — нет. Раз обработчик
-     ставится из JS при каждой перерисовке, то и фокусируемость должна
-     ставиться там же, одним правилом на всё приложение.
-
-     Вложенные onclick пропускаем: если строка кликабельна целиком, её
-     ячейки не должны становиться отдельными остановками таба. */
   var NATIVE = { A: 1, BUTTON: 1, INPUT: 1, SELECT: 1, TEXTAREA: 1, SUMMARY: 1, LABEL: 1 };
   function stampFocusable(root) {
     var scope = root && root.querySelectorAll ? root : document;
-    scope.querySelectorAll('[onclick]').forEach(function (el) {
+
+    var list = Array.prototype.slice.call(scope.querySelectorAll('[onclick]'));
+    if (scope.nodeType === 1 && scope.hasAttribute && scope.hasAttribute('onclick')) {
+      list.unshift(scope);
+    }
+    list.forEach(function (el) {
       if (NATIVE[el.tagName]) return;
       if (el.hasAttribute('tabindex')) return;
       if (el.closest('thead')) return;
       var p = el.parentElement && el.parentElement.closest('[onclick]');
       if (p) return;
       el.setAttribute('tabindex', '0');
-      /* role=button на <tr> стирает роль строки таблицы: диктор перестаёт
-         называть колонку и позицию строки, а таблица для него распадается
-         на набор кнопок. Строке хватает фокусируемости. */
+
       if (el.tagName === 'TR' || el.tagName === 'TD' || el.tagName === 'TH') return;
       if (!el.getAttribute('role')) el.setAttribute('role', 'button');
     });
@@ -516,38 +860,50 @@
     if (!el || !el.getAttribute) return;
     if (NATIVE[el.tagName]) return;
     if (!el.hasAttribute('onclick')) return;
-    // Пробел на элементе со своей прокруткой оставляем прокрутке.
+
     if (e.key !== 'Enter' && el.scrollHeight > el.clientHeight + 2) return;
     e.preventDefault();
     el.click();
   });
 
-  /* ---------- 8. СТАРТ + переживание перерисовок ---------- */
+  var shellQueued = false;
+  function ensureShell() {
+    mountSkipLink(); mountTopbar(); enhanceNav(); mountCollapse();
+    mountUserMenu(); watchScroll();
+  }
+  function queueShell() {
+    if (shellQueued) return;
+    shellQueued = true;
+    var run = function () { shellQueued = false; ensureShell(); };
+    if (window.requestAnimationFrame) requestAnimationFrame(run);
+    else setTimeout(run, 16);
+  }
   function boot() {
     initTheme();
-    mountSkipLink();
     mountCmdk();
     mountDrawer();
-    mountTopbar();
-    enhanceNav();
-    mountCollapse();
-    watchScroll();
+    ensureShell();
     stampFocusable(document);
+    bindTooltips();
+    bindTabs(document);
     if (window.MutationObserver) {
       new MutationObserver(function (recs) {
+        var shell = false;
         for (var i = 0; i < recs.length; i++) {
+          var t = recs[i].target;
+
+          if (t && t.closest && (t.closest('.top,.topbar,.nav,.side'))) shell = true;
           var added = recs[i].addedNodes;
           for (var j = 0; j < added.length; j++) {
-            if (added[j].nodeType === 1) stampFocusable(added[j].parentNode || document);
+            if (added[j].nodeType === 1) { stampFocusable(added[j]); bindTabs(added[j]); }
           }
         }
+        if (shell) queueShell();
       }).observe(document.body, { childList: true, subtree: true });
     }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  // страницы перерисовывают шапку опросом — восстанавливаем оболочку
-  setInterval(function () {
-    mountSkipLink(); mountTopbar(); enhanceNav(); mountCollapse(); watchScroll();
-  }, 1500);
+
+  setInterval(ensureShell, 10000);
 })();

@@ -1,6 +1,6 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Обзор платформы · Sentinel SOC</title>
-<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
+<script>try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
@@ -64,7 +64,7 @@
 
 </div>
 <script>
-/* Разряды и числительные — общие для отчётных страниц. */
+
 function nfmt(n){return (n==null?0:n).toLocaleString('ru-RU').replace(/\u00A0/g,' ');}
 function plur(n,one,few,many){n=Math.abs(+n||0);const a=n%10,b=n%100;
  if(a===1&&b!==11)return one;
@@ -81,12 +81,10 @@ async function poll(){
   $('mDet').textContent=pct(m.detection_rate);
   $('mMttd').textContent=(m.mttd_sim_min!=null?m.mttd_sim_min:'—')+' мин';
   $('mFp').textContent=pct(m.fp_rate);
-  // цветом отмечается только уровень: доля ложных тревог выше порога
+
   $('mFp').className='n'+(m.fp_rate>0.15?' bad':'');
   $('mCov').textContent=pct(m.attack_coverage);
-  // Разряды и согласование числительных — как во всём остальном
-  // интерфейсе. Здесь печаталось «По 45333 событиям · 67 атакующих
-  // эпизодов · 249 алертов».
+
   $('metSt').textContent='По '+nfmt(m.events)+' '+plur(m.events,'событию','событиям','событиям')+
     ' · '+nfmt(m.anomaly_episodes)+' '+plur(m.anomaly_episodes,'атакующий эпизод','атакующих эпизода','атакующих эпизодов')+
     ' · '+nfmt(m.alerts)+' '+plur(m.alerts,'детект','детекта','детектов')+'.';

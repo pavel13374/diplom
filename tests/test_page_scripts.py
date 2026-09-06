@@ -192,6 +192,21 @@ const FIX = {
              oncall: true, pto: false, working: true,
              stats: { pushes: 13, mrs: 6, anomalies: 0, last_action: 'docs_wiki',
                       last_project: REPO } }] },
+  '/api/workload_curve.json': (() => {
+    // ДЕФЕКТ, РАДИ КОТОРОГО ЭТОТ МОК. pollWorkload вызывался, но выходил
+    // на проверке `if(!pts.length)`: ответа в фикстурах не было. Весь
+    // разбор кривой — расчёт рекомендации, сравнение с обходом, отрисовка
+    // двух графиков — не выполнялся ни разу, и удалённая при рефакторинге
+    // переменная доехала до пользователя, а не до теста.
+    const T = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95];
+    const pt = (t, k) => ({
+      threshold: t, per_day: 10.5 - k * 0.9,
+      recall: 0.75 - k * 0.01, recall_ci: [0.70 - k * 0.01, 0.80 - k * 0.01],
+      caught: 258 - k, episodes: 342, precision: 0.18 + k * 0.02 });
+    return { capacity: 10, current_threshold: 0.6, episodes: 342,
+             seeds: [1, 2, 3], sim_days: 46, built_at: '2026-08-11 18:09',
+             points: T.map(pt), points_alt: T.map(pt) };
+  })(),
   '/api/health': { world_alive: true, ollama: true, auto_triage: true,
     events: { total: 3677, last_age_s: 4 },
     defense: { running: true, processed: 409 },
@@ -221,6 +236,7 @@ const FIX = {
   '/api/logs': { logs: [{ id: 1, t: '12:00:00', level: 'INFO', msg: 'ok' }] },
   '/api/stats': { store_events: 40572, processed: 451, alerts: 16, incidents: 8,
     campaigns_detected: 1, coverage_pct: 72, rules: 39, techniques_fired: 2,
+    techniques_total: 46, techniques_covered: 33,
     by_actor: { [ACTOR]: 3 }, by_repo: { [REPO]: 3 }, by_tactic: { Execution: 6 },
     alerts_list: [alert(0.95), alert(0.35)], running: true, uptime: 600 },
   '/api/alerts': { alerts: [alert(0.95), alert(0.35)] },
@@ -306,7 +322,7 @@ const pending = [];
 w.setInterval = (fn, ms) => { timers++; return 0; };
 w.setTimeout = (fn, ms) => { if (!ms) pending.push(fn); return 0; };
 
-for (const f of ['i18n.js', 'ui.js']) {
+for (const f of ['i18n.js', 'charts.js', 'ui.js']) {
   const p = staticDir + '/' + f;
   if (fs.existsSync(p)) {
     try { w.eval(fs.readFileSync(p, 'utf8')); } catch (e) { errors.push(f + ': ' + e.message); }
@@ -363,8 +379,12 @@ const POLLERS = ['tick', 'refresh', 'poll'].concat(
   // Без этого «прогон без ошибок» проходит и на пустом экране: функция
   // отработала, но не нарисовала ничего.
   const want = {
-    '#trendGrid .chart': 'графики трендов',
-    '#trendGrid .chart-line': 'линия графика',
+    '#trendGrid .metric-card': 'карточки метрик',
+    '#trendGrid .dsc-line': 'линия графика',
+    '#cSeverity .dsc-arc': 'круг очереди по уровню',
+    '#cCoverage .dsc-arc': 'круг покрытия ATT&CK',
+    '#alFlow .dsc-line': 'поток сработок',
+    '#byRepo .dsc-bar-fill': 'полосы по репозиториям',
     '#matrix .mx-cell': 'ячейки матрицы ATT&CK',
     '#matrix .mx-th': 'шапки тактик',
     '#diagRecent .logrow': 'строки структурного лога',

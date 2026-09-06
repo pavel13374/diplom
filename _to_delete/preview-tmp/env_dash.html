@@ -1,10 +1,10 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1"><meta name=csrf-cookie content="{{ CSRF_COOKIE }}"><title>Sentinel Env — Team &amp; GitLab</title>
-<script>try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
+<meta name=viewport content="width=device-width,initial-scale=1"><meta name=csrf-cookie content="sentinel_env_csrf"><title>Sentinel Env — Team &amp; GitLab</title>
+<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
-<script src="/static/i18n.js" defer></script><script src="/static/charts.js" defer></script><script src="/static/ui.js" defer></script></head><body>
+<script src="/static/i18n.js" defer></script><script src="/static/ui.js" defer></script></head><body>
 <div class=app>
   <aside class=side>
     <div class=brand><span class=brand-mark></span><span class=brand-text><b>Sentinel Env</b><span class=sub>Team &amp; GitLab</span></span></div>
@@ -24,15 +24,17 @@
   </aside>
 
   <main class=main>
-
+    <!-- Слева контекст раздела, справа состояние и управление прогоном.
+         Индикаторы разделены линиями, а не воздухом: раньше они
+         переносились внутри себя уже на 1568px. -->
     <div class=topbar>
       <h1 id=pageTitle>Обзор</h1>
       <span class=grow></span>
       <div class=status-strip>
-        <span class="pill" id=hlGitlab title="Связь с GitLab"><span class=d></span><span class=k>GitLab</span><b id=hlGitlabT>—</b></span>
-        <span class="pill" id=hlWorld title="Движок симуляции"><span class=d></span><span class=k>Симуляция</span><b id=hlWorldT>—</b></span>
-        <span class="pill" id=hlEvents title="Событий в журнале и давность последнего"><span class=k>События</span><b id=hlEventsT>—</b></span>
-        <span class="pill" id=hlOllama hidden title="Локальная модель для триажа"><span class=k>Модель</span><b id=hlOllamaT>—</b></span>
+        <span class="pill" id=hlGitlab title="Связь с GitLab"><span class=d></span><span>GitLab <b id=hlGitlabT>—</b></span></span>
+        <span class="pill" id=hlWorld title="Движок симуляции"><span class=d></span><span>Симуляция <b id=hlWorldT>—</b></span></span>
+        <span class="pill" id=hlEvents title="Событий в журнале и давность последнего"><span class=d></span><span>События <b id=hlEventsT>—</b></span></span>
+        <span class="pill" id=hlOllama hidden title="Локальная модель для триажа"><span class=d></span><span>Модель <b id=hlOllamaT>—</b></span></span>
         <span class="pill rest" id=workPill><span class=d></span><span id=workTxt>—</span></span>
       </div>
       <div class=ds-toolbar style=margin:0>
@@ -43,14 +45,18 @@
 
     <div class=content>
 
-      <div class="worldWarn ui-alert" data-variant=destructive role=alert id=glWarn hidden>
+      <!-- ОТКАЗ СВЯЗИ С GITLAB — на первом экране, а не только пилюлей.
+           Мир без GitLab не запускается (заглушек больше нет), поэтому
+           причина должна быть видна сразу и целиком. -->
+      <div class=worldWarn id=glWarn hidden style="background:var(--critical-bg)">
         <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=12 cy=12 r=9 /><path d="m5.6 5.6 12.8 12.8"/></svg>
-        <b>GitLab недоступен</b> — <code id=glWarnAddr></code> — <code id=glWarnMsg></code>
+        <b>GitLab недоступен</b> — <code id=glWarnMsg></code>
         <button class="btn sm" onclick="checkGitlab()">Проверить связь</button>
       </div>
 
+      <!-- ОБЗОР -->
       <section class="view active" id=v-overview>
-
+        <!-- Строка часов и строка показателей — общий контекст прогона. -->
         <div class=clocks>
           <div class="clock sim"><div class=lab>Время симуляции</div>
             <div class=val id=simTime>—</div><div class=sub id=simSub>—</div></div>
@@ -69,6 +75,9 @@
           <div class=kpi title="Сколько раз планировщик просыпался вне рабочих часов и никакой работы не было. Это НЕ пропущенные действия и не отказы: ночью команда спит, а опрос идёт раз в OFF_HOURS_POLL_SECONDS, поэтому за одну ночь число набегает большое."><div class=l>Пауз вне работы</div><div class="n is-empty" id=sSkip>—</div></div>
         </div>
 
+        <!-- Две колонки со СТОПКАМИ панелей, а не сетка из ячеек: короткая
+             панель больше не тянется под высоту соседней и не оставляет
+             под собой полэкрана пустоты. -->
         <div class=cols2>
           <div class=col>
             <div class=card><h2>Состояние режима</h2>
@@ -85,8 +94,10 @@
 
             <div class="card mt-3"><h2>Запись в GitLab<span class=grow></span>
               <span class=sub id=dPctSub></span></h2>
-              <div id=glDonut></div>
               <div class=kv>
+                <b>Доля успешных</b><span id=dPct>—</span>
+                <b>Успешно</b><span id=dOk>—</span>
+                <b>С ошибкой</b><span id=dFail>—</span>
                 <b>Событий в журнале</b><span id=dTot>—</span>
               </div>
             </div>
@@ -111,6 +122,7 @@
         </div>
       </section>
 
+      <!-- КОНФИГУРАЦИЯ -->
       <section class=view id=v-config>
         <div id=cfg></div>
         <div class=savebar>
@@ -119,6 +131,9 @@
           <span class=toast id=saveToast></span>
         </div>
 
+        <!-- Опасное действие обозначено КНОПКОЙ, а не заливкой во всю ширину:
+             красная плашка на полтора экрана перетягивает внимание с рабочей
+             части страницы и делается фоном, а не предупреждением. -->
         <div class="card danger-card mt-4">
           <h2>Сброс состояния репозиториев</h2>
           <div class=sub>Откат к чистому проекту: закрываются все открытые MR, удаляются все
@@ -133,6 +148,7 @@
         </div>
       </section>
 
+      <!-- ЖУРНАЛ -->
       <section class=view id=v-logs>
         <div class="panel mb-4">
           <h2>Журнал событий</h2>
@@ -148,7 +164,9 @@
       </section>
 
       <section class=view id=v-people>
-
+        <!-- Активность команды — поток событий с иерархией по времени,
+             а не сетка одинаковых карточек с людьми. Состав команды
+             стоит рядом узкой колонкой: это справочник, а не главное. -->
         <div class=dash>
           <div class="card dash-main"><h2>Поток активности<span class=grow></span>
             <span class=sub id=teamFeedSub></span></h2>
@@ -193,6 +211,7 @@
         </div>
       </section>
 
+      <!-- РЕПОЗИТОРИИ (живая визуализация) -->
       <section class=view id=v-repos>
         <div class=card>
           <h2>Репозитории<span class=grow></span><span class=sub id=repoCount></span></h2>
@@ -215,6 +234,7 @@
         </div>
       </section>
 
+      <!-- АНАЛИТИКА -->
       <section class=view id=v-insights>
         <div class=card>
           <h2>Ритм активности<span class=grow></span>
@@ -238,12 +258,13 @@
 </div>
 
 <script>
-
-function setHTML(el,html){
- if(!el)return false;
- if(el.__lastHTML===html)return false;
- el.__lastHTML=html; el.innerHTML=html; return true;}
-
+/* ОШИБКИ ИНТЕРФЕЙСА
+   Циклы опроса раньше были обёрнуты в `catch(e){}`. Одна опечатка
+   внутри — например classList.add('') — тихо обрывала весь цикл, и
+   половина значений навсегда оставалась прочерками, без единого следа
+   в консоли. Теперь ошибка печатается с контекстом и один раз
+   показывается тостом. Функция объявлена здесь, а не в ui.js: тот
+   подключается с defer и выполняется позже этого скрипта. */
 var _uiErrSeen={};
 function uiErr(where,e){
  var msg=((e&&(e.message||e))||'')+'';
@@ -251,7 +272,13 @@ function uiErr(where,e){
  if(_uiErrSeen[key])return; _uiErrSeen[key]=1;
  try{console.error('[ui] '+where+': '+msg,e);}catch(x){}
  try{if(window.toast)window.toast('Сбой в интерфейсе: '+where,'error',6000);}catch(x){}
-
+ /* ОТПРАВКА НА СЕРВЕР.
+    Раньше ошибка жила только в консоли разработчика: на экране был тост
+    «Сбой в интерфейсе», и передать по нему было нечего, кроме скриншота.
+    Теперь она ложится рядом с серверными и уходит в общую выгрузку
+    /api/diag/bundle.json — одним файлом на разбор.
+    Отправка сама обёрнута в catch(x): если недоступен и он, повторно
+    сообщать уже некуда, и падать в репортёре ошибок нельзя. */
  try{
   fetch('/api/client-error',{method:'POST',headers:csrfHeaders({'Content-Type':'application/json'}),
    body:JSON.stringify({where:where,message:msg,
@@ -260,6 +287,9 @@ function uiErr(where,e){
  }catch(x){}
 }
 
+/* Ошибки, до которых uiErr не дотягивается: синтаксические, из обработчиков
+   событий и из промисов без catch. Без этих двух подписок они не попадали
+   никуда вообще. */
 window.addEventListener('error',function(ev){
  try{uiErr('window.onerror',ev.error||ev.message);}catch(x){}
 });
@@ -268,7 +298,15 @@ window.addEventListener('unhandledrejection',function(ev){
 });
 
 const $=id=>document.getElementById(id);
-
+/* ЕДИНАЯ ТОЧКА СЕТЕВОГО ВЫЗОВА.
+   Раньше здесь стояло `return r.json()` без единой проверки. Любой ответ,
+   который не является JSON — 500 с пустым телом, редирект на /login после
+   истечения сессии, отдача HTML вместо данных — приводил к необработанному
+   SyntaxError «Unexpected end of input». В журнал ошибок интерфейса попадала
+   ровно эта фраза: без URL, без кода ответа, без ссылки на инцидент, которую
+   сервер уже вернул в теле. Найти по такому сообщению нечего.
+   Теперь отказ называет запрос, код и ref, а вызывающая сторона может его
+   показать пользователю. */
 async function jfetch(u,opt){
  const r=await fetch(u,opt||{});
  const txt=await r.text();
@@ -287,9 +325,15 @@ async function jfetch(u,opt){
  return data;
 }
 async function jget(u){return jfetch(u);}
-
+// Имя cookie приходит С СЕРВЕРА: у консолей оно РАЗНОЕ, потому что cookie
+// не различаются по порту и общий `sentinel_csrf` две консоли на одном
+// localhost перезаписывали друг у друга — вторая получала 403 на каждый POST.
 const CSRF_COOKIE=(document.querySelector('meta[name=csrf-cookie]')||{}).content||'sentinel_csrf';
-
+// CSRF: токен выдаётся сервером в этом cookie и обязан приходить
+// обратно заголовком X-CSRF-Token на каждом изменяющем запросе. До этого у
+// консолей не было никакой защиты от межсайтовых запросов, а именно через них
+// запускаются атакующие кампании, заводятся issue в GitLab и выставляются
+// вердикты, три из которых приглушают правило детектирования.
 function csrfToken(){
   const m = document.cookie.match(new RegExp('(?:^|;\\s*)'+CSRF_COOKIE+'=([^;]+)'));
   return m ? decodeURIComponent(m[1]) : '';
@@ -300,26 +344,21 @@ function csrfHeaders(extra){
 async function jpost(u,b){return jfetch(u,{method:'POST',headers:csrfHeaders({'Content-Type':'application/json'}),body:b?JSON.stringify(b):null});}
 function rid(k){return 'f_'+k.replace(/[^a-zA-Z0-9]/g,'_');}
 function fmtUptime(s){if(!s)return '—';const h=(s/3600|0),m=(s%3600/60|0),x=s%60;return h+'ч '+m+'м '+x+'с';}
-
+// Цвет в системе означает уровень серьёзности, поэтому у аватарок его нет:
+// различают инициалы, а не оттенок.
 function colorFor(){return 'var(--surface-4)';}
 function initials(n){return n.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();}
 
+/* навигация */
 const TITLES={overview:'Обзор',config:'Конфигурация',logs:'Журнал событий',data:'Датасет',repos:'Репозитории',insights:'Аналитика',people:'Активность команды'};
-
-let view='overview';
-function onView(v){return view===v;}
 document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>{
   document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));
   a.classList.add('active');
-  view=a.dataset.view;document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
-  $('v-'+view).classList.add('active');$('pageTitle').textContent=TITLES[view];
-
-  if(view==='logs')pollLogs();
-  else if(view==='data')pollEvents();
-  else if(view==='insights')pollInsights();
-  else if(view==='repos')pollRepos();
+  const v=a.dataset.view;document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+  $('v-'+v).classList.add('active');$('pageTitle').textContent=TITLES[v];
 });
 
+/* ---- описания параметров ---- */
 const FEATURE_HELP={
  issues:"Создавать тикеты (баги, задачи, threat intel) с метками и привязкой к спринту.",
  ci_pipeline:"Имитировать CI: бот публикует статус сборки, при сбое автор досылает исправление.",
@@ -382,11 +421,16 @@ const ACT_HELP={
  release_tagging:"Тег и релиз",experiment_fork:"Эксперимент на форке",
  anomaly:"Аномальное действие",offhours_benign:"Активность вне часов"
 };
-
+// Незнакомый ключ не показываем сырым: превращаем snake_case в фразу.
+// Раньше на экране висели automation_script и membership_change.
 function actName(k){
  const s=String(k||'');
  if(ACT_HELP[s])return ACT_HELP[s];
-
+ /* Составные значения статуса приходят из планировщика как служебные
+    идентификаторы: «red_campaign(cmd)», «anomaly:careless_dev». Прежний
+    фолбэк просто убирал подчёркивания, и в поле «Текущее действие» у
+    пользователя оказывалась строка «Red campaign(cmd)» — внутреннее имя,
+    выведенное в интерфейс как есть. */
  if(s.indexOf('red_campaign')===0)
    return 'Атакующая кампания'+(s.indexOf('(cmd)')>0?' (по команде)':'');
  if(s.indexOf('anomaly:')===0){const k2=s.slice(8);
@@ -395,6 +439,7 @@ function actName(k){
  return t?t.charAt(0).toUpperCase()+t.slice(1):'—';
 }
 
+/* ---- контролы ---- */
 function slider(k,label,help,min,max,step,unit,val){
  const id=rid(k);if(val==null)val=0;
  return '<div class=field><div class=top><label>'+label+'</label><span class=val id=o_'+id+'>'+val+unit+'</span></div>'+
@@ -413,7 +458,8 @@ function toggle(k,label,help,val){
  return '<div class="field switch-field"><div class=sw-txt><label>'+label+'</label><div class=help>'+help+'</div></div>'+
   '<label class=switch><input type=checkbox data-k="'+k+'" data-t=bool '+(val?'checked':'')+' onchange=recalc()><span class=track></span></label></div>';
 }
-
+// Варианты принимаются либо строкой, либо парой [значение, подпись]:
+// в интерфейсе не должно быть сырых enum-ов вроде «oncall» и «real».
 function sel(k,label,help,opts,val){
  return '<div class=field><label>'+label+'</label><select data-k="'+k+'" data-t=str onchange=recalc()>'+
   opts.map(function(o){var v=Array.isArray(o)?o[0]:o, t=Array.isArray(o)?o[1]:o;
@@ -423,7 +469,13 @@ function sel(k,label,help,opts,val){
 function txt(k,label,help,val){
  return '<div class=field><label>'+label+'</label><input class=tin data-k="'+k+'" data-t=str value="'+(val==null?'':val)+'"><div class=help>'+help+'</div></div>';
 }
-
+/* Заголовок секции — ОДНА строка, как заголовок карточки в консоли защиты.
+   Было: иконка + название + пояснение второй строкой, высота 60px. Страница
+   настроек из-за этого выглядела сделанной в другом продукте: в консоли
+   защиты заголовок панели — 32px, без иконки, а пояснение идёт приглушённым
+   текстом в той же строке. Иконка ничего не различала (девять серых глифов
+   подряд), а пояснение под каждым заголовком — ровно тот приём, из-за
+   которого интерфейс читается как сгенерированный. */
 function group(ic,title,subtitle,inner,open){
  return '<details class=group '+(open?'open':'')+'><summary>'+
   '<span class=g-tt>'+title+'</span>'+
@@ -552,12 +604,13 @@ async function tick(){
  $('realTime').textContent=s.real_time;
  $('simTime').textContent=ruDow(s.sim_time);
  $('glTime').textContent=ruDow(s.gitlab_time||'—');
-
+ // Подпись под часами симуляции была пустым прочерком. Пишем в неё то,
+ // ради чего эти часы вообще отдельные: во сколько раз время сжато.
  const ss=$('simSub');
  if(ss){ss.textContent=s.timelapse?('быстрее реального в '+(s.scale||1)+' раз'):'один к одному';}
  $('dayStatus').textContent=s.is_work?'рабочий день':'нерабочее время';
  $('workHours').textContent=s.work_hours;
-
+ // запоминаем окно, чтобы график часов подсветил рабочее время
  const m=/^(\d{1,2}):\d{2}\D+(\d{1,2}):/.exec(s.work_hours||'');
  if(m)window._workHours=[+m[1],+m[2]];
  $('tl').textContent=(s.time_mode||(s.timelapse?('×'+s.scale):'Реальное время 1:1'))+(s.ff_offhours?' · промотка нерабочих часов':'')+(s.last_ff?(' · '+s.last_ff):'');
@@ -574,32 +627,33 @@ async function tick(){
   if(s.oncall)parts.push('дежурный @'+s.oncall);
   if(s.pto&&s.pto!=='никого')parts.push('в отпуске '+s.pto);
   tm.textContent=parts.join(' · ');}
- setHTML($('team'),s.team.map(m=>{const st=m.stats||{};const la=st.last_action?(actName(st.last_action)+(st.last_project?(' · '+st.last_project):'')):'нет активности';
+ $('team').innerHTML=s.team.map(m=>{const st=m.stats||{};const la=st.last_action?(actName(st.last_action)+(st.last_project?(' · '+st.last_project):'')):'нет активности';
    return '<div class=member><div class=avatar style="background:'+colorFor(m.name)+'">'+initials(m.name)+'</div>'+
    '<div class=grow><div class=m-name>'+m.name+'</div><div class=m-role>'+roleRu(m.role)+' · '+la+'</div></div>'+
-   (m.oncall?'<span class="badge oc">дежурный</span>':(m.pto?'<span class="badge pt">отпуск</span>':(m.working?'<span class="badge wk">на смене</span>':'')))+'</div>';}).join(''));
+   (m.oncall?'<span class="badge oc">дежурный</span>':(m.pto?'<span class="badge pt">отпуск</span>':(m.working?'<span class="badge wk">на смене</span>':'')))+'</div>';}).join('');
  renderPeople(s.team);
  const tc=$('teamCount');if(tc)tc.textContent=(s.team||[]).length+' человек';
-
- dsBars($('acts'),{limit:9,empty:'Пока нет данных — запустите симуляцию',mono:true,
-   items:topBars(s.activities,8,actName)});
- const ev=(s.events&&s.events.by_action)||{};
- dsBars($('evActs'),{limit:9,empty:'Событий пока нет',mono:true,
-   items:topBars(ev,8,function(k){return ACT_WORD[k]||actName(k);})});
+ const a=s.activities||{},keys=Object.keys(a).sort((x,y)=>a[y]-a[x]);const mx=Math.max(1,...keys.map(k=>a[k]));
+ $('acts').innerHTML=keys.length?keys.map(k=>'<div class=act><span>'+actName(k)+'</span><b>'+a[k]+'</b><div class=bar><i style=width:'+(a[k]/mx*100)+'%></i></div></div>').join(''):'<div class="help empty">пока нет данных — запустите симуляцию</div>';
+ // поток событий по типам (event-store)
+ const ev=(s.events&&s.events.by_action)||{};const ek=Object.keys(ev).sort((x,y)=>ev[y]-ev[x]).slice(0,10);
+ if(ek.length){const em=Math.max(1,...ek.map(k=>ev[k]));const EVN=ACT_WORD;
+  $('evActs').innerHTML=ek.map(function(k){
+    return '<div class=act><span class=act-n>'+esc(EVN[k]||actName(k))+'</span>'+
+      '<span class=act-bar><i style=width:'+(ev[k]/em*100)+'%></i></span>'+
+      '<b>'+fmtNum(ev[k])+'</b></div>';}).join('');}
+ // донат успешности GitLab-вызовов
  const ok=s.total_ok||0,fail=s.total_fail||0,tot=ok+fail;
  const pctOk=tot?Math.round(ok/tot*100):0;
-
- dsDonut($('glDonut'),{size:160,thickness:18,
-   centerValue:tot?pctOk+'%':'—',centerLabel:'успешных вызовов',
-   items:[{label:'Успешно',value:ok,color:'var(--chart-4)'},
-          {label:'С ошибкой',value:fail,color:'var(--sev-critical)'}],
-   empty:'Вызовов ещё не было'});
  const C=2*Math.PI*15.9155;
-
+ // Уровень задаётся классом карточки, а не подстановкой цвета в style:
+ // цвет остаётся в системе и переключается вместе с темой.
  const pb=$('dPct');
  if(pb){pb.textContent=tot?(pctOk+'%'):'—';
   pb.classList.toggle('is-empty',!tot);
-
+  // Уровень задаётся классом, а не подстановкой цвета в style.
+  // Пустая строка в classList.add бросает исключение и обрывает весь
+  // цикл обновления — поэтому класс добавляется только когда он есть.
   pb.classList.remove('lvl-bad','lvl-ok');
   if(tot&&pctOk>=90)pb.classList.add('lvl-ok');
   else if(tot&&pctOk<60)pb.classList.add('lvl-bad');}
@@ -609,24 +663,32 @@ async function tick(){
  setNum('dTot',(s.events&&s.events.total));
 }
 
+// Числа с разделителем разрядов и пометкой «нет данных».
 function fmtNum(n){if(n==null||n==='')return '—';
  const m=String(n).match(/^(-?\d+)(\D*)$/);
  if(!m)return String(n);
  return m[1].replace(/\B(?=(\d{3})+(?!\d))/g,'\u2009')+m[2];}
 function setNum(id,v){const e=document.getElementById(id);if(!e)return;
-
+ /* ТРИ состояния, а не два. Прочерк — данных нет. Ноль — данные пришли
+    и равны нулю: это факт, но не новость, поэтому вес понижен. Раньше
+    настоящий ноль рисовался как полноценное значение, и ряд из нулей
+    выглядел как заполненный дашборд. */
  const empty=(v==null||v===''); e.textContent=empty?'—':fmtNum(v);
  e.classList.toggle('is-empty',empty);
  e.classList.toggle('is-zero',!empty&&Number(v)===0);}
 
 function fmtAge(s){if(s==null)return'';if(s<60)return s+' с';if(s<3600)return Math.floor(s/60)+' мин';return Math.floor(s/3600)+' ч';}
-
+/* Кнопка в пустом состоянии — тот же запуск, что в шапке, а не вторая
+   реализация. Делегирование вместо инлайнового onclick: разметка
+   пустых блоков собирается внутри JS-строк, и вложенные кавычки
+   обрывали строку (поймано tests/test_page_scripts.py). */
 document.addEventListener('click',function(e){
  const b=e.target.closest('[data-start]');if(!b)return;
  const s=document.getElementById('btnStart');if(s)s.click();
 });
 function setPill(id,cls,txt){const p=$(id);if(!p)return;p.className='pill '+cls;$(id+'T').textContent=txt;}
-
+/* Проверка связи ПО КНОПКЕ: после «поднял ВМ» результат виден сразу,
+   без перезапуска процесса. Ответ — конкретная причина, а не «offline». */
 async function checkGitlab(){
  try{
   const d=await jget('/api/gitlab/check');
@@ -639,7 +701,9 @@ async function checkGitlab(){
 async function pollHealth(){
  let h;try{h=await jget('/api/health');}catch(e){return;}
  const g=h.gitlab||{};
-
+ /* ПРИЧИНА, А НЕ ЯРЛЫК. Раньше здесь горело просто «offline», и понять,
+    что чинить — адрес, токен, TLS или сеть, — было нельзя: наверх доходило
+    одно и то же слово при любом отказе. */
  if(h.offline_mode)setPill('hlGitlab','warn','офлайн');
  else if(g.state==='ok')setPill('hlGitlab','ok',g.user?('ok · @'+g.user):'ok');
  else if(g.state==='error')setPill('hlGitlab','bad',g.msg||'нет связи');
@@ -650,16 +714,16 @@ async function pollHealth(){
  if(gw){
   const broken=!h.offline_mode&&g.state==='error';
   gw.hidden=!broken;
-   if(broken){
-
-   const a=$('glWarnAddr'); if(a) a.textContent=(g.url||'адрес не задан');
-   $('glWarnMsg').textContent=(g.msg||'')+(g.detail?(' — '+g.detail):'');
-  }
+  if(broken)$('glWarnMsg').textContent=(g.msg||'')+(g.detail?(' — '+g.detail):'');
  }
-
+ /* «Стоп» — не нейтральное состояние: это причина, по которой все
+    остальные числа на экране равны нулю. Пустой класс делал его
+    неотличимым по весу от работающего прогона. */
  setPill('hlWorld',h.world.running?'ok':'stopped',h.world.running?'идёт':'остановлена');
  const ev=h.events||{};
-
+ /* УСТАРЕВАНИЕ — ЭТО ОТКАЗ, ПРОСТО ТИХИЙ. Раньше уровень зависел только
+    от того, есть ли события вообще: 98 084 события возрастом 39 часов
+    показывались нейтральным серым, и мёртвый поток выглядел здоровым. */
  const age=ev.last_age_s;
  let lvl;
  if(!ev.total)lvl='bad';
@@ -672,7 +736,7 @@ async function pollHealth(){
  setPill('hlOllama',h.ollama?'ok':'warn',h.ollama?'готова':'нет');
  {const _op=$('hlOllama');if(_op)_op.title=h.ollama_reason||'';}
 }
-
+/* ---------- профиль разработчика: риск-профиль в боковой панели ---------- */
 async function devProfile(u){
  if(!window.dsDrawer)return;
  dsDrawer('Профиль · @'+u,'<div class=ds-skeleton style="width:70%"></div>');
@@ -706,6 +770,7 @@ async function devProfile(u){
   '<div class=ds-drawer-sec><div class=t-label>Лента действий</div>'+
    '<div class="ds-timeline mt-3">'+feedHtml+'</div></div>');}
 
+/* ---------- здоровье репозитория ---------- */
 function repoHealth(name,r){
  if(!window.dsDrawer)return;
  const anom=r.anomalies||0,ev=r.events||0;
@@ -728,7 +793,8 @@ function repoHealth(name,r){
             '<span class=sub>@'+esc(m.author||'')+'</span></div>';}).join('')
     :'<div class=sub>нет открытых MR</div>')+'</div></div>'+
   '<div class=ds-drawer-sec><div class=t-label>Дерево файлов</div>'+repoTree(r)+'</div>'+
-
+  // Лента событий репозитория переехала сюда из карточки: в таблице
+  // ей места нет, а как деталь одной сущности она здесь уместна.
   '<div class=ds-drawer-sec><div class=t-label>Последние события</div><div class=ds-ev-list>'+
    ((r.recent||[]).length?(r.recent||[]).slice(0,14).map(function(e){
      var what=e.action==='push'?(e.path||'push'):plainText(e.message||ACT_WORD[e.action]||actName(e.action)||'');
@@ -737,6 +803,9 @@ function repoHealth(name,r){
        '<span class=sub>@'+esc(e.actor||'')+' · '+esc((e.ts_sim||'').slice(11,16))+'</span></div>';}).join('')
     :'<div class="help empty">Событий пока нет. Первые появятся через несколько секунд после старта.<button class="btn sm" data-start>Запустить</button></div>')+'</div></div>');}
 
+/* Поток активности: время слева монофиршиной колонкой, автор и
+   действие — типографикой. Подряд идущие события одного человека
+   не повторяют имя: так виден ритм работы, а не список строк. */
 let _streamSig='';
 function renderStream(items){
  const box=document.getElementById('teamStream'); if(!box) return;
@@ -777,11 +846,7 @@ function renderPeople(team){
     '<span class=pchev><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="m6 9 6 6 6-6"/></svg></span></div>'+
     '<div class=pbody id="body_'+id+'"></div></div>';}).join('');}
  team.forEach(m=>{const id=cssId(m.username);const st=m.stats||{};
-  const meta=document.getElementById('meta_'+id);
-  if(meta)meta.innerHTML=
-   '<span class=pm title="пуши/коммиты"><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M12 19V5M5 12l7-7 7 7"/></svg><b>'+(st.pushes||0)+'</b></span>'+
-   '<span class=pm title="merge request-ы"><i>MR</i><b>'+(st.mrs||0)+'</b></span>'+
-   '<span class="pm'+((st.anomalies||0)>0?' is-hot':'')+'" title="подозрительные (аномальные) действия"><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><b>'+(st.anomalies||0)+'</b></span>';
+  const meta=document.getElementById('meta_'+id);if(meta)meta.innerHTML='<span title="пуши/коммиты"><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M12 19V5M5 12l7-7 7 7"/></svg> <b>'+(st.pushes||0)+'</b></span> &middot; <span title="merge request-ы">MR <b>'+(st.mrs||0)+'</b></span> &middot; <span title="подозрительные (аномальные) действия"><svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> <b>'+(st.anomalies||0)+'</b></span>';
   const bdg=document.getElementById('bdg_'+id);if(bdg)bdg.innerHTML=statusBadge(m);
   const card=document.getElementById('card_'+id);if(card)card.classList.toggle('open',openUsers.has(m.username));});
 }
@@ -790,7 +855,8 @@ function togglePerson(u){if(openUsers.has(u))openUsers.delete(u);else{openUsers.
 document.addEventListener('click',e=>{const h=e.target.closest?e.target.closest('.phead'):null;if(h){const c=h.closest('.pcard');if(c)togglePerson(c.dataset.u);}});
 async function refreshActor(u){try{const d=await jget('/api/actor?u='+encodeURIComponent(u)+'&n=60');const id=cssId(u);
  const el=document.getElementById('body_'+id);if(!el)return;const s=d.summary||{};const feed=(d.feed||[]).slice().reverse();
-
+ // Подробный профиль вызывается из раскрытой карточки: в свёрнутой строке
+ // для отдельной кнопки нет места, а раскрытие и так первичное действие.
  el.innerHTML='<div class="ds-toolbar mt-0"><span class=grow></span>'+
    '<button class="btn ghost xs" onclick="event.stopPropagation();devProfile(\''+escJs(u)+'\')">Подробный профиль</button></div>'+
   '<div class=pcur>'+(s.last_action?('сейчас: <b>'+actName(s.last_action)+'</b>'+(s.last_project?(' <svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M5 12h14M12 5l7 7-7 7"/></svg> '+s.last_project):'')+(s.last_path?(' / '+s.last_path):'')):'нет активности')+'</div>'+
@@ -807,27 +873,19 @@ async function pollLogs(){
 }
 $('btnStart').onclick=async()=>{await jpost('/api/start');setTimeout(tick,300);};
 $('btnStop').onclick=async()=>{await jpost('/api/stop');setTimeout(tick,300);};
-if($('btnResetRepos'))$('btnResetRepos').onclick=()=>{
- UI.confirm({title:'Очистить контент всех репозиториев?',
-  description:'Будут закрыты все MR, удалены ветки кроме main и стёрты файлы до README. Команда и сами репозитории сохранятся. Действие необратимо.',
-  requireWord:'RESET',requireLabel:'Введите RESET для подтверждения',
-  confirmLabel:'Очистить',
-  onCancel:function(){const t=$('resetReposToast');if(t)t.textContent='отменено';},
-  onConfirm:function(w){resetReposGo(w);}});};
-
-async function resetReposGo(w){
+if($('btnResetRepos'))$('btnResetRepos').onclick=async()=>{
+ if(!confirm('Очистить контент всех репозиториев?\n\nБудут закрыты все MR, удалены ветки (кроме main) и стёрты файлы до README.\nКоманда и сами репозитории сохранятся. Действие необратимо.'))return;
  const b=$('btnResetRepos');b.disabled=true;const t=$('resetReposToast');t.textContent='очищаю репозитории…';
+ const w=prompt('Это сотрёт весь наработанный контент репозиториев. Введите RESET:');if(w!=='RESET'){b.disabled=false;t.textContent='отменено';return;}
  try{const r=await jpost('/api/reset_repos',{confirm:w});t.textContent=r.msg||'';}catch(e){t.textContent='ошибка';}
- b.disabled=false;setTimeout(()=>{t.textContent='';},9000);}
+ b.disabled=false;setTimeout(()=>{t.textContent='';},9000);};
 if($('btnTg'))$('btnTg').onclick=async()=>{$('tgToast').textContent='отправляю…';const r=await jpost('/api/tg_report');$('tgToast').textContent=r.msg||'';setTimeout(()=>$('tgToast').textContent='',4000);};
 $('btnSave').onclick=save;
 $('btnReload').onclick=()=>jget('/api/config').then(renderCfg);
 jget('/api/config').then(renderCfg);
-function bootPolling(){tick();setInterval(tick,1500);}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootPolling);
-else bootPolling();
+tick();setInterval(tick,1500);
 pollHealth();setInterval(pollHealth,5000);
-pollLogs();setInterval(function(){if(onView('logs'))pollLogs();},1000);
+pollLogs();setInterval(pollLogs,1000);
 function fmtBytes(n){
  if(n==null)return '—';
  if(n<1024)return n+' Б';
@@ -839,14 +897,15 @@ async function pollEvents(){try{const d=await jget('/api/events?n=200');const st
  setNum('evTypes',Object.keys(st.by_action||{}).length||null);
  const sz=$('evSize');
  if(sz){const v=st.size_bytes;sz.textContent=fmtBytes(v);sz.classList.toggle('is-empty',v==null);}
-
+ // Путь показываем от корня проекта: абсолютный путь до домашней папки
+ // на экране продукта не нужен.
  const file=String(st.file||'');
  $('evFile').textContent=file?file.replace(/^.*[\\/](?=data[\\/])/,''):'—';
  $('evFile').title=file;
  $('evRun').textContent=st.run_id||'—';
 
  const items=(d.items||[]).slice().reverse();
- renderStream(d.items||[]);
+ renderStream(d.items||[]);   // тот же поток питает «Активность команды»
  const cnt=$('evCount');
  if(cnt)cnt.textContent=items.length?('последние '+items.length+' из '+(st.total||items.length)):'';
  $('evList').innerHTML=items.length?items.map(function(e){
@@ -859,11 +918,14 @@ async function pollEvents(){try{const d=await jget('/api/events?n=200');const st
     '<td class=mono>'+esc(e.project||'')+'</td></tr>';}).join('')
   :'<tr><td colspan=5><div class="help empty">Событий пока нет. Запустите симуляцию.</div></td></tr>';
 }catch(e){uiErr('pollEvents',e)}}
-pollEvents();setInterval(function(){if(onView('data'))pollEvents();},2000);
+pollEvents();setInterval(pollEvents,2000);
 setInterval(()=>openUsers.forEach(refreshActor),2000);
 
+// ---------- Аналитика ----------
 const DOW=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-
+// Насыщенность клетки — пять ступеней одной шкалы, заданных классами.
+// Раньше ветки функции возвращали один и тот же цвет: карта была
+// равномерно синей и ничего не показывала.
 function heatLevel(v,mx){
  if(!v) return 0;
  const t=v/mx;
@@ -875,46 +937,41 @@ function drawHeat(grid,agrid){const el=$('heatmap');if(!el)return;
   for(let x=0;x<24;x++){const v=grid[d][x],a=agrid[d][x];
    h+='<div class="hmcell h'+heatLevel(v,mx)+(a?' anom':'')+'" title="'+DOW[d]+' '+x+':00 — '+v+' действий'+(a?(', '+a+' аномальных'):'')+'"></div>';}
   h+='</div>';}
- setHTML(el,h);}
-
+ el.innerHTML=h;}
+// Свод по часам: та же матрица, но сложенная по дням. Показывает
+// рабочее окно команды одним взглядом, без чтения 168 клеток.
 function drawHours(grid){
  const el=document.getElementById('hoursBar'); if(!el) return;
  const by=new Array(24).fill(0);
  (grid||[]).forEach(function(row){(row||[]).forEach(function(v,h){by[h]+=v||0;});});
  const mx=Math.max(1,...by), tot=by.reduce(function(a,b){return a+b;},0);
  if(!tot){el.innerHTML='<div class="help empty">Данных пока нет — за этот прогон действий не записано.</div>';return;}
-
- dsArea(el,{
-   height:150,
-   labels:by.map(function(_,h){return (h<10?'0':'')+h+':00';}),
-   xTicks:5,
-   series:[{name:'действия',values:by,color:'var(--chart-1)'}],
-   fmt:function(v){return fmtNum(Math.round(v));},
-   empty:'Данных пока нет'});
-
+ // Столбики рабочего окна подсвечиваются: график нужен, чтобы увидеть
+ // ритм смены, а не просто 24 одинаковых полоски.
+ const wh=(window._workHours||[10,18]);
+ el.innerHTML=by.map(function(v,h){
+   const pct=Math.round(v/mx*100);
+   const work=(h>=wh[0]&&h<wh[1])?' work':'';
+   return '<div class="hour'+work+'" title="'+h+':00 — '+fmtNum(v)+' действий">'+
+     '<div class=hour-bar><i style="height:'+Math.max(2,pct)+'%"></i></div>'+
+     '<div class=hour-l>'+(h%3===0?h:'')+'</div></div>';}).join('');
  const peak=by.indexOf(mx);
  const sub=document.getElementById('hourSub');
  if(sub)sub.textContent='пик в '+peak+':00 · всего '+fmtNum(tot)+' действий';
 }
 
-function topBars(obj,n,name){
- const e=Object.entries(obj||{}).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
- const out=e.slice(0,n).map(x=>({label:(name?name(x[0]):x[0]),value:x[1]}));
- const rest=e.slice(n);
- if(rest.length)out.push({label:'прочее ('+rest.length+')',
-   value:rest.reduce((a,x)=>a+x[1],0),color:'var(--text-3)'});
- return out;}
-
 async function pollInsights(){try{const d=await jget('/api/insights');
  drawHeat(d.heat||[],d.heat_anom||[]);
  drawHours(d.heat||[]);
 }catch(e){uiErr('pollInsights',e)}}
-pollInsights();setInterval(function(){if(onView('insights'))pollInsights();},3000);
+pollInsights();setInterval(pollInsights,3000);
 
+// ---------- Репозитории (живая карта) ----------
 const ACT_ICON={push:['ic-push','+'],mr_open:['ic-open','MR'],mr_merge:['ic-merge','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M20 6 9 17l-5-5"/></svg>'],
  mr_close:['ic-close','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M18 6 6 18M6 6l12 12"/></svg>'],branch_create:['ic-branch','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><circle cx=6 cy=6 r=3 /><circle cx=6 cy=18 r=3 /><path d="M18 9a9 9 0 0 1-9 9"/><circle cx=18 cy=6 r=3 /></svg>'],mr_comment:['ic-cmt','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>'],
  mr_approve:['ic-merge','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M20 6 9 17l-5-5"/></svg>'],issue_open:['ic-open','!'],issue_comment:['ic-cmt','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>'],issue_close:['ic-close','<svg class=ico viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d="M18 6 6 18M6 6l12 12"/></svg>']};
-
+// Короткие имена типов событий для плотных таблиц. Полных фраз тут не
+// нужно: рядом стоит объект действия, он и уточняет смысл.
 const ACT_WORD={
  push:'Файл', mr_open:'MR открыт', mr_merge:'MR смержен', mr_close:'MR закрыт',
  mr_approve:'MR одобрен', mr_comment:'Комментарий MR',
@@ -926,9 +983,15 @@ const ACT_WORD={
  deploy_key_add:'Ключ деплоя', membership_change:'Состав участников',
  pipeline:'Конвейер CI', token_create:'Создан токен',
  settings_change:'Изменены настройки'};
-
+/* Экранирование значений, попадающих в разметку. Закрываем не только
+   угловые скобки, но и кавычки с амперсандом: те же значения
+   подставляются в атрибуты (title, href, onclick), где одинарной
+   кавычки достаточно, чтобы разорвать разметку. Данные приходят из
+   журнала как обычный текст, поэтому двойного экранирования не будет. */
 const _ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
-
+// Текст из симуляции приходит с markdown и значками статуса. В строке
+// таблицы разметка не рендерится, поэтому звёздочки и кружки видны как
+// есть — вырезаем их при выводе.
 function plainText(x){
  return String(x==null?'':x)
   .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\uFE0F]/gu,'')
@@ -937,9 +1000,15 @@ function plainText(x){
   .replace(/\s{2,}/g,' ')
   .trim();}
 function esc(x){return (x==null?'':(''+x)).replace(/[&<>"']/g,c=>_ESC[c]);}
-
+/* Значение внутри inline-обработчика. Браузер декодирует HTML-сущности
+   ДО того, как разберёт JS, поэтому одного esc() мало: сначала
+   экранируем как строку JS, потом как атрибут. */
 function escJs(x){return esc(String(x==null?'':x).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));}
-
+/* Репозиторий — строка рабочей таблицы, а не карточка.
+   Шесть больших карточек показывали меньше данных, чем девять
+   колонок одной таблицы, и заставляли скроллить. Дерево файлов,
+   открытые MR и лента событий переехали в боковую панель по клику:
+   это детали одной сущности, им место в master/detail. */
 function repoRow(name,d){
  const hot=(d.recent||[]).some(e=>e.is_anomaly);
  const last=(d.recent||[])[0]||{};
@@ -978,7 +1047,7 @@ function repoTree(d){
 let repoSig='';
 let _repoData={};
 async function pollRepos(){try{const d=await jget('/api/repos');const r=d.repos||{};
- _repoData=r;
+ _repoData=r;   // нужен кнопке «здоровье» в карточке репозитория
  const names=Object.keys(r).filter(n=>r[n].total>0).sort((a,b)=>r[b].total-r[a].total);
  const rest=Object.keys(r).filter(n=>!r[n].total).sort();
  const order=names.concat(rest);
@@ -989,5 +1058,5 @@ async function pollRepos(){try{const d=await jget('/api/repos');const r=d.repos|
   '<tr><td colspan=9><div class="help empty">Запустите симуляцию — репозитории наполнятся событиями.</div></td></tr>';
  const rc=$('repoCount');if(rc)rc.textContent=order.length+' всего · '+names.length+' с активностью';
 }catch(e){uiErr('pollRepos',e)}}
-pollRepos();setInterval(function(){if(onView('repos'))pollRepos();},2500);
+pollRepos();setInterval(pollRepos,2500);
 </script></body></html>

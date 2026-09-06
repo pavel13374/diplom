@@ -396,55 +396,21 @@ def test_structured_logging_installed_in_console():
         check("отдаётся список отвергнутых правил", "rejected_rules" in d)
 
 
-# ──────────────────────────────────────────────────────────────────────────
-# ТЕСТ НЕ ИМЕЕТ ПРАВА ПЕРЕЖИВАТЬ СЕБЯ.
-#
-# test_gitlab_url_is_validated() постит адрес в /api/config, а обработчик
-# честно сохраняет его в web_config.json — то есть в РАБОЧУЮ конфигурацию
-# стенда. После одного прогона тестов адрес GitLab у оператора оказывался
-# подменён на тестовый, мир переставал подключаться, и причина выглядела
-# как сетевая проблема, а не как след теста.
-#
-# Файл снимается до прогона и возвращается после, что бы ни случилось.
-# ──────────────────────────────────────────────────────────────────────────
-import contextlib as _contextlib
-import shutil as _shutil
-
-
-@_contextlib.contextmanager
-def _preserve_web_config():
-    import config as _cfg
-    path = getattr(_cfg, "WEB_CONFIG_FILE", None)
-    saved = None
-    if path and _os.path.exists(path):
-        saved = path + ".testsnapshot"
-        _shutil.copy2(path, saved)
-    try:
-        yield
-    finally:
-        if saved and _os.path.exists(saved):
-            _shutil.move(saved, path)
-        elif path and _os.path.exists(path) and saved is None:
-            # файла не было до прогона — не оставляем созданный тестом
-            _os.remove(path)
-
-
 def main():
     print("=" * 74)
     print("  БЕЗОПАСНОСТЬ ВЕБ-КОНТУРА")
     print("=" * 74)
-    with _preserve_web_config():
-        test_admin_token_is_masked()
-        test_no_arbitrary_file_read()
-        test_gitlab_url_is_validated()
-        test_csrf_required_on_both_consoles()
-        test_session_cookies_are_scoped()
-        test_query_params_are_validated()
-        test_error_responses_are_opaque()
-        test_login_throttle_is_per_source()
-        test_incident_status_is_validated()
-        test_red_launch_validates_evasion()
-        test_structured_logging_installed_in_console()
+    test_admin_token_is_masked()
+    test_no_arbitrary_file_read()
+    test_gitlab_url_is_validated()
+    test_csrf_required_on_both_consoles()
+    test_session_cookies_are_scoped()
+    test_query_params_are_validated()
+    test_error_responses_are_opaque()
+    test_login_throttle_is_per_source()
+    test_incident_status_is_validated()
+    test_red_launch_validates_evasion()
+    test_structured_logging_installed_in_console()
     print("-" * 74)
     if FAILED:
         print(f"  {BAD} ПРОВАЛЕНО: {len(FAILED)}")

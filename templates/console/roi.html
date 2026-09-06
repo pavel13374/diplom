@@ -1,6 +1,6 @@
 <!doctype html><html lang=ru><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>Оценка эффекта · Sentinel SOC</title>
-<script>/* Тема ставится ДО первой отрисовки. ui.js подключён с defer и применяет её только после разбора документа: при сохранённой светлой теме страница успевала мигнуть тёмной. */try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
+<script>try{var _t=localStorage.getItem("soc_theme");if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t);}catch(x){}</script>
 <link rel=stylesheet href="/static/design-system.css">
 <link rel=icon href="/static/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/static/mark.png">
@@ -76,8 +76,7 @@
 const $=x=>document.getElementById(x);
 let MTTD_MIN=1;
 function fmt(n){return n.toLocaleString('ru-RU',{maximumFractionDigits:0});}
-// Точность до доллара на оценке из четырёх ползунков — ложная.
-// Округляем до значащего порядка и подписываем словом.
+
 function money(v){
  if(v>=1e6) return '≈ $'+(v/1e6).toFixed(1).replace('.',',')+' млн';
  if(v>=1e4) return '≈ $'+fmt(Math.round(v/1e3)*1e3);
@@ -91,8 +90,7 @@ function calc(){
  const winCut=Math.max(0,1-mttdDays/d);
  const base=n*c*k, save=base*winCut, resid=base-save;
  $('oWin').textContent=d+' дн → '+(MTTD_MIN<60?Math.round(MTTD_MIN)+' мин':(MTTD_MIN/60).toFixed(1)+' ч');
- // 14 дней → 1 минута это 99,995%, а не 100%: округление вверх до сотни
- // процентов — первое, что проверят.
+
  const pct=winCut*100;
  $('oWinS').textContent='Сокращение окна на '+(pct>99.5&&pct<100?'>99%':Math.round(pct)+'%');
  $('oSave').textContent=money(save);

@@ -1,38 +1,45 @@
-/* ============================================================
-   SENTINEL I18N — переключение языка интерфейса RU / EN.
 
-   Что переводится: оболочка продукта — навигация, заголовки,
-   кнопки, подписи, шапки таблиц, пустые состояния.
 
-   Что НЕ переводится: данные. Имена разработчиков, названия
-   репозиториев, тексты коммитов, причины срабатывания правил —
-   это содержимое журнала, а не интерфейс. Настоящие продукты
-   тоже не переводят данные, только оболочку.
-
-   Как устроено: словарь сопоставляет русскую строку английской.
-   Совпадение только полное, по очищенному от пробелов тексту, —
-   поэтому произвольные данные никогда не будут задеты случайно.
-   Консоли перерисовывают разметку каждые 2.5 секунды, поэтому
-   перевод переприменяется через MutationObserver.
-
-   Возврат на русский делается перезагрузкой страницы: разметка
-   и так собирается заново из данных, а обратный словарь
-   пришлось бы держать вторым и он бы рассинхронизировался.
-   ============================================================ */
 (function () {
   'use strict';
 
   var KEY = 'soc_lang';
 
-  /* ---------- словарь: русская строка → английская ---------- */
   var DICT = {
+
+    'Очередь по уровню': 'Queue by severity',
+    'Разбор аналитиком': 'Analyst verdicts',
+    'Поток сработок': 'Detection flow',
+    'Состояние очереди': 'Queue state',
+    'Чем сработало': 'Detection layers',
+    'слои детектирования': 'detection layers',
+    'по стадии разбора': 'by triage stage',
+    'разобрать': 'triage',
+    'матрица': 'matrix',
+    'инциденты': 'incidents',
+    'инцидент': 'incident',
+    'инцидента': 'incidents',
+    'сработок': 'detections',
+    'Средние': 'Medium',
+    'Низкие': 'Low',
+    'Покрыто правилом': 'Covered by a rule',
+    'Слепая зона': 'Blind spot',
+    'Подтверждено': 'Confirmed',
+    'Ложное': 'False positive',
+    'Не разобрано': 'Not triaged',
+    'настоящих атак': 'true attacks',
+    'матрицы покрыто': 'of matrix covered',
+    'прочее': 'other',
+    'Все сработки': 'All detections',
+    'Высокий и выше': 'High and above',
+    'Нет данных': 'No data',
+    'Сработок пока нет': 'No detections yet',
+    'Данных пока нет': 'No data yet',
     'подтверждённая атака': 'confirmed attack',
     'ложное срабатывание': 'false positive',
 
     'Чем платит смена за каждый порог и что при этом ловится.': 'What the shift pays for each threshold and what it catches.',
 
-
-    /* --- консоль среды: обзор, виды активности, роли --- */
     'Часы этого компьютера': 'This computer clock',
     'Время GitLab': 'GitLab time',
     'Проставляется в коммиты': 'Stamped into commits',
@@ -102,7 +109,6 @@
     'Инженер по качеству': 'QA engineer',
     'DevOps': 'DevOps',
 
-    /* --- ярлыки состояния в шапке --- */
     'идёт': 'running',
     'События': 'Events',
     'идёт пересчёт метрик…': 'recalculating metrics…',
@@ -110,7 +116,6 @@
     'Секреты в коммитах': 'Secrets in commits',
     'что детект уже ловит по сигнатурам': 'what detection already catches by signature',
 
-    /* --- строчные формы и состояния, собираемые в JS --- */
     'не назначен': 'unassigned',
     'авто': 'auto',
     'покрыта': 'covered',
@@ -141,8 +146,6 @@
     'GitLab на связи:': 'GitLab connected:',
     'Проверить связь': 'Check connection',
 
-    /* --- добавлено по обходу интерфейса в браузере: строки, которые
-       оставались русскими при английском языке --- */
     'Запуск сценариев': 'Red Launcher',
     'Повтор прогона': 'Run Replay',
     'Выйти': 'Log out',
@@ -244,7 +247,6 @@
     '% эпизодов': '% of episodes',
     'п.п.': 'pp',
 
-    /* --- навигация и разделы --- */
     'Обзор': 'Overview',
     'Алерты': 'Alerts',
     'Инциденты': 'Incidents',
@@ -270,7 +272,6 @@
     'SOC': 'SOC',
     'Purple Team': 'Purple Team',
 
-    /* --- топбар и состояние --- */
     'Мир:': 'Simulation:',
     'События:': 'Events:',
     'Авто-триаж:': 'Auto-triage:',
@@ -297,7 +298,6 @@
     'вне рабочих часов': 'after hours',
     'рабочий день': 'working day',
 
-    /* --- KPI и сводки --- */
     'Событий в сторе': 'Events in store',
     'Обработано защитой': 'Processed by defense',
     'Алертов': 'Alerts',
@@ -323,7 +323,6 @@
     'Типов аномалий': 'Anomaly types',
     'Датасет': 'Dataset',
 
-    /* --- дашборд --- */
     'Живая активность': 'Live activity',
     'Очередь инцидентов': 'Incident queue',
     'Пульс алертов': 'Alert pulse',
@@ -355,7 +354,6 @@
     'Живые показатели этой установки': 'Live metrics of this deployment',
     'Живая команда и её расписание': 'The team and its schedule',
 
-    /* --- таблица алертов --- */
     'Время': 'Time',
     'Слой': 'Layer',
     'Разработчик': 'Developer',
@@ -403,7 +401,6 @@
     'техник': 'techniques',
     'сигнатуры': 'signatures',
 
-    /* --- инциденты и расследование --- */
     'Детали инцидента': 'Incident details',
     'Заметка расследования': 'Investigation note',
     'Рекомендованные действия': 'Recommended actions',
@@ -427,7 +424,6 @@
     'Детектор': 'Detector',
     'Объяснение': 'Explanation',
 
-    /* --- дела --- */
     'Карточка дела': 'Case details',
     'Сводка по делу': 'Case summary',
     'История действий': 'Action history',
@@ -451,7 +447,6 @@
     'высокий': 'high',
     'критический': 'critical',
 
-    /* --- реплей --- */
     'Что произошло к этому моменту': 'What happened up to this point',
     'Состояние SOC на курсоре': 'SOC state at cursor',
     '<svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Играть': '<svg class=ico viewBox="0 0 24 24" fill=currentColor stroke=none><path d="M8 5v14l11-7z"/></svg> Play',
@@ -467,7 +462,6 @@
     'Горячий репозиторий': 'Hottest repository',
     'Первый детект': 'First detection',
 
-    /* --- профиль риска --- */
     'Разработчики по риску': 'Developers by risk',
     'Репозитории по риску': 'Repositories by risk',
     'Динамика риска во времени': 'Risk over time',
@@ -482,7 +476,6 @@
     'Поведенческий слой (UEBA)': 'Behavioral layer (UEBA)',
     'Сигнатурные правила': 'Signature rules',
 
-    /* --- ATT&CK --- */
     'слепая зона': 'blind spot',
     'покрыта правилом': 'covered by a rule',
     'Показать детекты правила': 'Show rule detections',
@@ -490,7 +483,6 @@
     'Техники не определены': 'No techniques identified',
     'Правила детектирования': 'Detection rules',
 
-    /* --- Red Launcher / охота --- */
     'Очередь команд': 'Command queue',
     'Готовые гипотезы': 'Preset hypotheses',
     'Свой запрос': 'Custom query',
@@ -508,7 +500,6 @@
     'Быстрые действия': 'Quick actions',
     'Быстрый старт': 'Quick start',
 
-    /* --- пустые состояния и подсказки --- */
     'Очередь пуста': 'The queue is empty',
     'Событий нет': 'No events',
     'Событий пока нет': 'No events yet',
@@ -531,7 +522,6 @@
     'Сохранить изменения': 'Save changes',
     'Сбросить форму к сохранённому': 'Reset the form to the saved state',
 
-    /* --- вход --- */
     'Вход': 'Sign in',
     'Войти': 'Sign in',
     'Вход в панель': 'Sign in to the console',
@@ -541,7 +531,6 @@
     'Выйти из панели →': 'Sign out →',
     'Авторизуйтесь для управления симуляцией': 'Sign in to control the simulation',
 
-    /* --- прочее --- */
     'Дерево файлов': 'File tree',
     'Последние файлы': 'Recent files',
     'Последние события': 'Recent events',
@@ -565,7 +554,6 @@
     'Что это значит': 'What this means',
     'Почему это важно': 'Why it matters',
 
-    /* --- онбординг, подсказки и подписи консолей --- */
     'пройди 5 шагов — увидишь весь конвейер': 'five steps walk you through the whole pipeline',
     'Открой': 'Open',
     'консоль среды': 'the environment console',
@@ -646,7 +634,7 @@
     'Открыть Sentinel SOC': 'Open Sentinel SOC',
     'срабатывала': 'triggered',
     'в этот час была аномалия (красная рамка на клетке)': 'there was an anomaly in this hour (red outline on the cell)',
-    // --- Форма конфигурации, карточки сотрудников, пустые состояния (Обзор/Конфиг/People) ---
+
     "Пн": "Mon",
     "Вт": "Tue",
     "Ср": "Wed",
@@ -761,7 +749,7 @@
     "событий пока нет — запустите симуляцию": "no events yet — start the simulation",
     "аномалий пока нет": "no anomalies yet",
     "% от всех)": "% of all)",
-    // --- Консоль защиты 8788: Red Launcher, тосты, отчёт, дела, профиль риска, диагностика ---
+
     "Секреты в коммитах": "Secrets in commits",
     "секрет": "secret",
     "что детект уже ловит по сигнатурам": "what detection already catches by signature",
@@ -897,7 +885,7 @@
     "Ollama не запущена": "Ollama is not running",
     "развернуть": "expand",
     "многошаговая": "multi-step",
-    // --- Red Launcher: панель результата и селектор темпа ---
+
     "статус:": "status:",
     "темп": "tempo",
     "шагов": "steps",
@@ -979,9 +967,7 @@
     'разобрано:': 'triaged:',
     'вклад сигнатур': 'signature contribution',
     'вклад поведения': 'behavior contribution',
-    /* --- названия правил детектирования (detections/*.json).
-       Проверяется тестом tests/test_i18n_rules.py: у каждого правила
-       обязан быть перевод, иначе словарь молча отстаёт от правил. --- */
+
     'Merge в защищённую ветку без единого апрува': 'Merge into a protected branch without a single approval',
     'Автоматизированная выгрузка репозиториев': 'Automated repository harvesting',
     'Автор сам смёржил свой MR в защищённую ветку без апрувов': 'Author self-merged their MR into a protected branch with no approvals',
@@ -1047,6 +1033,10 @@
     'Правила с подтверждёнными FP:': 'Rules with confirmed FPs:',
     '. Проверь, что консоль среды (:8787) запущена и нажата кнопка «Запустить».': '. Check that the environment console (:8787) is running and “Start” has been pressed.',
     'Закрыть': 'Close',
+    'Тема оформления': 'Appearance',
+    'Подтвердите действие': 'Confirm action',
+    'Подтвердить': 'Confirm',
+    'Отмена': 'Cancel',
     'новый': 'new',
     'сдержан': 'contained',
     'закрыт': 'closed',
@@ -1142,8 +1132,7 @@
     '(корень)': '(root)',
     'пока тихо': 'quiet so far',
     'пока пусто — файлы появятся при пушах': 'empty so far — files appear on push',
-    // Названия активностей (ACT_HELP) и типов событий (EVN) на Обзоре среды —
-    // это ярлыки консоли, а не данные из журнала, поэтому переводим.
+
     'Новое правило детектирования': 'New detection rule',
     'Исправление правила': 'Rule fix',
     'Донастройка порогов': 'Threshold tuning',
@@ -1184,10 +1173,6 @@
     'merge request\'ы': 'merge requests',
   };
 
-  /* --- составные подписи: собираются из чисел и слов ---
-     Число может содержать разделители тысяч (пробел, тонкая шпация),
-     поэтому в шаблоне числа — символьный класс, а не \d+. Замена
-     бывает функцией: английское число/множественное считается по n. */
   var NUM = '([\\d \\u00a0\\u202f.]+?)';
   function one(n) { return String(n).replace(/\D/g, '') === '1'; }
   function pl(n, s, p) { return n + (one(n) ? ' ' + s : ' ' + p); }
@@ -1224,7 +1209,7 @@
     [/^(\d+)\s*м$/, '$1m'],
     [/^(\d+)\s*ч\s+(\d+)\s*м$/, '$1 h $2 m'],
     [/^(\d+)\s*ч\s+(\d+)\s*м\s+(\d+)\s*с$/, '$1h $2m $3s'],
-    // Единицы у ползунков конфигурации (значение + суффикс)
+
     [/^([\d.]+)\s*ч$/, '$1 h'],
     [/^([\d.]+)\s*с$/, '$1 s'],
     [/^([\d.]+)\s*дн$/, '$1 d'],
@@ -1232,7 +1217,7 @@
     [/^ошибок вызовов:\s*(\d+)$/, 'call errors: $1'],
     [/^real \(реальное\)$/, 'real (server time)'],
     [/^sim \(симуляция\)$/, 'sim (sim time)'],
-    // Динамический баннер масштаба времени (после правки recalc — один текстовый узел)
+
     [/^Масштаб ×([\d.]+) · рабочий день \((\d+) ч\) проходит за (\d+) мин реального времени · рабочая неделя — примерно (\d+) мин \(ночи и выходные мгновенно\)\.$/,
       'Scale ×$1 · workday ($2 h) takes $3 min of real time · work week ≈ $4 min (nights & weekends instant).'],
     [/^(\d+)\s*д\s+(\d+)\s*ч$/, '$1 d $2 h'],
@@ -1266,7 +1251,6 @@
   var SKIP = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, CODE: 1, PRE: 1 };
   var SEP = / · | — | → | \| |; |, | \/ |: /;
 
-  // одна смысловая единица: точный словарь, затем правила
   function tr1(t) {
     if (DICT.hasOwnProperty(t)) return DICT[t];
     for (var i = 0; i < RULES.length; i++) {
@@ -1276,33 +1260,23 @@
   }
 
   function translate(s) {
-    // Внутренние переносы схлопываем: в разметке длинная фраза может быть
-    // разбита на несколько строк, и без этого она не находилась в словаре.
-    // Кроме переносов нормализуем типографские апострофы/кавычки к прямым:
-    // в разметке встречается и «request'ы» (U+0027), и «request’ы» (U+2019),
-    // а ключ в словаре один — без этого длинная фраза не находится.
+
     var t = String(s).replace(/\s+/g, ' ').replace(/[‘’]/g, "'").trim();
     if (!t) return null;
     var whole = tr1(t);
     if (whole !== null) return whole;
-    // Ведущий маркер ленты/списка: «— причина», «· пункт». В разметке
-    // причина срабатывания — отдельный текстовый узел вида «— <причина>».
+
     var mk = t.match(/^([—·]\s+)([\s\S]+)$/);
     if (mk) { var inner = tr1(mk[2]); if (inner !== null) return mk[1] + inner; }
-    // Хвостовой маркер: «текст ·» / «текст —». Так бывает, когда за узлом
-    // сразу идёт элемент (ссылка): разделитель остаётся в конце текстового
-    // узла без следующего сегмента внутри него.
+
     var mkE = t.match(/^([\s\S]+?)(\s[—·])$/);
     if (mkE) { var innerE = tr1(mkE[1]); if (innerE !== null) return innerE + mkE[2]; }
-    // Составная строка («1 детект · 1 тактика · риск 0.7») переводится по
-    // сегментам: делим по разделителям, переводим каждую единицу отдельно.
-    // Данные (имена, репозитории, время) не совпадут ни со словарём, ни с
-    // правилами — и останутся как есть.
+
     if (SEP.test(t)) {
       var parts = t.split(/( · | — | → | \| |; |, | \/ |: )/);
       var changed = false;
       for (var i = 0; i < parts.length; i++) {
-        if (i % 2 === 1) continue;              // разделитель
+        if (i % 2 === 1) continue;
         var seg = parts[i].trim();
         if (!seg) continue;
         var r = tr1(seg);
@@ -1313,7 +1287,6 @@
     return null;
   }
 
-  // Перевод одного текстового узла с сохранением окружающих пробелов.
   function ttext(node) {
     var raw = node.nodeValue;
     if (!raw || !/\S/.test(raw)) return;
@@ -1323,7 +1296,6 @@
     node.nodeValue = raw.match(/^\s*/)[0] + tr + raw.match(/\s*$/)[0];
   }
 
-  // Перевод узла: текстовый — сам, элемент — атрибуты и всё поддерево.
   function tnode(node) {
     if (!node) return;
     if (node.nodeType === 3) { ttext(node); return; }
@@ -1333,7 +1305,7 @@
 
   function walk(root) {
     if (!root || root.nodeType !== 1) { if (root && root.nodeType === 3) ttext(root); return; }
-    // атрибуты самого элемента и потомков
+
     var self = root.getAttribute ? [root] : [];
     var els = self.concat(root.querySelectorAll ? [].slice.call(root.querySelectorAll('*')) : []);
     for (var i = 0; i < els.length; i++) {
@@ -1344,7 +1316,7 @@
         if (tr !== null && tr !== v) els[i].setAttribute(ATTRS[a], tr);
       }
     }
-    // текстовые узлы
+
     var tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
         var p = n.parentNode;
@@ -1358,16 +1330,10 @@
     for (var k = 0; k < nodes.length; k++) ttext(nodes[k]);
   }
 
-  /* Перевод выполняется СИНХРОННО в колбэке наблюдателя. Колбэк
-     MutationObserver — это микрозадача: она выполняется после текущего кода,
-     но ДО того, как браузер отрисует кадр. Значит, если перевести узлы прямо
-     здесь (а не отложенно через setTimeout), русский текст заменяется на
-     английский раньше, чем его успеют нарисовать — мигания нет. Обрабатываем
-     только изменившиеся узлы, поэтому это быстро даже при частых обновлениях. */
   var observer = null;
   function onMutations(records) {
     if (!observer) return;
-    observer.disconnect();          // свои же правки не должны будить наблюдатель
+    observer.disconnect();
     try {
       for (var i = 0; i < records.length; i++) {
         var r = records[i];

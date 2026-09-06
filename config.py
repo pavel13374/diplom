@@ -492,10 +492,21 @@ ALERT_SUPPRESS_MIN = 60           # окно подавления дублей (
 
 import os as _os, secrets as _secrets
 WEB_ADMIN_USER = _os.environ.get("SOC_ADMIN_USER", "admin")
-# Пароль: из переменной окружения SOC_ADMIN_PASS; иначе — случайный на запуск
-# (печатается в консоль). Для демо можно оставить дефолт SOC_ADMIN_PASS=admin.
-WEB_ADMIN_PASS = _os.environ.get("SOC_ADMIN_PASS") or _secrets.token_urlsafe(9)
-_WEB_PASS_GENERATED = "SOC_ADMIN_PASS" not in _os.environ
+# Пароль: из переменной окружения SOC_ADMIN_PASS; иначе — "admin".
+#
+# ВНИМАНИЕ. Дефолт задан осознанно, для локального стенда: обе панели
+# (8787 и 8788) должны открываться парой admin/admin без чтения логов.
+# Раньше пароль генерировался случайно на каждый запуск и печатался в
+# терминал — при запуске из .bat или под сервисом его негде было взять.
+#
+# Перед выносом стенда куда-либо, кроме 127.0.0.1, задайте свой:
+#     set SOC_ADMIN_PASS=<свой пароль>      (Windows)
+#     export SOC_ADMIN_PASS=<свой пароль>   (Linux/macOS)
+# Пока пароль остаётся дефолтным, при слушании не на петле печатается
+# предупреждение (см. вывод при старте).
+WEB_ADMIN_PASS = _os.environ.get("SOC_ADMIN_PASS") or "admin"
+_WEB_PASS_GENERATED = False
+WEB_PASS_IS_DEFAULT = "SOC_ADMIN_PASS" not in _os.environ
 # Секрет сессии: из окружения или файла .secret_key (не в git), иначе генерим
 def _load_secret():
     env = _os.environ.get("SOC_WEB_SECRET")
